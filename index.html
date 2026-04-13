@@ -38,6 +38,16 @@
           <span>Dashboard</span>
         </button>
 
+        <!-- ── PRODUCT 3: Deep Insights ── -->
+        <div class="nav-label mt-4">
+          <span class="nav-product-tag" style="background:#F4F4F5;color:#18181B;border:1px solid #E4E4E7">Company Scanner</span>
+        </div>
+        <button class="nav-item" data-view="company-bio">
+          <i data-lucide="globe"></i>
+          <span>Company Bio</span>
+          <span class="agent-badge" style="background:#18181B;color:#FFF">AI</span>
+        </button>
+
         <!-- ── PRODUCT 1: Sales Growth Engine ── -->
         <div class="nav-label mt-4">
           <span class="nav-product-tag" style="background:#FFF7ED;color:#EA580C">Sales Growth Engine</span>
@@ -72,24 +82,28 @@
           </div>
         </div>
 
-        <!-- ── PRODUCT 2: HTBA Competitive Intelligence ── -->
+        <!-- ── PRODUCT 2: SICIT Competitive Intelligence ── -->
         <div class="nav-label mt-4">
-          <span class="nav-product-tag" style="background:#EFF6FF;color:#1D4ED8">HTBA Product Intelligence</span>
+          <span class="nav-product-tag" style="background:#EFF6FF;color:#1D4ED8">SICIT Competitive Intelligence</span>
         </div>
         <div class="collapsible open" id="ciMenu">
           <button class="nav-item has-chevron" onclick="toggleNavMenu('ciMenu')">
             <i data-lucide="microscope"></i>
-            <span>CI Engine</span>
+            <span>Market Intelligence</span>
             <i data-lucide="chevron-down" class="chevron"></i>
           </button>
           <div class="sub-menu">
-            <button class="nav-item sub-item" data-view="htba-functional">
-              <span class="dot" style="background:#10B981"></span> Functional Health
-              <span class="agent-badge" style="background:#D1FAE5;color:#065F46">B12</span>
+            <button class="nav-item sub-item" data-view="sicit-agri">
+              <span class="dot" style="background:#10B981"></span> Fertilizers & Biostim.
+              <span class="agent-badge" style="background:#D1FAE5;color:#065F46">Agro</span>
             </button>
-            <button class="nav-item sub-item" data-view="htba-taste">
-              <span class="dot" style="background:#EC4899"></span> Taste Modulation
-              <span class="agent-badge" style="background:#FCE7F3;color:#BE185D">Sensory</span>
+            <button class="nav-item sub-item" data-view="sicit-plaster">
+              <span class="dot" style="background:#8B5CF6"></span> Plaster Retarders
+              <span class="agent-badge" style="background:#EDE9FE;color:#5B21B6">Ind</span>
+            </button>
+            <button class="nav-item sub-item" data-view="sicit-biofuel">
+              <span class="dot" style="background:#F43F5E"></span> Biofuel Fats
+              <span class="agent-badge" style="background:#FFE4E6;color:#BE123C">Eco</span>
             </button>
           </div>
         </div>
@@ -212,6 +226,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

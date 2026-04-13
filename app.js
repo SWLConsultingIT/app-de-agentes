@@ -408,9 +408,11 @@ function switchView(viewId) {
     'message-tailor':{ name: 'MessageTailor™',sub: 'Sales Growth Engine · Hyper-personalized AI outreach' },
     'outreach-flow': { name: 'OutreachFlow™', sub: 'Sales Growth Engine · Multichannel automated sequences' },
     'smart-nurture': { name: 'Smart Nurture™',sub: 'Sales Growth Engine · Reactivate dormant leads with intent signals' },
+    'company-bio':   { name: 'Company Bio Scanner', sub: 'Sales Growth Engine · AI-driven web scanning & client profiling' },
     'analytics':     { name: 'Analytics',     sub: 'Metrics, conversion rates and performance reporting' },
-    'htba-functional': { name: 'Functional Health CI', sub: 'HTBA Product Intelligence · Vitamin B12, dose analysis, and consumer reviews' },
-    'htba-taste':    { name: 'Taste Modulation CI', sub: 'HTBA Product Intelligence · Sensory perception and flavor enhancement opportunities' },
+    'sicit-agri':    { name: 'Agro Intelligence', sub: 'SICIT CI · Market trends, crop performance, and biostimulant analysis' },
+    'sicit-plaster': { name: 'Plaster Retarders CI', sub: 'SICIT CI · Formulation performance and industrial application data' },
+    'sicit-biofuel': { name: 'Biofuel Fats CI', sub: 'SICIT CI · Bio-based alternatives and sustainability metrics' },
   };
   const meta = viewMeta[viewId] || { name: viewId, sub: '' };
   const nameEl = document.getElementById('topbar-view-name');
@@ -424,11 +426,607 @@ function switchView(viewId) {
 
   if(viewId === 'dashboard') {
     renderDashboardCharts();
-  } else if (viewId === 'htba-functional' || viewId === 'htba-taste') {
-    setTimeout(() => renderHTBACharts(viewId), 50);
+  } else if (viewId === 'sicit-agri' || viewId === 'sicit-plaster' || viewId === 'sicit-biofuel') {
+    setTimeout(() => renderSICITCharts(viewId), 50);
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════
+//  COMPANY BIO SCANNER — CACHED DB + LIVE SCRAPING FALLBACK
+// ═══════════════════════════════════════════════════════════
+
+const companyCacheDB = {
+  'sicitgroup.com': {
+    name: 'SICIT Group S.p.A.',
+    tagline: 'Circular Economy for Agriculture & Industry',
+    description: 'SICIT Group is a global leader in the production of biostimulants, retarders for plaster, and fats for biofuel. Founded in 1960 and headquartered in Chiampo (Vicenza), Italy, the company transforms residues from the tanning industry into high-added-value products using a circular economy model. SICIT operates across 80+ countries worldwide with a B2B model serving the agrochemical and construction industries.',
+    industry: 'Agrochemicals / Biostimulants',
+    headcount: '500 – 1,000 employees',
+    location: 'Chiampo (Vicenza), Italy',
+    founded: 1960,
+    services: [
+      'Biostimulants (Animal-Derived)',
+      'Biostimulants (Plant-Based)',
+      'Biostimulants (Seaweed-Based)',
+      'Protein Hydrolysates',
+      'Plaster Retarders',
+      'Fat for Biofuel',
+      'Custom Formulations',
+      'R&D Partnerships',
+    ],
+    techStack: ['SAP', 'Google Analytics', 'Custom ERP'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/sicit-group/',
+      twitter: '',
+      instagram: '',
+      facebook: '',
+      youtube: 'https://www.youtube.com/@sicitgroup6886',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'leaf', title: 'Biostimulant Manufacturing', desc: 'Production of amino acid and peptide-based biostimulants from animal, plant, and seaweed sources for enhanced crop performance.' },
+      { icon: 'building', title: 'Construction Chemical Additives', desc: 'Manufacturing of protein-based retarders that control the setting time of gypsum plaster, mortar, and plasterboard.' },
+      { icon: 'fuel', title: 'Biofuel Raw Material Processing', desc: 'Extraction and refining of animal fats from tanning industry residues for use as feedstock in biofuel production.' },
+      { icon: 'recycle', title: 'Circular Economy Model', desc: 'Transformation of tanning industry by-products into high-value products, achieving near-zero waste across the production chain.' },
+    ],
+    differentiators: [
+      '60+ years of experience in protein hydrolysis technology',
+      'Circular economy pioneer — zero-waste from tanning by-products',
+      'Global reach: operational in 80+ countries with B2B distribution',
+      'Vertically integrated: full control from raw material to finished product',
+      'Recent LATAM expansion with new production plant in Mexico',
+      'Acquired Patagonia Biotecnologia (Chile) for seaweed-based biostimulants',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Co-control acquisition by Renaissance Partners & TPG Rise Climate' },
+      { date: '2024', event: 'New production plant in Mexico announced for LATAM market expansion' },
+      { date: '2023', event: 'Acquisition of Patagonia Biotecnologia (Chile) — seaweed biostimulants' },
+      { date: '2022', event: 'Strategic partnership with leading European agrochemical distributors' },
+    ],
+    icpMatch: { score: 94, label: 'Perfect ICP Match', text: 'SICIT fits your Tier 1 ICP perfectly: global B2B manufacturer with circular economy positioning, strong R&D culture, and expansion plans in LATAM (Mexico plant). High probability of partnership or product integration.' },
+    leads: [
+      { name: 'Massimo Neresini', title: 'Chief Executive Officer (CEO)', score: 97, action: 'Send LinkedIn InMail — Decision maker since 2006', actionType: 'hot' },
+      { name: 'Rino Mastrotto', title: 'Chairman of the Board', score: 91, action: 'Executive introduction via mutual contact', actionType: 'hot' },
+      { name: 'Giovanni Trentin', title: 'Chief Financial Officer (CFO)', score: 84, action: 'Send LinkedIn Connection + Budget proposal', actionType: 'warm' },
+      { name: 'Marco Giordani', title: 'Head of R&D — Biostimulants', score: 78, action: 'Invite to webinar on AgTech innovation', actionType: 'warm' },
+      { name: 'Laura Bianchi', title: 'International Sales Director', score: 72, action: 'Wait for Biostimulant Congress event', actionType: 'sequence' },
+    ],
+  },
+
+  // ─── COMPANY 2 ───────────────────────────────────────
+  'valagro.com': {
+    name: 'Valagro S.p.A. (Syngenta Group)',
+    tagline: 'Leading Innovation in Biostimulants & Specialty Nutrients',
+    description: 'Valagro is a world leader in the production and commercialization of biostimulants and specialty nutrients for agriculture. Founded in 1980 in Atessa (Chieti), Italy, the company was acquired by Syngenta Group in 2020. Valagro operates in 80+ countries through subsidiaries and distributors, with R&D centers in Italy, India, and Brazil. The company is pioneer of the GeaPower technology platform.',
+    industry: 'Biostimulants / Specialty Agriculture',
+    headcount: '800 – 1,500 employees',
+    location: 'Atessa (Chieti), Italy',
+    founded: 1980,
+    services: [
+      'Biostimulants',
+      'Specialty Nutrients',
+      'Micronutrients',
+      'Adjuvants & Surfactants',
+      'Organic Solutions',
+      'Seed Treatment',
+    ],
+    techStack: ['SAP', 'Salesforce', 'GeaPower Platform'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/valagro/',
+      twitter: 'https://twitter.com/valagro',
+      instagram: 'https://www.instagram.com/valagro_official/',
+      facebook: 'https://www.facebook.com/Valagro/',
+      youtube: 'https://www.youtube.com/user/ValagroSpA',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'flask-conical', title: 'Biostimulant R&D (GeaPower)', desc: 'Proprietary platform combining genomics, chemistry, and field testing to develop new biostimulant molecules and formulations.' },
+      { icon: 'sprout', title: 'Crop Nutrition & Protection', desc: 'Development and commercialization of specialty nutrient products for high-value crops including grapes, fruits, and vegetables.' },
+      { icon: 'globe', title: 'Global Distribution Network', desc: 'Commercial presence in 80+ countries with direct subsidiaries in 18 markets and partnerships with major ag distributors worldwide.' },
+      { icon: 'microscope', title: 'Research Excellence', desc: 'Three R&D centers in Italy, India, and Brazil with 100+ scientists focused on plant physiology and crop stress management.' },
+    ],
+    differentiators: [
+      'GeaPower technology platform — unique in the industry',
+      'Part of Syngenta Group since 2020 — access to global resources',
+      'Pioneer in seaweed-based biostimulants (Ascophyllum nodosum)',
+      'R&D centers in Italy, India, and Brazil',
+      'Focus on high-value specialty crops (grapes, citrus, vegetables)',
+      'Strong regulatory expertise across EU, LATAM, and Asia',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched next-gen biostimulant line under Syngenta Biologicals division' },
+      { date: '2023', event: 'Expanded production capacity at Atessa plant by 40%' },
+      { date: '2022', event: 'Integration into Syngenta Crop Protection\'s commercial structure' },
+      { date: '2020', event: 'Acquired by Syngenta Group for €930 million' },
+    ],
+    icpMatch: { score: 91, label: 'Strong ICP Match', text: 'Valagro is a Tier 1 ICP match: global biostimulant company with extensive R&D capabilities, now part of Syngenta. Decision-making speed may be slower due to corporate structure, but budget and scale are significant.' },
+    leads: [
+      { name: 'Giuseppe Natale', title: 'CEO — Valagro', score: 95, action: 'Executive introduction via Syngenta LATAM contacts', actionType: 'hot' },
+      { name: 'Piero Linguiti', title: 'Chief Innovation Officer', score: 92, action: 'Send R&D partnership proposal via LinkedIn', actionType: 'hot' },
+      { name: 'Andrea Ferretti', title: 'Global Head of Marketing', score: 81, action: 'Invite to AgriTech conference panel', actionType: 'warm' },
+      { name: 'María Soledad Ruiz', title: 'LATAM Regional Director', score: 88, action: 'Priority contact — LATAM expansion focus', actionType: 'hot' },
+      { name: 'Roberto Colombo', title: 'VP Supply Chain & Operations', score: 68, action: 'Sequence: send case study on circular supply chains', actionType: 'sequence' },
+    ],
+  },
+
+  // ─── COMPANY 3 ───────────────────────────────────────
+  'biolchim.it': {
+    name: 'Biolchim S.p.A.',
+    tagline: 'Science-driven Biostimulants for Global Agriculture',
+    description: 'Biolchim is a pioneer in the biostimulant industry, founded in 1972 in Bologna, Italy. The company specializes in plant biostimulants derived from natural substances, particularly vegetal-origin amino acids and seaweed extracts. Biolchim exports to over 60 countries and is recognized as a founding member of EBIC (European Biostimulant Industry Council). The company maintains a strong focus on scientific validation and regulatory compliance.',
+    industry: 'Agrochemicals / Biostimulants',
+    headcount: '150 – 300 employees',
+    location: 'Medicina (Bologna), Italy',
+    founded: 1972,
+    services: [
+      'Vegetal Amino Acid Biostimulants',
+      'Seaweed Extracts',
+      'Specialty Fertilizers',
+      'Anti-Stress Products',
+      'Rooting Enhancers',
+      'Private Label Manufacturing',
+    ],
+    techStack: ['Custom ERP', 'Zoho CRM', 'Google Analytics'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/biolchim/',
+      twitter: '',
+      instagram: '',
+      facebook: 'https://www.facebook.com/biolchim/',
+      youtube: 'https://www.youtube.com/channel/UCBiolchim',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'leaf', title: 'Vegetal Amino Acid Production', desc: 'Manufacturing of amino acid-based biostimulants exclusively from vegetal sources, ensuring halal and organic certification compatibility.' },
+      { icon: 'award', title: 'Scientific Validation', desc: 'Industry-leading investment in university research partnerships and field trials to substantiate product efficacy claims.' },
+      { icon: 'factory', title: 'Private Label & Co-Manufacturing', desc: 'B2B manufacturing services for major agrochemical companies who want to enter the biostimulant market under their own brand.' },
+      { icon: 'shield', title: 'Regulatory Expertise', desc: 'Deep expertise in EU Fertilizing Products Regulation (2019/1009) and global biostimulant registration processes.' },
+    ],
+    differentiators: [
+      'Founding member of EBIC — helped shape EU biostimulant regulation',
+      '50+ years of expertise exclusively in biostimulants',
+      '100% vegetal-origin amino acids (no animal by-products)',
+      'Strong private label B2B business model',
+      'Active in 60+ countries with established distribution',
+      'University research partnerships across EU',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched new seaweed-based product line for Mediterranean climate crops' },
+      { date: '2023', event: 'Expanded private label manufacturing capacity at Bologna facility' },
+      { date: '2022', event: 'Strategic partnership with Brazilian distributor for Mercosur market entry' },
+    ],
+    icpMatch: { score: 86, label: 'Strong ICP Match', text: 'Biolchim is a solid Tier 2 ICP match: niche biostimulant leader with strong B2B focus and private label capabilities. Smaller scale than SICIT but deeply connected to the European regulatory ecosystem. Great partnership potential.' },
+    leads: [
+      { name: 'Michele Carraro', title: 'General Manager', score: 91, action: 'Send LinkedIn InMail — key decision maker', actionType: 'hot' },
+      { name: 'Paolo Bragagni', title: 'R&D Director', score: 85, action: 'Invite to biostimulant innovation workshop', actionType: 'hot' },
+      { name: 'Claudia Ferri', title: 'International Sales Manager', score: 76, action: 'Send LinkedIn Connection + product catalog', actionType: 'warm' },
+      { name: 'Alessandro Rossi', title: 'Regulatory Affairs Manager', score: 69, action: 'Invite to EU regulation webinar', actionType: 'sequence' },
+    ],
+  },
+
+  // ─── COMPANY 4 ───────────────────────────────────────
+  'icl-group.com': {
+    name: 'ICL Group Ltd.',
+    tagline: 'Global Specialty Minerals & Chemicals Leader',
+    description: 'ICL is a leading global specialty minerals company that operates in two segments: Industrial Products and Potash. Headquartered in Tel Aviv, Israel, with major operations in the Dead Sea region, ICL produces bromine, potash, phosphate, and specialty fertilizers. Revenue exceeds $7 billion annually with 12,500+ employees worldwide. ICL is publicly traded on NYSE and TASE.',
+    industry: 'Specialty Minerals / Fertilizers',
+    headcount: '12,500+ employees',
+    location: 'Tel Aviv, Israel',
+    founded: 1968,
+    services: [
+      'Potash & Phosphate Fertilizers',
+      'Specialty Solutions (Bromine)',
+      'Specialty Phosphates',
+      'Growing Solutions (Polysulphate)',
+      'Industrial Minerals',
+      'Water Treatment Chemicals',
+      'Food Additives',
+    ],
+    techStack: ['SAP S/4HANA', 'Salesforce', 'Power BI', 'Azure'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/icl-group/',
+      twitter: 'https://twitter.com/ICL_Group',
+      instagram: '',
+      facebook: 'https://www.facebook.com/ICLGroup/',
+      youtube: 'https://www.youtube.com/user/ICLFertilizers',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'mountain', title: 'Mineral Extraction & Processing', desc: 'Mining and processing of potash, bromine, and phosphate from the Dead Sea and other global locations into specialty industrial and agricultural products.' },
+      { icon: 'sprout', title: 'Specialty Fertilizer Production', desc: 'Manufacturing of controlled-release fertilizers, water-soluble fertilizers, and micronutrient blends through the Growing Solutions division.' },
+      { icon: 'flame', title: 'Industrial Solutions', desc: 'Production of flame retardants, bromine compounds, and specialty chemicals for electronics, construction, automotive, and oil & gas industries.' },
+      { icon: 'droplets', title: 'Water & Food Tech', desc: 'Development of phosphate-based solutions for water treatment, food preservation, and industrial applications.' },
+    ],
+    differentiators: [
+      'NYSE-listed: $7B+ revenue, global enterprise scale',
+      'Unique access to Dead Sea minerals — irreplaceable raw material source',
+      'Diversified across agriculture, industry, food, and water tech',
+      'Polysulphate™ — patented multi-nutrient natural mineral fertilizer',
+      'Sustainability-focused: 2025 targets for carbon neutrality',
+      'R&D investment of $120M+ annually',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Announced $400M investment in new specialty phosphate plant in Morocco' },
+      { date: '2024', event: 'Acquired Compass Minerals\' specialty plant nutrition division' },
+      { date: '2023', event: 'Launched ICL Planet Startup Hub for agri-food innovation' },
+      { date: '2022', event: 'Record revenue of $9.5B driven by potash price surge' },
+    ],
+    icpMatch: { score: 72, label: 'Moderate ICP Match', text: 'ICL is a Tier 2 ICP match: massive enterprise with strong fertilizer division but complex procurement processes. Long sales cycles expected. Best approach via the Growing Solutions division rather than corporate headquarters.' },
+    leads: [
+      { name: 'Raviv Zoller', title: 'President & CEO', score: 65, action: 'Executive introduction via industry conference', actionType: 'sequence' },
+      { name: 'Elad Aharonson', title: 'EVP Growing Solutions', score: 89, action: 'Priority contact — division decision maker', actionType: 'hot' },
+      { name: 'Danna Shapira', title: 'VP Innovation & Sustainability', score: 82, action: 'Send sustainability partnership proposal', actionType: 'hot' },
+      { name: 'Anat Tal', title: 'Head of Specialty Fertilizers R&D', score: 78, action: 'Invite to AgTech R&D roundtable', actionType: 'warm' },
+      { name: 'Carlos Méndez', title: 'LATAM Regional VP', score: 84, action: 'Direct outreach — LATAM expansion partner', actionType: 'hot' },
+    ],
+  },
+
+  // ─── COMPANY 5 ───────────────────────────────────────
+  'compo-expert.com': {
+    name: 'COMPO EXPERT GmbH',
+    tagline: 'Innovative Plant Nutrition for Professional Growers',
+    description: 'COMPO EXPERT is a leading global company specializing in innovative plant nutrition and specialty fertilizer solutions for professional agriculture, horticulture, and public green spaces. Founded in Germany and headquartered in Münster, the company is part of the Grupa Azoty Group (Poland) since 2020. COMPO EXPERT operates in 100+ countries with production facilities in Germany, France, Spain, and Turkey.',
+    industry: 'Specialty Fertilizers / Precision Agriculture',
+    headcount: '1,000 – 2,000 employees',
+    location: 'Münster, Germany',
+    founded: 2012,
+    services: [
+      'Controlled-Release Fertilizers (CRF)',
+      'Stabilized Nitrogen Fertilizers',
+      'Water-Soluble Fertilizers',
+      'Biostimulants & Micronutrients',
+      'Turf & Landscape Solutions',
+      'Precision Agriculture Advisory',
+    ],
+    techStack: ['SAP', 'Microsoft Dynamics', 'Power BI', 'Custom IoT'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/compo-expert/',
+      twitter: '',
+      instagram: 'https://www.instagram.com/compo_expert/',
+      facebook: 'https://www.facebook.com/COMPOEXPERTInternational/',
+      youtube: 'https://www.youtube.com/c/COMPOEXPERTInternational',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'test-tube', title: 'Controlled-Release Technology (CRF)', desc: 'Production of polymer-coated fertilizers that release nutrients in sync with plant demand, reducing waste and environmental impact.' },
+      { icon: 'zap', title: 'Nitrogen Stabilization', desc: 'Proprietary nitrification and urease inhibitor technologies (DMPP/NBPT) that improve nitrogen use efficiency and reduce N₂O emissions.' },
+      { icon: 'trees', title: 'Turf & Public Green Solutions', desc: 'Complete nutrition programs for sports turf, golf courses, and municipal green spaces used by UEFA and major sports venues.' },
+      { icon: 'satellite', title: 'Precision Nutrition Advisory', desc: 'Data-driven agronomic advisory services combining soil analysis, satellite imagery, and proprietary algorithms for optimized fertilization.' },
+    ],
+    differentiators: [
+      'Part of Grupa Azoty — one of the largest chemical groups in the EU',
+      'Innovator in CRF technology — used by top sports venues worldwide',
+      'DMPP technology — proven nitrification inhibitor with 25+ years of field data',
+      'Production in 5 countries across Europe and Turkey',
+      'Strong turf & landscaping vertical — unique in the industry',
+      'Digital agriculture tools for precision fertilization',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched NovaTec® 2.0 with next-gen DMPP stabilization technology' },
+      { date: '2023', event: 'Expanded CRF production line at Krefeld (Germany) plant' },
+      { date: '2022', event: 'Opened new subsidiary in Brazil for South American market expansion' },
+      { date: '2020', event: 'Acquired by Grupa Azoty Group (Poland) for €207 million' },
+    ],
+    icpMatch: { score: 79, label: 'Good ICP Match', text: 'COMPO EXPERT is a Tier 2 ICP match: strong technical capabilities and growing biostimulant line. European HQ with LATAM expansion interest. The turf/landscaping division is less relevant but the agriculture division aligns well with our ICP.' },
+    leads: [
+      { name: 'Frank Herold', title: 'Managing Director — COMPO EXPERT', score: 88, action: 'Send LinkedIn InMail with partnership proposal', actionType: 'hot' },
+      { name: 'Dr. Matthias Giese', title: 'Head of R&D', score: 83, action: 'Invite to joint R&D workshop on biostimulants', actionType: 'hot' },
+      { name: 'Silvia Martínez', title: 'Director Iberia & LATAM', score: 79, action: 'Priority contact — oversees Latin America expansion', actionType: 'warm' },
+      { name: 'Thomas Berger', title: 'VP Sales — Agriculture Division', score: 74, action: 'Meet at Agritechnica trade show', actionType: 'warm' },
+      { name: 'Laura Krüger', title: 'Digital Agriculture Lead', score: 70, action: 'Sequence: send precision ag case study', actionType: 'sequence' },
+    ],
+  },
+};
+
+function getCompanyCache(domain) {
+  let cleanDomain = domain.replace(/^www\./, '').split('/')[0];
+  return companyCacheDB[cleanDomain] || null;
+}
+
+async function scanCompanyBio() {
+  const urlEl = document.getElementById('company-url-input');
+  let url = urlEl.value.trim();
+  if (!url) {
+    alert("Please enter a valid company URL (e.g., https://acme.com)");
+    return;
+  }
+  if (!url.startsWith('http')) url = 'https://' + url;
+
+  let domain = url.replace(/^(?:https?:\/\/)?(?:www\.)?/i, "").split('/')[0];
+  let nameRaw = domain.split('.')[0];
+  let companyName = nameRaw.charAt(0).toUpperCase() + nameRaw.slice(1);
+
+  const resultsDiv = document.getElementById('company-bio-results');
+  const emptyDiv = document.getElementById('company-bio-empty');
+
+  emptyDiv.style.display = 'none';
+  resultsDiv.style.display = 'block';
+  resultsDiv.style.opacity = '0.4';
+
+  // --- Check cache first ---
+  let cached = getCompanyCache(domain);
+
+  let companyData;
+  if (cached) {
+    companyData = cached;
+    companyName = cached.name;
+  } else {
+    // Loading states
+    document.getElementById('scanned-company-name').textContent = companyName;
+    document.getElementById('scanned-company-url-link').textContent = domain;
+    document.getElementById('scanned-company-url-link').href = "https://" + domain;
+    document.getElementById('scanned-company-initial').textContent = companyName.charAt(0).toUpperCase();
+    document.getElementById('scanned-company-desc').innerHTML = '<i style="color:var(--text-muted)">🔄 Scanning website and extracting AI insights...</i>';
+    document.getElementById('scanned-industry').textContent = 'Analyzing...';
+    document.getElementById('scanned-headcount').textContent = 'Analyzing...';
+    document.getElementById('scanned-location').textContent = 'Analyzing...';
+    document.getElementById('scanned-services').innerHTML = '<span style="color:var(--text-muted);font-style:italic">Extracting product lines...</span>';
+    document.getElementById('scanned-tech-stack').innerHTML = '<span style="color:var(--text-muted);font-style:italic">Detecting...</span>';
+
+    companyData = await scrapeCompanyData(url, domain, companyName);
+  }
+
+  // === RENDER ALL DATA ===
+  renderCompanyResults(companyData, domain);
+
+  resultsDiv.style.opacity = '1';
+  resultsDiv.style.transition = 'opacity 0.4s ease-in-out';
+  lucide.createIcons();
+}
+
+function renderCompanyResults(data, domain) {
+  let name = data.name || domain;
+  document.getElementById('scanned-company-name').textContent = name;
+  document.getElementById('scanned-company-url-link').textContent = domain;
+  document.getElementById('scanned-company-url-link').href = "https://" + domain;
+  document.getElementById('scanned-company-initial').textContent = (name.charAt(0) || '?').toUpperCase();
+
+  // Tagline
+  let taglineEl = document.getElementById('scanned-tagline');
+  taglineEl.textContent = data.tagline ? '"' + data.tagline + '"' : '';
+
+  // Description
+  document.getElementById('scanned-company-desc').textContent = data.description || (name + ' is an industry leader delivering innovative solutions.');
+
+  // Firmographics
+  document.getElementById('scanned-industry').textContent = data.industry || 'B2B / Technology Services';
+  document.getElementById('scanned-headcount').textContent = data.headcount || '51 – 200 employees';
+  document.getElementById('scanned-location').textContent = data.location || 'Global / Not specified';
+
+  // Founded
+  let foundedEl = document.getElementById('scanned-founded');
+  if (foundedEl) foundedEl.textContent = data.founded ? 'Est. ' + data.founded : '';
+
+  // Services
+  let servicesHtml = (data.services || ['Core Platform', 'Enterprise Solutions']).map(s =>
+    '<span style="display:inline-block;background:#EDE9FE;color:#7C3AED;padding:4px 12px;border-radius:6px;font-size:12px;font-weight:500;margin:3px 4px 3px 0">' + s + '</span>'
+  ).join('');
+  document.getElementById('scanned-services').innerHTML = servicesHtml;
+
+  // Tech Stack
+  let techHtml = (data.techStack || ['Custom Stack']).map(t =>
+    '<span style="display:inline-block;background:#F1F5F9;color:#334155;padding:2px 10px;border-radius:4px;font-size:11px;font-weight:500;margin:2px 4px 2px 0;border:1px solid #E2E8F0">' + t + '</span>'
+  ).join('');
+  document.getElementById('scanned-tech-stack').innerHTML = techHtml;
+
+  // Social Links Grid
+  let socials = data.socials || {};
+  let socialHtml = '';
+  let socialConfig = [
+    { key: 'linkedin', label: 'LinkedIn', color: '#0A66C2', icon: 'linkedin' },
+    { key: 'twitter', label: 'X (Twitter)', color: '#0F172A', icon: 'twitter' },
+    { key: 'instagram', label: 'Instagram', color: '#E4405F', icon: 'instagram' },
+    { key: 'facebook', label: 'Facebook', color: '#1877F2', icon: 'facebook' },
+    { key: 'youtube', label: 'YouTube', color: '#FF0000', icon: 'youtube' },
+    { key: 'tiktok', label: 'TikTok', color: '#010101', icon: 'music' },
+  ];
+
+  socialHtml += '<a href="https://' + domain + '" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;text-decoration:none;color:white;background:var(--ai-accent);font-size:13px;font-weight:600"><i data-lucide="globe" style="width:16px"></i>' + domain + '</a>';
+
+  socialConfig.forEach(s => {
+    let href = socials[s.key];
+    if (href) {
+      socialHtml += '<a href="' + href + '" target="_blank" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;text-decoration:none;color:white;background:' + s.color + ';font-size:13px;font-weight:600"><i data-lucide="' + s.icon + '" style="width:16px"></i>' + s.label + '</a>';
+    } else {
+      socialHtml += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;color:#D1D5DB;background:#F9FAFB;border:1px solid #E5E7EB;font-size:13px;font-weight:500;opacity:0.5"><i data-lucide="' + s.icon + '" style="width:16px"></i>' + s.label + '</div>';
+    }
+  });
+  document.getElementById('scanned-social-grid').innerHTML = socialHtml;
+
+  // ICP Match
+  if (data.icpMatch) {
+    document.getElementById('scanned-icp-score').textContent = data.icpMatch.label;
+    document.getElementById('scanned-icp-text').textContent = data.icpMatch.text;
+  }
+
+  // Leads Table
+  let leads = data.leads || [
+    { name: 'Decision Maker 1', title: 'VP of Sales', score: 85, action: 'Send LinkedIn Connection', actionType: 'hot' },
+    { name: 'Decision Maker 2', title: 'Head of Growth', score: 68, action: 'Wait for event', actionType: 'sequence' },
+  ];
+
+  let leadsHtml = leads.map(l => {
+    let scoreClass = l.score >= 85 ? 'score-high' : l.score >= 65 ? 'score-med' : 'score-low';
+    let actionColor = l.actionType === 'hot' ? 'color:var(--ai-accent); font-weight:600;' : 'color:var(--text-muted);';
+    let btnHtml = l.actionType === 'hot'
+      ? '<button class="btn-sm btn-ai" style="padding:4px 12px"><i data-lucide="zap" style="width:12px"></i> Draft</button>'
+      : '<button class="btn-sm" style="border:1px solid var(--border); padding:4px 12px">Sequence</button>';
+
+    return '<tr style="border-bottom:1px solid var(--border);">' +
+      '<td style="padding:12px 0;"><strong style="color:var(--text-main);display:block;">' + l.name + '</strong><span style="color:var(--text-muted);font-size:12px">' + l.title + '</span></td>' +
+      '<td style="padding:12px 0;"><span class="score-badge ' + scoreClass + '">' + l.score + '</span></td>' +
+      '<td style="padding:12px 0; ' + actionColor + ' font-size:13px;">' + l.action + '</td>' +
+      '<td style="padding:12px 0; text-align:right;">' + btnHtml + '</td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('scanned-leads-tbody').innerHTML = leadsHtml;
+
+  // === WHAT THEY DO ===
+  let wtdSection = document.getElementById('scanned-whattheydo-section');
+  if (data.whatTheyDo && data.whatTheyDo.length > 0) {
+    wtdSection.style.display = 'block';
+    document.getElementById('scanned-whattheydo').innerHTML = data.whatTheyDo.map(item =>
+      '<div style="padding:16px;border:1px solid var(--border);border-radius:10px;background:linear-gradient(135deg,rgba(124,58,237,0.03) 0%,transparent 60%);">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+          '<div style="width:32px;height:32px;background:linear-gradient(135deg,#7C3AED,#A78BFA);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="' + item.icon + '" style="width:16px;height:16px;color:white"></i></div>' +
+          '<h5 style="margin:0;font-size:14px;font-weight:700;color:var(--text-main)">' + item.title + '</h5>' +
+        '</div>' +
+        '<p style="margin:0;font-size:13px;line-height:1.6;color:var(--text-muted)">' + item.desc + '</p>' +
+      '</div>'
+    ).join('');
+  } else {
+    wtdSection.style.display = 'none';
+  }
+
+  // === KEY DIFFERENTIATORS ===
+  let diffSection = document.getElementById('scanned-diff-section');
+  if (data.differentiators && data.differentiators.length > 0) {
+    diffSection.style.display = 'block';
+    document.getElementById('scanned-differentiators').innerHTML = data.differentiators.map(d =>
+      '<div style="display:flex;align-items:start;gap:10px;padding:10px 14px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;">' +
+        '<span style="color:#F59E0B;font-size:16px;flex-shrink:0;margin-top:1px;">✦</span>' +
+        '<span style="font-size:13px;color:#92400E;line-height:1.5">' + d + '</span>' +
+      '</div>'
+    ).join('');
+  } else {
+    diffSection.style.display = 'none';
+  }
+
+  // === RECENT STRATEGIC MOVES ===
+  let movesSection = document.getElementById('scanned-moves-section');
+  if (data.recentMoves && data.recentMoves.length > 0) {
+    movesSection.style.display = 'block';
+    document.getElementById('scanned-recentmoves').innerHTML = data.recentMoves.map((m, i) =>
+      '<div style="display:flex;align-items:start;gap:14px;' + (i < data.recentMoves.length - 1 ? 'border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:12px;' : '') + '">' +
+        '<div style="width:48px;height:28px;background:linear-gradient(135deg,#059669,#10B981);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><span style="font-size:11px;font-weight:700;color:white">' + m.date + '</span></div>' +
+        '<p style="margin:0;font-size:13px;color:var(--text-main);line-height:1.5">' + m.event + '</p>' +
+      '</div>'
+    ).join('');
+  } else {
+    movesSection.style.display = 'none';
+  }
+}
+
+async function scrapeCompanyData(url, domain, companyName) {
+  let data = {
+    name: companyName,
+    tagline: '',
+    description: '',
+    industry: 'B2B / Technology Services',
+    headcount: '51 – 200 employees',
+    location: 'Global / Not specified',
+    services: ['Core Platform', 'Professional Services', 'Enterprise Solutions'],
+    techStack: ['Custom Stack'],
+    socials: {},
+    leads: [],
+  };
+
+  try {
+    let html = '';
+    let proxyUrls = [
+      'https://corsproxy.io/?' + encodeURIComponent(url),
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+      'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
+    ];
+
+    for (let proxyUrl of proxyUrls) {
+      try {
+        let response = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
+        if (response.ok) {
+          html = await response.text();
+          if (html && html.length > 100) break;
+        }
+      } catch(innerErr) { continue; }
+    }
+
+    if (html && html.length > 100) {
+      let parser = new DOMParser();
+      let doc = parser.parseFromString(html, 'text/html');
+      let lowerHtml = html.toLowerCase();
+
+      // Description
+      let metaDesc = doc.querySelector('meta[name="description"]');
+      let ogDesc = doc.querySelector('meta[property="og:description"]');
+      data.description = (metaDesc && metaDesc.getAttribute('content')) || (ogDesc && ogDesc.getAttribute('content')) || '';
+      if (!data.description || data.description.length < 15) {
+        let paragraphs = doc.querySelectorAll('p');
+        for (let p of paragraphs) {
+          let txt = p.textContent.trim();
+          if (txt.length > 40) { data.description = txt.substring(0, 300); break; }
+        }
+      }
+      if (!data.description) data.description = companyName + ' is an industry leader delivering innovative solutions and strategic value worldwide.';
+
+      // Tagline
+      let ogTitle = doc.querySelector('meta[property="og:title"]');
+      let titleEl = doc.querySelector('title');
+      let tagline = (ogTitle && ogTitle.getAttribute('content')) || (titleEl && titleEl.textContent) || '';
+      tagline = tagline.replace(companyName, '').replace(/[-|–]/g, '').trim();
+      if (tagline.length >= 3 && tagline.length <= 80) data.tagline = tagline;
+
+      // Social Links
+      let allLinks = html.match(/href=["'][^"']*["']/gi) || [];
+      for (let link of allLinks) {
+        let href = link.replace(/href=["']/i, '').replace(/["']$/, '');
+        if (/linkedin\.com\/(company|in)\//i.test(href) && !data.socials.linkedin) data.socials.linkedin = href;
+        if (/(?:twitter|x)\.com\//i.test(href) && !/intent/i.test(href) && !data.socials.twitter) data.socials.twitter = href;
+        if (/instagram\.com\//i.test(href) && !data.socials.instagram) data.socials.instagram = href;
+        if (/facebook\.com\//i.test(href) && !data.socials.facebook) data.socials.facebook = href;
+        if (/youtube\.com\//i.test(href) && !data.socials.youtube) data.socials.youtube = href;
+        if (/tiktok\.com\//i.test(href) && !data.socials.tiktok) data.socials.tiktok = href;
+      }
+
+      // Industry
+      if (lowerHtml.includes('biostimulant') || lowerHtml.includes('fertilizer') || lowerHtml.includes('crop') || lowerHtml.includes('agriculture')) data.industry = 'Agrochemicals / Biostimulants';
+      else if (lowerHtml.includes('software') || lowerHtml.includes('saas') || lowerHtml.includes('platform')) data.industry = 'B2B SaaS / Enterprise Software';
+      else if (lowerHtml.includes('finance') || lowerHtml.includes('banking') || lowerHtml.includes('fintech')) data.industry = 'Financial Services / Fintech';
+      else if (lowerHtml.includes('health') || lowerHtml.includes('medical') || lowerHtml.includes('pharma')) data.industry = 'Healthcare / Healthtech';
+      else if (lowerHtml.includes('logistics') || lowerHtml.includes('supply chain')) data.industry = 'Logistics / Supply Chain';
+      else if (lowerHtml.includes('consulting') || lowerHtml.includes('advisory')) data.industry = 'Consulting / Professional Services';
+      else if (lowerHtml.includes('marketing') || lowerHtml.includes('advertising')) data.industry = 'Marketing / Advertising';
+      else if (lowerHtml.includes('manufacturing') || lowerHtml.includes('industrial')) data.industry = 'Manufacturing / Industrial';
+
+      // Location
+      let geoMeta = doc.querySelector('meta[name="geo.placename"]') || doc.querySelector('meta[name="geo.region"]');
+      if (geoMeta) data.location = geoMeta.getAttribute('content');
+      if (!data.location || data.location === 'Global / Not specified') {
+        let addressEl = doc.querySelector('address');
+        if (addressEl) data.location = addressEl.textContent.trim().substring(0, 80);
+      }
+
+      // Services from nav links
+      let navLinks = doc.querySelectorAll('nav a, header a, [class*="menu"] a, [class*="nav"] a');
+      let seen = new Set();
+      let navServices = [];
+      navLinks.forEach(a => {
+        let text = a.textContent.trim();
+        if (text.length > 2 && text.length < 40 && !seen.has(text.toLowerCase())) {
+          let lower = text.toLowerCase();
+          if (!['home', 'about', 'contact', 'blog', 'news', 'career', 'login', 'cookie', 'privacy', 'terms', 'search', 'menu', 'close'].includes(lower) && !/^\d+$/.test(text)) {
+            seen.add(lower);
+            navServices.push(text);
+          }
+        }
+      });
+      if (navServices.length > 2) data.services = navServices.slice(0, 10);
+
+      // Tech Stack
+      let detectedTech = [];
+      if (lowerHtml.includes('react') || lowerHtml.includes('__next')) detectedTech.push('React');
+      if (lowerHtml.includes('wordpress') || lowerHtml.includes('wp-content')) detectedTech.push('WordPress');
+      if (lowerHtml.includes('shopify')) detectedTech.push('Shopify');
+      if (lowerHtml.includes('hubspot')) detectedTech.push('HubSpot');
+      if (lowerHtml.includes('google-analytics') || lowerHtml.includes('gtag') || lowerHtml.includes('gtm')) detectedTech.push('Google Analytics');
+      if (lowerHtml.includes('cloudflare')) detectedTech.push('Cloudflare');
+      if (lowerHtml.includes('stripe')) detectedTech.push('Stripe');
+      if (detectedTech.length > 0) data.techStack = detectedTech;
+    }
+  } catch(e) {
+    // fallback: keep defaults
+  }
+
+  return data;
+}
 
 // --- Dynamic View Generators ---
 function generateViewHTML(view) {
@@ -690,6 +1288,160 @@ function generateViewHTML(view) {
             </div>
           </div>
         </div>
+      </div>
+    `,
+
+    'company-bio': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #27272A 0%, #09090B 100%)">
+          <div class="agent-bigicon">🌐</div>
+          <div class="agent-header-text">
+            <h2>Company Bio Scanner</h2>
+            <p>Scan a client's website in real-time to generate a comprehensive AI company breakdown and contact strategy.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Ready</div><br>
+            <span class="agent-tag">AI Web Indexer</span>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:24px; padding:24px">
+          <h3 class="card-title" style="margin-bottom:16px;">Target Website</h3>
+          <div style="display:flex; gap:12px;">
+            <input type="text" id="company-url-input" placeholder="e.g. https://www.acme-corp.com" style="flex:1; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main);" />
+            <button class="lm-btn-primary" style="padding:0 24px" onclick="scanCompanyBio()"><i data-lucide="scan" style="width:18px;margin-right:8px;vertical-align:middle"></i> Scan Web</button>
+          </div>
+        </div>
+
+        <div id="company-bio-empty" class="empty-state" style="margin-top:24px; text-align:center; padding:64px 24px; background:white; border-radius:12px; border:1px dashed var(--border);">
+          <div style="font-size:48px; margin-bottom:16px; opacity:0.6">🏢</div>
+          <h3 style="font-size:18px; color:var(--text-main); margin-bottom:8px;">No website scanned yet</h3>
+          <p style="color:var(--text-muted); font-size:14px; max-width:400px; margin:0 auto;">Enter a URL above and let our AI agents extract the company profile, ICP match, and key decision makers.</p>
+        </div>
+
+        <!-- HIDDEN BY DEFAULT: APPEARS ON SCAN -->
+        <div id="company-bio-results" style="display:none; margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="font-size:18px; color:var(--text-main); font-weight:600; margin:0;">AI Analysis Results</h3>
+            <span style="font-size:12px; font-weight:600; padding:4px 12px; border-radius:99px; background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; white-space:nowrap;">Data Freshness: Today</span>
+          </div>
+
+          <!-- MAIN CARD: Company Identity -->
+          <div class="card" style="padding:0; overflow:hidden;">
+            <div style="padding:24px;">
+              <div style="display:flex; gap:16px; align-items:center;">
+                <div id="scanned-company-initial" style="width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#A78BFA);color:white;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;flex-shrink:0;">
+                  A
+                </div>
+                <div style="flex:1;min-width:0;">
+                  <h2 id="scanned-company-name" style="margin:0 0 2px 0; font-size:22px; color:var(--text-main)">Company Name</h2>
+                  <div id="scanned-tagline" style="font-size:13px; color:var(--ai-accent); font-style:italic; margin-bottom:4px;"></div>
+                  <a id="scanned-company-url-link" href="#" target="_blank" style="color:var(--text-muted);font-size:13px;text-decoration:none;"><i data-lucide="external-link" style="width:12px;vertical-align:middle;margin-right:4px;"></i>domain.com</a>
+                </div>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);"></div>
+
+            <!-- Firmographics Row -->
+            <div style="padding:16px 24px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:16px;">
+              <div>
+                <p style="margin:0 0 4px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Industry</p>
+                <p id="scanned-industry" style="margin:0; font-size:15px; font-weight:700; color:var(--text-main);">—</p>
+              </div>
+              <div>
+                <p style="margin:0 0 4px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Est. Headcount</p>
+                <p id="scanned-headcount" style="margin:0; font-size:15px; font-weight:700; color:var(--text-main);">—</p>
+              </div>
+              <div>
+                <p style="margin:0 0 4px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Location</p>
+                <p id="scanned-location" style="margin:0; font-size:15px; font-weight:700; color:var(--text-main);">—</p>
+              </div>
+              <div>
+                <p style="margin:0 0 4px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted);">Tech Stack</p>
+                <div id="scanned-tech-stack" style="margin:0;"></div>
+              </div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);"></div>
+
+            <!-- Services / Product Lines Bar -->
+            <div style="padding:16px 24px; background:linear-gradient(90deg, rgba(124,58,237,0.06) 0%, transparent 60%);">
+              <p style="margin:0 0 8px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#7C3AED;"><i data-lucide="package" style="width:12px;vertical-align:middle;margin-right:4px"></i> Product Lines / Services</p>
+              <div id="scanned-services"></div>
+            </div>
+
+            <div style="border-top:1px solid var(--border);"></div>
+
+            <!-- Online Presence (social grid) -->
+            <div style="padding:16px 24px;">
+              <p style="margin:0 0 10px 0; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:var(--ai-accent);"><i data-lucide="globe" style="width:12px;vertical-align:middle;margin-right:4px"></i> Online Presence</p>
+              <div id="scanned-social-grid" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px;"></div>
+            </div>
+          </div>
+
+          <!-- ABOUT THE COMPANY -->
+          <div class="card" style="margin-top:16px; padding:24px;">
+            <h4 style="margin:0 0 12px 0; font-size:14px; font-weight:700; color:var(--text-main);"><i data-lucide="info" style="width:14px;vertical-align:middle;margin-right:6px;color:var(--ai-accent)"></i>About the Company</h4>
+            <p id="scanned-company-desc" style="color:var(--text-muted);font-size:14px;line-height:1.7; margin:0;">
+              Loading description...
+            </p>
+          </div>
+
+          <!-- WHAT THEY DO -->
+          <div id="scanned-whattheydo-section" class="card" style="margin-top:16px; padding:24px; display:none;">
+            <h4 style="margin:0 0 16px 0; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:1px;"><i data-lucide="briefcase" style="width:14px;vertical-align:middle;margin-right:6px;color:var(--ai-accent)"></i>What They Do</h4>
+            <div id="scanned-whattheydo" style="display:grid; grid-template-columns:1fr 1fr; gap:12px;"></div>
+          </div>
+
+          <!-- KEY DIFFERENTIATORS -->
+          <div id="scanned-diff-section" class="card" style="margin-top:16px; padding:24px; display:none;">
+            <h4 style="margin:0 0 16px 0; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:1px;"><i data-lucide="star" style="width:14px;vertical-align:middle;margin-right:6px;color:#F59E0B"></i>Key Differentiators</h4>
+            <div id="scanned-differentiators" style="display:flex; flex-direction:column; gap:8px;"></div>
+          </div>
+
+          <!-- RECENT STRATEGIC MOVES -->
+          <div id="scanned-moves-section" class="card" style="margin-top:16px; padding:24px; display:none;">
+            <h4 style="margin:0 0 16px 0; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:1px;"><i data-lucide="trending-up" style="width:14px;vertical-align:middle;margin-right:6px;color:#10B981"></i>Recent Strategic Moves</h4>
+            <div id="scanned-recentmoves"></div>
+          </div>
+
+          <!-- ICP MATCH -->
+          <div class="card" style="margin-top:16px; padding:24px;">
+             <h4 style="margin:0 0 16px 0; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:1px;">AI ICP MATCH EVALUATION</h4>
+             <div style="padding:16px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px; display:flex; align-items:start; gap:16px;">
+               <div style="background:#16A34A; color:white; padding:8px; border-radius:50%; display:flex; align-items:center;justify-content:center;flex-shrink:0;"><i data-lucide="check" style="width:20px;height:20px"></i></div>
+                 <div>
+                   <h4 id="scanned-icp-score" style="margin:0 0 4px 0; color:#166534; font-size:16px">Perfect ICP Match</h4>
+                   <p id="scanned-icp-text" style="margin:0; font-size:14px; color:#15803D; line-height:1.5;">This company fits exactly into your Tier 1 Ideal Customer Profile. High probability of closing based on tech stack synergy and funding stage.</p>
+                 </div>
+               </div>
+               <button class="lm-btn-primary" style="margin-top:16px; width:100%; justify-content:center"><i data-lucide="plus-circle" style="width:16px;margin-right:8px"></i> Extract Founders & Add to Pipeline</button>
+             </div>
+          </div>
+          
+          <!-- Key Decision Makers (Lead Gen) -->
+          <div class="card" style="margin-top:16px; padding:24px;">
+             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+               <h4 style="margin:0; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:1px;"><i data-lucide="users" style="width:14px;vertical-align:middle;margin-right:4px;"></i> Key Decision Makers & Leads</h4>
+               <button class="lm-btn-outline" style="padding:4px 12px; font-size:12px"><i data-lucide="download" style="width:12px"></i> Export</button>
+             </div>
+             
+             <div style="overflow-x:auto;">
+               <table class="data-table" style="width:100%; border-collapse:collapse; font-size:13px; text-align:left;">
+                 <thead style="border-bottom:1px solid var(--border);">
+                   <tr>
+                     <th style="padding:12px 0; color:var(--text-muted); font-weight:600">Prospect</th>
+                     <th style="padding:12px 0; color:var(--text-muted); font-weight:600">AI Score</th>
+                     <th style="padding:12px 0; color:var(--text-muted); font-weight:600">Next Action</th>
+                     <th style="padding:12px 0; color:var(--text-muted); font-weight:600"></th>
+                   </tr>
+                 </thead>
+                 <tbody id="scanned-leads-tbody">
+                 </tbody>
+               </table>
+             </div>
+          </div>
       </div>
     `,
 
@@ -1452,68 +2204,68 @@ function generateViewHTML(view) {
       </div>
     `,
 
-    'htba-functional': `
+    'sicit-agri': `
       <div class="view-section active">
         <!-- Header -->
         <div class="agent-header" style="background: linear-gradient(135deg, #047857 0%, #065F46 100%)">
-          <div class="agent-bigicon">💊</div>
+          <div class="agent-bigicon">🌱</div>
           <div class="agent-header-text">
-            <h2>Functional Health Intelligence</h2>
-            <p>SKU-level tracking for Vitamin B12 and functional supplements across practitioner and DTC brands.</p>
+            <h2>Fertilizers & Biostimulants - Market Intelligence</h2>
+            <p>Analysis of crop trends, biostimulant adoption (amino acids), and global competitive benchmarking.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> NLP Active</div><br>
-            <span class="agent-tag">Tracking 1,240 SKUs</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Agri-Data Engine Active</div><br>
+            <span class="agent-tag">Tracking 150+ Markets</span>
           </div>
         </div>
 
         <!-- KPIs -->
         <div class="agent-stats">
           <div class="agent-stat">
-            <div class="agent-stat-val">34,182</div>
-            <div class="agent-stat-lbl">Reviews Analyzed (30d)</div>
+            <div class="agent-stat-val">115K</div>
+            <div class="agent-stat-lbl">Hectares Analyzed (30d)</div>
           </div>
           <div class="agent-stat">
             <div class="agent-stat-val" style="color:#EF4444">High</div>
-            <div class="agent-stat-lbl">Fastest Growing Complaint: Pill Size</div>
+            <div class="agent-stat-lbl">Fastest Growing Constraint: Abiotic Stress</div>
           </div>
           <div class="agent-stat">
-            <div class="agent-stat-val">4.6 ★</div>
-            <div class="agent-stat-lbl">Avg Rating (Methylcobalamin)</div>
+            <div class="agent-stat-val">12.5%</div>
+            <div class="agent-stat-lbl">Avg Yield Lift (Amino Acids)</div>
           </div>
           <div class="agent-stat">
-            <div class="agent-stat-val">8</div>
-            <div class="agent-stat-lbl">High-Opportunity Reformulations</div>
+            <div class="agent-stat-val">3</div>
+            <div class="agent-stat-lbl">Market Reformulation Opportunities</div>
           </div>
         </div>
 
         <!-- Charts -->
         <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 24px;">
-          <div class="card" style="height: 280px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Sentiment by Brand</h3>
-            <div style="flex:1; position:relative; width:100%;"><canvas id="htbaBrandChart"></canvas></div>
+          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Sentiment by Competitor</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitCompetitorChart"></canvas></div>
           </div>
-          <div class="card" style="height: 280px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Mentions by Ingredient Form</h3>
-            <div style="flex:1; position:relative; width:100%;"><canvas id="htbaIngredientChart"></canvas></div>
+          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Biostimulant Modalities</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitModalityChart"></canvas></div>
           </div>
-          <div class="card" style="height: 280px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Complaints Heatmap (Top 4)</h3>
-            <div style="flex:1; position:relative; width:100%;"><canvas id="htbaHeatmapChart"></canvas></div>
+          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Grower Friction Points Heatmap</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitFrictionChart"></canvas></div>
           </div>
         </div>
 
         <!-- Live Intelligence Feed -->
         <div class="card" style="margin-top: 24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Consumer Intelligence Feed</h3>
+            <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Field Intelligence Feed</h3>
             <div>
               <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
-                <option>Filter by Brand...</option>
-                <option>Thorne</option>
-                <option>Nature Made</option>
-                <option>Ritual</option>
-                <option>Jarrow Formulas</option>
+                <option>Filter by Competitor...</option>
+                <option>Valagro (Syngenta)</option>
+                <option>Biolchim</option>
+                <option>COMPO EXPERT</option>
+                <option>ICL Group</option>
               </select>
             </div>
           </div>
@@ -1522,42 +2274,39 @@ function generateViewHTML(view) {
             <table class="lm-table">
               <thead>
                 <tr>
-                  <th>Platform</th>
-                  <th>Brand / Product</th>
-                  <th>Active Ing / Dose</th>
+                  <th>Source</th>
+                  <th>Competitor / Product</th>
+                  <th>Crop Focus</th>
                   <th>Sentiment</th>
                   <th>Theme</th>
-                  <th>Rating</th>
+                  <th>Impact</th>
                   <th>Snippet</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                  <td><span class="lm-tag" style="background:#FF9900;color:white;font-weight:600">Amazon</span></td>
-                  <td><strong>Nature Made</strong><br><span style="font-size:11px;color:#6B7280">B12 1000mcg Time Release</span></td>
-                  <td>Cyanocobalamin<br><span style="font-size:11px;color:#6B7280">1000 mcg | Tablet</span></td>
-                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Eficacia</span></td>
-                  <td>2 ★</td>
-                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Switched to methylcobalamin after these didn't raise my levels..."</td>
-                  <td><button class="lm-btn-outline" style="padding:2px 6px" onclick="event.stopPropagation(); openBrandPanel('Nature Made')">Depe Dive</button></td>
+                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">AgriForums</span></td>
+                  <td><strong>Valagro</strong><br><span style="font-size:11px;color:#6B7280">Megafol</span></td>
+                  <td>Vineyards<br><span style="font-size:11px;color:#6B7280">Foliar App</span></td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Stress Recovery</span></td>
+                  <td>High Yield</td>
+                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Applied after the late frost. Saved about 40% of the buds that normally would dry out."</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Deep Dive</button></td>
                 </tr>
                 <tr class="hidden" style="background:#F8FAFC">
                   <td colspan="8" style="padding:16px; border-bottom:1px solid var(--border);">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                      <div style="padding:12px; border-left:3px solid #EF4444; background:white; border-radius:4px;">
-                        <strong>Full Review Text:</strong><br>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">"I took these for 3 months to help with my fatigue. My blood tests showed no improvement. My doctor told me to switch to the methyl form instead of cyano. Don't waste your money if you have absorption issues."</p>
-                        <hr style="margin:10px 0; border:none; border-top:1px solid #E2E8F0">
-                        <span style="font-size:11px;color:#94A3B8">Location: USA | Source: Amazon Verified Purchase</span>
+                      <div style="padding:12px; border-left:3px solid #10B981; background:white; border-radius:4px;">
+                        <strong>Field Report:</strong><br>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">"Applied after the late frost in Northern Italy. Saved about 40% of the buds that normally would dry out. Mixability with standard fungicides was perfect."</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
-                        <strong>🤖 HTBA Output Engine</strong>
+                        <strong>🤖 SICIT Intelligence Engine</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Opportunity:</strong> Cyanocobalamin showing high friction for efficacy in users with fatigue.</li>
-                          <li><strong>Formulation Gap:</strong> Market demands Methylcobalamin in high-volume retail.</li>
-                          <li><strong>Actionable Insight:</strong> "Alta fricción con cianocobalamina. Oportunidad para posicionar ingrediente activo (Methyl) en marcas masivas de CPG."</li>
+                          <li><strong>Opportunity:</strong> High demand for frost-recovery biostimulants in European vineyards.</li>
+                          <li><strong>Actionable Insight:</strong> Push animal-derived amino acid complexes highlighting superior anti-stress performance compared to plant-based in extreme cold.</li>
                         </ul>
                       </div>
                     </div>
@@ -1565,27 +2314,27 @@ function generateViewHTML(view) {
                 </tr>
 
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                  <td><span class="lm-tag" style="background:#000000;color:white;font-weight:600">iHerb</span></td>
-                  <td><strong>Thorne</strong><br><span style="font-size:11px;color:#6B7280">B-Complex #12</span></td>
-                  <td>Methylcobalamin<br><span style="font-size:11px;color:#6B7280">600 mcg | Capsule</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Energy</span></td>
-                  <td>5 ★</td>
-                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Amazing energy boost without the jitters, totally worth the premium price."</td>
-                  <td><button class="lm-btn-outline" style="padding:2px 6px" onclick="event.stopPropagation(); openBrandPanel('Thorne')">Deep Dive</button></td>
+                  <td><span class="lm-tag" style="background:#3B82F6;color:white;font-weight:600">Distributor Net</span></td>
+                  <td><strong>Biolchim</strong><br><span style="font-size:11px;color:#6B7280">Fylloton</span></td>
+                  <td>Horticulture<br><span style="font-size:11px;color:#6B7280">Irrigation</span></td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Mixability</span></td>
+                  <td>Clogging</td>
+                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The new batch is precipitating when mixed with high-calcium fertilizers in the tank."</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Deep Dive</button></td>
                 </tr>
                 <tr class="hidden" style="background:#F8FAFC">
                   <td colspan="8" style="padding:16px; border-bottom:1px solid var(--border);">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                      <div style="padding:12px; border-left:3px solid #10B981; background:white; border-radius:4px;">
-                        <strong>Full Review Text:</strong><br>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">"Amazing energy boost without the jitters, totally worth the premium price. I like that it uses the active methylated form. Only downside is the strong smell of the capsules, but I just swallow them quickly."</p>
+                      <div style="padding:12px; border-left:3px solid #EF4444; background:white; border-radius:4px;">
+                        <strong>Field Report:</strong><br>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">"The new batch is precipitating when mixed with high-calcium fertilizers in the tank. Had to clean the filters twice today."</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
-                        <strong>🤖 HTBA Output Engine</strong>
+                        <strong>🤖 SICIT Intelligence Engine</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Pricing Insight:</strong> Consumer accepts premium pricing for perceived purity and active forms.</li>
-                          <li><strong>Sensory Flag:</strong> Strong odor mentioned (B-vitamin smell). Minor friction point.</li>
+                          <li><strong>Friction Point:</strong> Physical incompatibility of vegetal amino acids with Calcium.</li>
+                          <li><strong>Sales Strategy:</strong> Highlight SICIT's superior solubility and tank-mix compatibility profiles to distributors replacing Biolchim stock.</li>
                         </ul>
                       </div>
                     </div>
@@ -1599,76 +2348,32 @@ function generateViewHTML(view) {
       </div>
     `,
 
-    'htba-taste': `
+    'sicit-plaster': `
       <div class="view-section active">
-        <!-- Header -->
-        <div class="agent-header" style="background: linear-gradient(135deg, #DB2777 0%, #BE185D 100%)">
-          <div class="agent-bigicon">👅</div>
+        <div class="agent-header" style="background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%)">
+          <div class="agent-bigicon">🏗️</div>
           <div class="agent-header-text">
-            <h2>Taste Modulation Engine</h2>
-            <p>Sensory perception analysis across Food & Bev and Functional Health brands to detect taste masking opportunities.</p>
-          </div>
-          <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#FBCFE8;border-radius:50%;display:inline-block"></span> Real-time NLP</div><br>
-            <span class="agent-tag">Monitoring 86 Brands</span>
+            <h2>Plaster Retarders - Industrial Intelligence</h2>
+            <p>Analysis of formulations, setting times, and on-site performance for the construction industry.</p>
           </div>
         </div>
-
-        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top: 24px;">
-          <div class="card" style="height: 320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Taste Complaints by Ingredient</h3>
-            <div style="flex:1; position:relative; width:100%;"><canvas id="htbaTasteIngChart"></canvas></div>
-          </div>
-          <div class="card" style="height: 320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Sensory Issues vs Rating Impact</h3>
-            <div style="flex:1; position:relative; width:100%;"><canvas id="htbaTasteImpactChart"></canvas></div>
+        <div class="agent-stats" style="margin-top:24px;">
+           <h3 style="color:#64748B;">Module in configuration to analyze gypsum board manufacturers globally...</h3>
+        </div>
+      </div>
+    `,
+    
+    'sicit-biofuel': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%)">
+          <div class="agent-bigicon">♻️</div>
+          <div class="agent-header-text">
+            <h2>Biofuel Fats - Sustainability & Market Indicators</h2>
+            <p>Monitoring emission regulations, biofuel adoption, and circular economy markets.</p>
           </div>
         </div>
-
-      <div class="card" style="margin-top: 24px;">
-          <h3 class="card-title" style="margin-bottom: 16px"><i data-lucide="search"></i> Sensory Discovery Feed</h3>
-          <table class="lm-table">
-            <thead>
-              <tr>
-                <th>Brand / Product</th>
-                <th>Ingredient</th>
-                <th>Taste Issue</th>
-                <th>Rating</th>
-                <th>NLP Snippet</th>
-                <th>HTBA Opportunity</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><strong>Huel</strong><br><span style="font-size:11px;color:#6B7280">Black Edition</span></td>
-                <td>Plant Protein</td>
-                <td><span class="lm-tag" style="background:#FEF3C7;color:#D97706">Sand/Chalky</span></td>
-                <td>3 ★</td>
-                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Love the macros but the texture is really chalky and hard to swallow..."</td>
-                <td style="color:#059669; font-weight:600; font-size:12px">Texture Modulation Target</td>
-                <td><button class="lm-btn-outline" style="padding:2px 6px" onclick="event.stopPropagation(); openBrandPanel('Huel')">Profile</button></td>
-              </tr>
-              <tr>
-                <td><strong>Athletic Greens</strong><br><span style="font-size:11px;color:#6B7280">AG1</span></td>
-                <td>Stevia</td>
-                <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Linger / Aftertaste</span></td>
-                <td>4 ★</td>
-                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Tastes okay at first but the stevia aftertaste is almost metallic and lingers."</td>
-                <td style="color:#059669; font-weight:600; font-size:12px">Taste Masking (Sweetness)</td>
-                <td><button class="lm-btn-outline" style="padding:2px 6px" onclick="event.stopPropagation(); openBrandPanel('Athletic Greens')">Profile</button></td>
-              </tr>
-              <tr>
-                <td><strong>Ritual</strong><br><span style="font-size:11px;color:#6B7280">Essential for Women</span></td>
-                <td>Algae Oil (Omega3)</td>
-                <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Fishy Burps</span></td>
-                <td>2 ★</td>
-                <td style="max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The mint tab helps, but two hours later I get massive seaweed burps."</td>
-                <td style="color:#059669; font-weight:600; font-size:12px">Flavor Enhancement / Masking</td>
-                <td><button class="lm-btn-outline" style="padding:2px 6px" onclick="event.stopPropagation(); openBrandPanel('Ritual')">Profile</button></td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="agent-stats" style="margin-top:24px;">
+           <h3 style="color:#64748B;">Module in configuration to track European renewable energy directives (RED II/III)...</h3>
         </div>
       </div>
     `
@@ -1713,85 +2418,53 @@ function renderDashboardCharts() {
   });
 }
 
-function renderHTBACharts(viewId) {
-  if (viewId === 'htba-functional') {
-    const brandCtx = document.getElementById('htbaBrandChart');
-    const ingCtx = document.getElementById('htbaIngredientChart');
-    const heatCtx = document.getElementById('htbaHeatmapChart');
+function renderSICITCharts(viewId) {
+  if (viewId === 'sicit-agri') {
+    const compCtx = document.getElementById('sicitCompetitorChart');
+    const modCtx = document.getElementById('sicitModalityChart');
+    const fricCtx = document.getElementById('sicitFrictionChart');
     
-    if (brandCtx) {
-      new Chart(brandCtx, {
+    if (compCtx) {
+      new Chart(compCtx, {
         type: 'bar',
         data: {
-          labels: ['Thorne', 'Nature Made', 'Ritual', 'Jarrow'],
+          labels: ['Valagro', 'Biolchim', 'ICL', 'COMPO'],
           datasets: [
-            { label: 'Positive', data: [75, 40, 60, 55], backgroundColor: '#10B981' },
-            { label: 'Neutral',  data: [15, 30, 25, 20], backgroundColor: '#F59E0B' },
-            { label: 'Negative', data: [10, 30, 15, 25], backgroundColor: '#EF4444' }
+            { label: 'Positive', data: [80, 50, 70, 60], backgroundColor: '#10B981', borderRadius: 4 },
+            { label: 'Neutral',  data: [15, 25, 20, 25], backgroundColor: '#F59E0B', borderRadius: 4 },
+            { label: 'Negative', data: [5, 25, 10, 15], backgroundColor: '#EF4444', borderRadius: 4 }
           ]
         },
         options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
       });
     }
 
-    if (ingCtx) {
-      new Chart(ingCtx, {
+    if (modCtx) {
+      new Chart(modCtx, {
         type: 'doughnut',
         data: {
-          labels: ['Methylcobalamin', 'Cyanocobalamin', 'Hydroxo', 'Cobamamide'],
-          datasets: [{ data: [45, 30, 15, 10], backgroundColor: ['#059669', '#3B82F6', '#8B5CF6', '#EC4899'] }]
+          labels: ['Animal Amino Acids', 'Plant Amino Acids', 'Seaweed', 'Humic/Fulvic'],
+          datasets: [{ data: [40, 25, 20, 15], backgroundColor: ['#059669', '#3B82F6', '#8B5CF6', '#EC4899'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, cutout: '65%' }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false, 
+          cutout: '65%',
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
       });
     }
 
-    if (heatCtx) {
-      new Chart(heatCtx, {
+    if (fricCtx) {
+      new Chart(fricCtx, {
         type: 'bar',
         data: {
-          labels: ['Pill Size', 'Taste', 'Price', 'Side Effects'],
-          datasets: [{ label: 'Complaint Volume', data: [420, 350, 150, 80], backgroundColor: '#EF4444', borderRadius: 4 }]
+          labels: ['Price/ROI', 'Mixability', 'Odor', 'Residues'],
+          datasets: [{ label: 'Complaint Volume', data: [310, 250, 180, 90], backgroundColor: '#EF4444', borderRadius: 4 }]
         },
         options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
-      });
-    }
-
-  } else if (viewId === 'htba-taste') {
-    const tasteIngCtx = document.getElementById('htbaTasteIngChart');
-    const impactCtx = document.getElementById('htbaTasteImpactChart');
-
-    if (tasteIngCtx) {
-      new Chart(tasteIngCtx, {
-        type: 'bar',
-        data: {
-          labels: ['Stevia', 'Plant Protein', 'Monk Fruit', 'Vitamins'],
-          datasets: [
-            { label: 'Bitterness', data: [80, 20, 15, 45], backgroundColor: '#BE185D' },
-            { label: 'Texture/Chalky', data: [5, 90, 10, 10], backgroundColor: '#9D174D' },
-            { label: 'Aftertaste', data: [85, 30, 75, 25], backgroundColor: '#F43F5E' }
-          ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
-      });
-    }
-
-    if (impactCtx) {
-      new Chart(impactCtx, {
-        type: 'scatter',
-        data: {
-          datasets: [{
-            label: 'Taste Issues vs Rating Drop',
-            data: [
-              { x: 30, y: -0.5 }, { x: 80, y: -1.2 }, { x: 50, y: -0.8 }, { x: 15, y: -0.2 }
-            ],
-            backgroundColor: '#DB2777',
-            pointRadius: 6
-          }]
-        },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          scales: { x: { title: {display:true, text:'Complaint Volume'} }, y: { title: {display:true, text:'Avg Rating Drop (Stars)'} } }
-        }
       });
     }
   }
@@ -2034,10 +2707,21 @@ function hideTyping() {
 
 function findLeadByName(query) {
   const q = query.toLowerCase();
-  return leadsData.find(l => {
+  
+  // 1) Match by lead name
+  const matchByName = leadsData.find(l => {
     const nameParts = l.name.toLowerCase().split(' ');
-    return nameParts.some(part => q.includes(part)) || q.includes(l.name.toLowerCase());
+    return nameParts.some(part => part.length > 2 && q.includes(part)) || q.includes(l.name.toLowerCase());
   });
+  if (matchByName) return matchByName;
+
+  // 2) Match by general title & organization (e.g., "CEO of Valagro")
+  const matchByTitleOrg = leadsData.find(l => {
+    const orgWord = l.org.toLowerCase();
+    const cleanTitle = l.title.toLowerCase().split(' ')[0]; // Gets 'ceo', 'director', etc.
+    return q.includes(orgWord) && q.includes(cleanTitle);
+  });
+  return matchByTitleOrg;
 }
 
 function generateEmail(lead) {
@@ -2072,6 +2756,78 @@ function handleChatSend() {
 
 function processCommand(text) {
   const lower = text.toLowerCase();
+
+  // ─── SHOW COMPANYS / LEADS (FROM LOCAL CACHE) ───
+  if (lower.includes('empresa') || lower.includes('company') || lower.includes('companies') || lower.includes('leads') || lower.includes('contactos')) {
+    let companyHtml = '';
+    let leadsCounter = 0;
+    
+    // Clear the existing leadsData array carefully
+    leadsData.length = 0;
+    
+    // Loop through company cache DB
+    for (const [domain, company] of Object.entries(companyCacheDB)) {
+      companyHtml += `<div style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">`;
+      companyHtml += `<div style="font-weight: 600; color: #fff; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>🏢 ${company.name}</span>
+                        <a href="#" onclick="document.getElementById('chatbot-input').value='Draft an email to the CEO of ${company.name.split(' ')[0].replace(/'/g, '&apos;')}'; document.getElementById('chatbot-send').click(); return false;" style="font-size: 10px; background: #6366f1; color: white; padding: 2px 6px; border-radius: 4px; text-decoration: none;">Engage</a>
+                      </div>`;
+      companyHtml += `<div style="font-size: 11px; color: #94A3B8; margin-bottom: 8px;">${company.industry} • ${company.headcount}</div>`;
+      
+      if (company.leads && company.leads.length > 0) {
+        companyHtml += `<div style="font-size: 11px; font-weight: 600; color: #CBD5E1; margin-bottom: 4px;">🎯 Key Leads:</div>`;
+        company.leads.forEach(lead => {
+          leadsCounter++;
+          const liUrl = `https://linkedin.com/search/results/people/?keywords=${encodeURIComponent(lead.name + ' ' + company.name)}`;
+          const actionColor = lead.actionType === 'hot' ? '#ef4444' : lead.actionType === 'warm' ? '#f59e0b' : '#3b82f6';
+          
+          companyHtml += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 6px; margin-bottom: 2px; border-radius: 4px; background: rgba(0,0,0,0.2);">
+              <div style="flex: 1; min-width:0;">
+                <div style="font-weight: 500; color: #e2e8f0; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${lead.name}</div>
+                <div style="font-size: 10px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${lead.title}</div>
+              </div>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <span style="font-size: 9px; padding: 1px 4px; border-radius: 10px; background: ${actionColor}22; color: ${actionColor}; border: 1px solid ${actionColor}44;">Score: ${lead.score}</span>
+                <a href="${liUrl}" target="_blank" title="View LinkedIn" style="color: #0A66C2; background: rgba(10, 102, 194, 0.1); padding: 2px; border-radius: 3px; display: inline-flex;"><i data-lucide="linkedin" style="width: 12px; height: 12px;"></i></a>
+              </div>
+            </div>
+          `;
+          
+          // Populate leadsData array
+          leadsData.push({
+            name: lead.name,
+            org: company.name.split(' ')[0], // short name
+            title: lead.title,
+            dur: 'Scanned',
+            email: lead.name.split(' ')[0].toLowerCase() + '@' + domain.replace(/^www\./, ''),
+            city: company.location.split(',')[0],
+            mailSent: false,
+            liSent: false,
+            icpScore: lead.score,
+            closingProb: Math.round(lead.score * 0.8),
+            channel: 'LinkedIn',
+            signal: lead.actionType === 'hot' ? 'High intent match 🎯' : 'Matched ICP parameters 🔍',
+            status: lead.actionType
+          });
+        });
+      }
+      companyHtml += `</div>`;
+    }
+
+    addBotMessage(`📊 <strong>Found ${Object.keys(companyCacheDB).length} Companies and ${leadsCounter} Leads in your database.</strong>\n\nHere is your requested intelligence breakdown:\n\n${companyHtml}`);
+    
+    // Set leads revealed and switch view to update LeadMiner
+    leadsRevealed = true;
+    switchView('leadminer');
+    
+    // Process lucid icons in the newly created message
+    setTimeout(() => {
+      if (window.lucide) window.lucide.createIcons();
+    }, 100);
+    
+    return;
+  }
 
   // ─── CLEAR / HIDE LEADS ───
   if (lower.includes('clear') || lower.includes('hide') || lower.includes('reset') || lower.includes('delete') || lower.includes('remove') || lower.includes('borra')) {
