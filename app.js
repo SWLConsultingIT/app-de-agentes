@@ -1235,43 +1235,55 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div class="dash-layout">
-          <!-- Charts -->
-          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+        <!-- Strategic Recommendations -->
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr 1fr; margin-top:24px;">
+          <div class="card" style="padding:16px; border-left:4px solid #EF4444;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+              <span style="font-size:18px;">🔥</span>
+              <strong style="font-size:13px; color:var(--text-main);">Priority Prospect</strong>
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Alessandro Ferrara — Score 97. Sea trial for Navetta 75 confirmed May 3.</p>
+            <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+              <span style="font-size:18px;">⚠️</span>
+              <strong style="font-size:13px; color:var(--text-main);">Reactivation Alert</strong>
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Catherine Beaumont dormant 35 days. Cannes 2026 approaching — ideal trigger.</p>
+            <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send VIP invitation</button>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+              <span style="font-size:18px;">💡</span>
+              <strong style="font-size:13px; color:var(--text-main);">Market Signal</strong>
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Ferretti 780 at +8% vs 2024. Value advantage for Flybridge 60 — brief dealers.</p>
+            <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #7C3AED;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+              <span style="font-size:18px;">📅</span>
+              <strong style="font-size:13px; color:var(--text-main);">Upcoming Event</strong>
+            </div>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Cannes Yachting Festival in 147 days. 4 prospects flagged for VIP. Navetta 75 debut.</p>
+            <button class="insight-action"><i data-lucide="users" style="width:12px"></i> View prospect list</button>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
             <h3 class="card-title"><i data-lucide="bar-chart-3"></i> Conversion Rate (Pipeline)</h3>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="conversionChart"></canvas></div>
           </div>
-
-          <!-- AI Insights Panel -->
-          <div class="card ai-panel">
-            <h3 class="card-title ai-sparkle"><i data-lucide="bot"></i> AI Agent Recommendations</h3>
-            
-            <div class="insight-item">
-              <div class="insight-icon">🔥</div>
-              <div class="insight-body">
-                <h4>Priority: Alessandro Ferrara</h4>
-                <p>Score 97 — confirmed private sea trial for Navetta 75 on May 3. Prepare shipyard visit briefing.</p>
-                <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
-              </div>
-            </div>
-
-            <div class="insight-item">
-              <div class="insight-icon">⚠️</div>
-              <div class="insight-body">
-                <h4>Dormant: Catherine Beaumont</h4>
-                <p>No activity for 35 days. Last opened Navetta 68 brochure in Feb. Cannes 2026 approaching — ideal trigger to re-engage.</p>
-                <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send VIP invitation</button>
-              </div>
-            </div>
-
-             <div class="insight-item">
-              <div class="insight-icon">💡</div>
-              <div class="insight-body">
-                <h4>Market signal: Ferretti price increase</h4>
-                <p>Ferretti 780 listed at +8% vs 2024. Value positioning advantage for Flybridge 60 — update dealer talking points.</p>
-                <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
-              </div>
-            </div>
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
+            <h3 class="card-title"><i data-lucide="anchor"></i> Pipeline by Event Source</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="dashEventChart"></canvas></div>
+          </div>
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
+            <h3 class="card-title"><i data-lucide="map-pin"></i> Prospects by Region</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="dashRegionChart"></canvas></div>
           </div>
         </div>
       </div>
@@ -3364,6 +3376,56 @@ function renderDashboardCharts() {
       }
     }
   });
+
+  // Event source chart
+  const evtCtx = document.getElementById('dashEventChart');
+  if (evtCtx) {
+    chartInstances['dashEventChart'] = new Chart(evtCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Cannes 2025', 'FLIBS 2025', 'Boot 2026', 'Dubai 2025', 'Dealer Refs', 'Web / Direct'],
+        datasets: [{
+          label: 'Leads Generated',
+          data: [5, 3, 2, 1, 2, 1],
+          backgroundColor: 'rgba(255, 123, 84, 0.8)',
+          borderRadius: 4
+        }, {
+          label: 'Sea Trials Completed',
+          data: [3, 1, 1, 0, 1, 0],
+          backgroundColor: 'rgba(142, 84, 233, 0.8)',
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { borderDash: [2,4] }}
+        },
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+  }
+
+  // Region chart
+  const regCtx = document.getElementById('dashRegionChart');
+  if (regCtx) {
+    chartInstances['dashRegionChart'] = new Chart(regCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+        datasets: [{ data: [5, 3, 2, 2, 2], backgroundColor: ['#7C3AED','#3B82F6','#F59E0B','#10B981','#94A3B8'] }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '55%',
+        plugins: { legend: { position: 'bottom' } }
+      }
+    });
+  }
 }
 
 function renderCICharts(viewId) {
