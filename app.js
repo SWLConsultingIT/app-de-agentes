@@ -3,91 +3,129 @@ const state = {
   currentView: 'dashboard'
 };
 
-// LeadMiner starts empty — chatbot fetches leads
-let leadsRevealed = false;
+// Chart instance registry — prevents accumulating requestAnimationFrame loops
+const chartInstances = {};
+
+// Company Bio Scanner — selected scrape language
+let scanLanguage = 'en';
+
+// LeadMiner pre-loaded for demo
+let leadsRevealed = true;
 
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
 // ══════════════════════════════════════════════════
 const leadsData = [
   {
-    name: 'Simone Maestripieri', org: 'BancoBPM',        title: 'Fixed Income Portfolio Mgr',  dur: '3 yrs 1 mo',
-    email: 'simone.maestripieri@bancobpm.it',   city: 'Milan',
+    name: 'Alessandro Ferrara',  org: 'Ferrara Holdings',     title: 'Real Estate Developer · HNWI',    dur: 'Since Cannes 2025',
+    email: 'a.ferrara@ferraraholdings.mc',       city: 'Monaco',
     mailSent: true,  liSent: true,
-    icpScore: 96, closingProb: 87, channel: 'LinkedIn',
-    signal: 'Opened proposal 4 times in 2 days 👀',
+    icpScore: 97, closingProb: 91, channel: 'WhatsApp',
+    signal: 'Requested private sea trial for Navetta 75 — confirmed for May 3',
     status: 'hot'
   },
   {
-    name: 'Maeve Tsivanidis',    org: 'BlackRock',        title: 'Multi Asset Portfolio Mgr',   dur: '3 yrs 9 mos',
-    email: 'maeve.tsivanidis@blackrock.com',    city: 'London',
+    name: 'Sophia Al-Rashid',    org: 'Al-Rashid Family Office', title: 'Director of Acquisitions · UHNWI', dur: 'Since Mar 2026',
+    email: 'sophia@alrashidfo.ae',               city: 'Dubai',
     mailSent: true,  liSent: true,
-    icpScore: 91, closingProb: 74, channel: 'Email',
-    signal: 'Visited pricing page 3 times this week 📊',
+    icpScore: 95, closingProb: 84, channel: 'Email',
+    signal: 'Opened Navetta 68 brochure 6 times — requested interior customization options',
+    status: 'hot'
+  },
+  {
+    name: 'Isabella von Hohenlohe', org: 'Hohenlohe Vermögen', title: 'Family Office Principal · UHNWI', dur: 'Since Boot 2026',
+    email: 'isabella@hohenlohe-vermoegen.de',    city: 'Munich',
+    mailSent: true,  liSent: true,
+    icpScore: 93, closingProb: 78, channel: 'Email',
+    signal: 'Visited Boot Düsseldorf stand twice — asked about Navetta 75 delivery timeline',
+    status: 'hot'
+  },
+  {
+    name: 'James Whitfield III',  org: 'Whitfield Capital Partners', title: 'Managing Partner · PE · HNWI', dur: 'Since FLIBS 2025',
+    email: 'jwhitfield@whitfieldcp.com',         city: 'Palm Beach, FL',
+    mailSent: true,  liSent: false,
+    icpScore: 91, closingProb: 72, channel: 'Email',
+    signal: 'Completed sea trial at FLIBS — comparing Flybridge 60 vs Ferretti 580',
     status: 'active'
   },
   {
-    name: 'John Halton',         org: 'BNP Paribas CIB',  title: 'Head of CEEMEA Trading',      dur: '3 yrs 3 mos',
-    email: 'john.halton@bnpparibas.com',        city: 'London',
-    mailSent: true,  liSent: false,
-    icpScore: 88, closingProb: 61, channel: 'Email',
-    signal: 'Series A funding round announced 💰',
+    name: 'Laurent Dubois',      org: 'Groupe Dubois Hospitality', title: 'CEO · Hospitality Group · HNWI', dur: 'Since Cannes 2025',
+    email: 'l.dubois@groupedubois.fr',           city: 'Saint-Tropez',
+    mailSent: true,  liSent: true,
+    icpScore: 89, closingProb: 68, channel: 'LinkedIn',
+    signal: 'Second sea trial completed — negotiating interior package for Navetta 68',
     status: 'active'
   },
   {
-    name: 'Ed Toombs',           org: 'Vanguard',          title: 'Fixed Income Portfolio Mgr',  dur: '4 yrs 11 mos',
-    email: 'ed_toombs@vanguard.com',            city: 'London',
-    mailSent: false, liSent: false,
-    icpScore: 78, closingProb: 45, channel: 'LinkedIn',
-    signal: 'New job posting at their company 🏢',
+    name: 'Robert Ashworth',     org: 'Ashworth Capital',    title: 'Hedge Fund Manager · HNWI',       dur: 'Since Feb 2026',
+    email: 'r.ashworth@ashworthcapital.co.uk',   city: 'London',
+    mailSent: true,  liSent: false,
+    icpScore: 88, closingProb: 62, channel: 'Email',
+    signal: 'Dealer referral from Ancasta — interested in Flybridge 60 for Solent',
+    status: 'active'
+  },
+  {
+    name: 'Omar Al-Fayed',       org: 'Gulf Investment Fund', title: 'Fund Director · UHNWI',          dur: 'Since Dubai BS 2025',
+    email: 'omar.alfayed@gif.qa',                city: 'Doha',
+    mailSent: false, liSent: true,
+    icpScore: 86, closingProb: 55, channel: 'WhatsApp',
+    signal: 'Requested Navetta 75 pricing and build slot availability for Q4 delivery',
+    status: 'active'
+  },
+  {
+    name: 'Victoria Chen',       org: 'Meridian Tech',       title: 'Founder & CEO · Tech · HNWI',    dur: 'Since Jan 2026',
+    email: 'v.chen@meridiantech.hk',             city: 'Hong Kong',
+    mailSent: true,  liSent: false,
+    icpScore: 84, closingProb: 48, channel: 'Email',
+    signal: 'Web inquiry on Navetta 52 — mentioned Cannes debut as trigger',
     status: 'in-sequence'
   },
   {
-    name: 'Richard Balfour',     org: 'HSBC',              title: 'Global Fixed Income Dir.',    dur: '7 yrs 2 mos',
-    email: 'richard.balfour@hsbc.com',          city: 'London',
-    mailSent: true,  liSent: false,
-    icpScore: 74, closingProb: 38, channel: 'Email',
-    signal: 'Commented on a sales automation post 💬',
+    name: 'Nikolaos Papadopoulos', org: 'Papadopoulos Shipping', title: 'Shipping Family · HNWI',     dur: 'Since Cannes 2025',
+    email: 'n.papadopoulos@papship.gr',          city: 'Athens',
+    mailSent: true,  liSent: true,
+    icpScore: 82, closingProb: 44, channel: 'LinkedIn',
+    signal: 'Upgrading from current 48ft — considering Flybridge 52 or Coupe 48',
     status: 'in-sequence'
   },
   {
-    name: 'Giacomo Guglielmone', org: 'DBS Bank',           title: 'Macro Portfolio Manager',     dur: '4 yrs 5 mos',
-    email: 'giacomoguglielmone@dbs.com',        city: '',
-    mailSent: false, liSent: false,
-    icpScore: 65, closingProb: 29, channel: 'Email',
-    signal: 'No activity for 30 days 🌙',
-    status: 'dormant'
-  },
-  {
-    name: 'Jacqueline Zaykova',  org: 'Goldman Sachs',      title: 'Senior Fixed Income Analyst', dur: '6 yrs 8 mos',
-    email: 'jacqueline.zaykova@gs.com',         city: '',
-    mailSent: false, liSent: false,
-    icpScore: 62, closingProb: 24, channel: 'LinkedIn',
-    signal: 'No activity for 45 days 🌙',
-    status: 'dormant'
-  },
-  {
-    name: 'Michael Sommerauer',  org: 'State Street',       title: 'Fixed Income Portfolio Mgr',  dur: '4 yrs 2 mos',
-    email: 'msommerauer@statestreet.com',       city: '',
+    name: 'Priya Kapoor',        org: 'Kapoor Pharma Group', title: 'Vice Chairwoman · Pharma · UHNWI', dur: 'Since Cannes 2025',
+    email: 'priya@kapoorpharma.in',              city: 'Mumbai',
     mailSent: true,  liSent: false,
-    icpScore: 59, closingProb: 20, channel: 'Email',
-    signal: 'Promotion detected: new Director title 🎯',
+    icpScore: 80, closingProb: 41, channel: 'Email',
+    signal: 'Attended Cannes VIP dinner — first-time yacht buyer, interested in Navetta 68',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Ricardo Mendes',      org: 'Mendes Agrobusiness', title: 'CEO · Agribusiness · HNWI',       dur: 'Since Miami 2026',
+    email: 'r.mendes@mendesagro.com.br',         city: 'São Paulo',
+    mailSent: false, liSent: false,
+    icpScore: 76, closingProb: 35, channel: 'WhatsApp',
+    signal: 'Miami dealer introduced — comparing Flybridge 60 with Azimut 60',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Catherine Beaumont',  org: 'Private Collector',   title: 'Art Collector & Socialite',       dur: 'Since Dec 2025',
+    email: 'c.beaumont@beaumont-collection.fr',  city: 'Antibes',
+    mailSent: true,  liSent: false,
+    icpScore: 72, closingProb: 30, channel: 'Email',
+    signal: 'No activity for 35 days — last opened Navetta 68 brochure in Feb',
     status: 'dormant'
   },
   {
-    name: 'Simian Lin',          org: 'Barclays',           title: 'Fixed Income Portfolio Mgr',  dur: '6 yrs',
-    email: 'simian.lin@barclays.com',           city: 'London',
-    mailSent: false, liSent: false,
-    icpScore: 52, closingProb: 15, channel: 'WhatsApp',
-    signal: 'No activity for 60 days 🌙',
+    name: 'Dimitri Volkov',      org: 'Volkov Fintech',     title: 'Founder · Fintech · HNWI',        dur: 'Since Nov 2025',
+    email: 'd.volkov@volkovfintech.cy',          city: 'Limassol',
+    mailSent: false, liSent: true,
+    icpScore: 68, closingProb: 25, channel: 'LinkedIn',
+    signal: 'No activity for 48 days — was interested in Flybridge 52 for Cyprus',
     status: 'dormant'
   },
   {
-    name: 'Kent Zhang',          org: 'UBS',                title: 'Fixed Income Portfolio Mgr',  dur: '5 yrs',
-    email: 'kent.zhang@ubs.com',                city: 'London',
-    mailSent: false, liSent: false,
-    icpScore: 48, closingProb: 12, channel: 'Email',
-    signal: 'No activity for 70 days 🌙',
+    name: 'Marcus Svensson',     org: 'Svensson Industrigrupp', title: 'Industrial Family · HNWI',    dur: 'Since Boot 2025',
+    email: 'm.svensson@svenssonindustri.se',     city: 'Gothenburg',
+    mailSent: true,  liSent: false,
+    icpScore: 64, closingProb: 19, channel: 'Email',
+    signal: 'No activity for 60 days — attended Boot 2025 but went cold after pricing discussion',
     status: 'dormant'
   },
 ];
@@ -402,17 +440,19 @@ function switchView(viewId) {
 
   // Update topbar breadcrumb
   const viewMeta = {
-    'dashboard':     { name: 'Dashboard',     sub: 'Overview of your sales pipeline and AI recommendations' },
-    'leadminer':     { name: 'LeadMiner™',    sub: 'Sales Growth Engine · AI-powered prospecting & lead enrichment' },
-    'icp-scorer':    { name: 'ICP Scorer™',   sub: 'Sales Growth Engine · Predictive lead prioritization' },
-    'message-tailor':{ name: 'MessageTailor™',sub: 'Sales Growth Engine · Hyper-personalized AI outreach' },
-    'outreach-flow': { name: 'OutreachFlow™', sub: 'Sales Growth Engine · Multichannel automated sequences' },
-    'smart-nurture': { name: 'Smart Nurture™',sub: 'Sales Growth Engine · Reactivate dormant leads with intent signals' },
+    'dashboard':     { name: 'Dashboard',     sub: 'Pipeline overview, priority prospects, and strategic recommendations' },
+    'leadminer':     { name: 'LeadMiner™',    sub: 'Growth Engine · Your complete prospect database with enrichment and outreach tracking' },
+    'icp-scorer':    { name: 'ICP Scorer™',   sub: 'Growth Engine · Which prospects to focus on and why — ranked by purchase likelihood' },
+    'message-tailor':{ name: 'MessageTailor™',sub: 'Growth Engine · Personalized outreach crafted for each prospect and channel' },
+    'outreach-flow': { name: 'OutreachFlow™', sub: 'Growth Engine · The full buyer journey orchestrated across every touchpoint' },
+    'smart-nurture': { name: 'Smart Nurture™',sub: 'Growth Engine · Bringing dormant opportunities back to life at the right moment' },
     'company-bio':   { name: 'Company Bio Scanner', sub: 'Sales Growth Engine · AI-driven web scanning & client profiling' },
-    'analytics':     { name: 'Analytics',     sub: 'Metrics, conversion rates and performance reporting' },
-    'sicit-agri':    { name: 'Agro Intelligence', sub: 'SICIT CI · Market trends, crop performance, and biostimulant analysis' },
-    'sicit-plaster': { name: 'Plaster Retarders CI', sub: 'SICIT CI · Formulation performance and industrial application data' },
-    'sicit-biofuel': { name: 'Biofuel Fats CI', sub: 'SICIT CI · Bio-based alternatives and sustainability metrics' },
+    'analytics':     { name: 'Analytics & Metrics', sub: 'Social media performance, brand reach, audience insights, and review intelligence' },
+    'price-intelligence':  { name: 'Price Intelligence Agent', sub: 'Competitive Intelligence · How your pricing compares across competitors, regions, and segments' },
+    'launch-tracker':      { name: 'Product Launch Tracker', sub: 'Competitive Intelligence · What your competitors are launching, where, and when' },
+    'sentiment-analyzer':  { name: 'Sentiment Analyzer', sub: 'Competitive Intelligence · How the market perceives your brand versus the competition' },
+    'demand-intelligence': { name: 'Demand Intelligence Agent', sub: 'Competitive Intelligence · Where demand is growing and which opportunities to prioritize' },
+    'supply-chain-ci':     { name: 'Supply Chain CI', sub: 'Competitive Intelligence · Which suppliers are at risk and how it affects your production timeline' },
   };
   const meta = viewMeta[viewId] || { name: viewId, sub: '' };
   const nameEl = document.getElementById('topbar-view-name');
@@ -420,14 +460,22 @@ function switchView(viewId) {
   if (nameEl) nameEl.textContent = meta.name;
   if (subEl)  subEl.textContent  = meta.sub;
 
+  // Destroy existing chart instances before replacing DOM (prevents rAF loop leak)
+  Object.keys(chartInstances).forEach(key => {
+    chartInstances[key].destroy();
+    delete chartInstances[key];
+  });
+
   // Render View Dynamically Based On Choice
   container.innerHTML = generateViewHTML(viewId);
-  lucide.createIcons(); // Re-init icons for new HTML
+  lucide.createIcons({ nodes: [container] }); // Scope scan to container only
 
   if(viewId === 'dashboard') {
-    renderDashboardCharts();
-  } else if (viewId === 'sicit-agri' || viewId === 'sicit-plaster' || viewId === 'sicit-biofuel') {
-    setTimeout(() => renderSICITCharts(viewId), 50);
+    setTimeout(() => renderDashboardCharts(), 50);
+  } else if (['price-intelligence','launch-tracker','sentiment-analyzer','demand-intelligence','supply-chain-ci'].includes(viewId)) {
+    setTimeout(() => renderCICharts(viewId), 50);
+  } else if (viewId === 'analytics') {
+    setTimeout(() => renderAnalyticsCharts(), 50);
   }
 }
 
@@ -661,6 +709,102 @@ const companyCacheDB = {
     ],
   },
 
+  // ─── ABSOLUTE YACHTS (demo client) ───────────────────
+  'absoluteyachts.com': {
+    name: 'Absolute Yachts',
+    tagline: 'Experience Absolute Freedom at Sea',
+    description: 'Absolute Yachts is an Italian manufacturer of premium motor yachts, founded in 2002 and headquartered in Podenzano (Piacenza), Italy. The company designs and produces yachts ranging from 47 to 73 feet across three iconic collections: Navetta, Coupe, and Flybridge. With an international dealer network spanning 40+ countries, Absolute Yachts combines Italian craftsmanship with cutting-edge naval architecture and design to deliver exceptional on-water experiences for high-net-worth individuals worldwide.',
+    industry: 'Luxury Marine / Yacht Manufacturing',
+    headcount: '300 – 500 employees',
+    location: 'Podenzano (Piacenza), Italy',
+    founded: 2002,
+    services: [
+      'Navetta Collection (47–75 ft)',
+      'Flybridge Collection (40–70 ft)',
+      'Coupe Collection (48–52 ft)',
+      'Custom Configuration',
+      'After-Sales Service',
+      'Global Dealer Network',
+      'Boat Show Activations',
+      'Charter & Events',
+    ],
+    techStack: ['WordPress', 'Google Analytics', 'HubSpot'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/absolute-yachts/',
+      twitter: '',
+      instagram: 'https://www.instagram.com/absoluteyachts/',
+      facebook: 'https://www.facebook.com/absoluteyachts/',
+      youtube: 'https://www.youtube.com/absoluteyachts',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'anchor', title: 'Premium Yacht Manufacturing', desc: 'Design and production of motor yachts from 47 to 73 feet across Navetta, Flybridge, and Coupe collections, built in Piacenza with Italian craftsmanship.' },
+      { icon: 'globe', title: 'International Dealer Distribution', desc: 'Commercial expansion through a curated network of 40+ authorized dealers across Europe, Americas, Middle East, and Asia-Pacific.' },
+      { icon: 'star', title: 'Boat Show Presence', desc: 'Active presence at major international boat shows including Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show, and METS.' },
+      { icon: 'settings', title: 'After-Sales & Customization', desc: 'Full after-sales support with bespoke interior customization options, technical assistance, and owner onboarding services.' },
+    ],
+    differentiators: [
+      'Italian luxury craftsmanship — designed and built entirely in Piacenza, Italy',
+      'Three distinct collections for different boating lifestyles: Navetta, Flybridge, Coupe',
+      'Award-winning naval architecture and interior design partnerships',
+      '40+ country dealer network with strong presence in Mediterranean and US markets',
+      'Growing superyacht ambitions — Navetta 75 pushes into the 75-foot segment',
+      'Strong brand identity built around freedom, design, and Italian lifestyle',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Launch of Navetta 75 — flagship model entering the superyacht segment' },
+      { date: '2024', event: 'Expanded US dealer network with new partnerships in Florida and California' },
+      { date: '2023', event: 'Introduced Flybridge 70 at Cannes Yachting Festival to international acclaim' },
+      { date: '2022', event: 'Partnership with leading naval architecture studio for next-generation hull design' },
+    ],
+    icpMatch: { score: 96, label: 'Perfect Commercial Profile', text: 'Absolute Yachts is a textbook case for AI-driven commercial intelligence: high-value product cycles, a global dealer network requiring relationship management, HNWI buyer journeys, and competitive market dynamics across 40+ countries.' },
+    leads: [
+      { name: 'Valeria Arzenton', title: 'Commercial Director', score: 97, action: 'Priority contact — oversees global dealer strategy', actionType: 'hot' },
+      { name: 'Massimo Perotti', title: 'CEO & President', score: 94, action: 'Executive engagement via boat show introduction', actionType: 'hot' },
+      { name: 'Marco Testa', title: 'Head of International Sales', score: 88, action: 'Send partnership proposal for dealer CRM integration', actionType: 'hot' },
+      { name: 'Giulia Rossi', title: 'Marketing & Brand Manager', score: 79, action: 'Invite to luxury maritime marketing roundtable', actionType: 'warm' },
+      { name: 'Andrea Molinari', title: 'After-Sales Service Director', score: 72, action: 'Send case study on owner retention programs', actionType: 'sequence' },
+    ],
+    translations: {
+      it: {
+        tagline: 'Vivi la Libertà Assoluta in Mare',
+        description: 'Absolute Yachts è un produttore italiano di yacht a motore premium, fondato nel 2002 e con sede a Podenzano (Piacenza). L\'azienda progetta e produce yacht dai 47 ai 73 piedi nelle tre collezioni iconiche: Navetta, Coupe e Flybridge. Con una solida rete di dealer internazionali in oltre 40 paesi, Absolute Yachts unisce l\'artigianalità italiana al design d\'avanguardia e all\'architettura navale per offrire esperienze di navigazione straordinarie agli appassionati di alto profilo in tutto il mondo.',
+        whatTheyDo: [
+          { icon: 'anchor', title: 'Produzione di Yacht Premium', desc: 'Progettazione e produzione di yacht a motore dai 47 ai 73 piedi nelle collezioni Navetta, Flybridge e Coupe, realizzati a Piacenza con l\'artigianalità tipica del Made in Italy.' },
+          { icon: 'globe', title: 'Distribuzione Internazionale via Dealer', desc: 'Espansione commerciale attraverso una rete selezionata di oltre 40 dealer autorizzati in Europa, Americhe, Medio Oriente e Asia-Pacifico.' },
+          { icon: 'star', title: 'Presenza ai Salone Nautici', desc: 'Partecipazione attiva ai principali saloni nautici internazionali: Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show e METS Amsterdam.' },
+          { icon: 'settings', title: 'Post-Vendita e Personalizzazione', desc: 'Programma completo di assistenza post-vendita con personalizzazione degli interni su misura, assistenza tecnica dedicata e servizi di onboarding per i proprietari.' },
+        ],
+        differentiators: [
+          'Artigianalità italiana di lusso — progettato e costruito interamente a Piacenza',
+          'Tre collezioni distinte per diversi stili di navigazione: Navetta, Flybridge, Coupe',
+          'Architettura navale e design degli interni premiati a livello internazionale',
+          'Rete dealer in oltre 40 paesi con forte presenza nel Mediterraneo e negli USA',
+          'Ambizioni nel segmento superyacht: la Navetta 75 entra nel segmento 75 piedi',
+          'Identità di marca costruita attorno a libertà, design e lifestyle italiano',
+        ],
+      },
+      es: {
+        tagline: 'Vive la Libertad Absoluta en el Mar',
+        description: 'Absolute Yachts es un fabricante italiano de yates a motor de lujo, fundado en 2002 y con sede en Podenzano (Piacenza), Italia. La empresa diseña y produce yates de 47 a 73 pies en tres colecciones icónicas: Navetta, Coupe y Flybridge. Con una red de distribuidores internacionales en más de 40 países, Absolute Yachts combina la artesanía italiana con el diseño vanguardista y la arquitectura naval para ofrecer experiencias náuticas excepcionales a clientes de alto patrimonio en todo el mundo.',
+        whatTheyDo: [
+          { icon: 'anchor', title: 'Fabricación de Yates Premium', desc: 'Diseño y producción de yates a motor de 47 a 73 pies en las colecciones Navetta, Flybridge y Coupe, fabricados en Piacenza con artesanía italiana.' },
+          { icon: 'globe', title: 'Distribución Internacional por Dealers', desc: 'Expansión comercial a través de una red de más de 40 dealers autorizados en Europa, América, Oriente Medio y Asia-Pacífico.' },
+          { icon: 'star', title: 'Presencia en Salones Náuticos', desc: 'Participación activa en los principales salones náuticos: Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show y METS.' },
+          { icon: 'settings', title: 'Postventa y Personalización', desc: 'Programa completo de servicio postventa con personalización de interiores, asistencia técnica y servicios de onboarding para propietarios.' },
+        ],
+        differentiators: [
+          'Artesanía italiana de lujo — diseñado y fabricado íntegramente en Piacenza, Italia',
+          'Tres colecciones distintas para diferentes estilos de navegación: Navetta, Flybridge, Coupe',
+          'Arquitectura naval y diseño de interiores galardonados internacionalmente',
+          'Red de dealers en más de 40 países con fuerte presencia en el Mediterráneo y EE.UU.',
+          'Ambiciones en el segmento superyate: la Navetta 75 supera los 75 pies',
+          'Sólida identidad de marca construida en torno a libertad, diseño y estilo de vida italiano',
+        ],
+      },
+    },
+  },
+
   // ─── COMPANY 5 ───────────────────────────────────────
   'compo-expert.com': {
     name: 'COMPO EXPERT GmbH',
@@ -718,9 +862,24 @@ const companyCacheDB = {
   },
 };
 
-function getCompanyCache(domain) {
+function getCompanyCache(domain, lang = 'en') {
   let cleanDomain = domain.replace(/^www\./, '').split('/')[0];
-  return companyCacheDB[cleanDomain] || null;
+  let data = companyCacheDB[cleanDomain];
+  if (!data) return null;
+  if (lang !== 'en' && data.translations && data.translations[lang]) {
+    return { ...data, ...data.translations[lang] };
+  }
+  return data;
+}
+
+function setScanLanguage(lang) {
+  scanLanguage = lang;
+  document.querySelectorAll('#lang-selector [data-lang]').forEach(btn => {
+    const active = btn.dataset.lang === lang;
+    btn.style.background = active ? 'var(--ai-accent)' : 'white';
+    btn.style.color = active ? 'white' : 'var(--text-main)';
+    btn.style.borderColor = active ? 'var(--ai-accent)' : 'var(--border)';
+  });
 }
 
 async function scanCompanyBio() {
@@ -744,7 +903,7 @@ async function scanCompanyBio() {
   resultsDiv.style.opacity = '0.4';
 
   // --- Check cache first ---
-  let cached = getCompanyCache(domain);
+  let cached = getCompanyCache(domain, scanLanguage);
 
   let companyData;
   if (cached) {
@@ -763,7 +922,7 @@ async function scanCompanyBio() {
     document.getElementById('scanned-services').innerHTML = '<span style="color:var(--text-muted);font-style:italic">Extracting product lines...</span>';
     document.getElementById('scanned-tech-stack').innerHTML = '<span style="color:var(--text-muted);font-style:italic">Detecting...</span>';
 
-    companyData = await scrapeCompanyData(url, domain, companyName);
+    companyData = await scrapeCompanyData(url, domain, companyName, scanLanguage);
   }
 
   // === RENDER ALL DATA ===
@@ -907,7 +1066,7 @@ function renderCompanyResults(data, domain) {
   }
 }
 
-async function scrapeCompanyData(url, domain, companyName) {
+async function scrapeCompanyData(url, domain, companyName, lang = 'en') {
   let data = {
     name: companyName,
     tagline: '',
@@ -923,9 +1082,16 @@ async function scrapeCompanyData(url, domain, companyName) {
 
   try {
     let html = '';
+    // Build language-specific URL: try /<lang> path first, fallback to root
+    let baseUrl = url.replace(/\/$/, '');
+    let langUrl = lang !== 'en' ? baseUrl + '/' + lang : baseUrl;
     let proxyUrls = [
-      'https://corsproxy.io/?' + encodeURIComponent(url),
-      'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+      'https://corsproxy.io/?' + encodeURIComponent(langUrl),
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(langUrl),
+      ...(lang !== 'en' ? [
+        'https://corsproxy.io/?' + encodeURIComponent(baseUrl),
+        'https://api.allorigins.win/raw?url=' + encodeURIComponent(baseUrl),
+      ] : []),
       'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url),
     ];
 
@@ -977,7 +1143,8 @@ async function scrapeCompanyData(url, domain, companyName) {
       }
 
       // Industry
-      if (lowerHtml.includes('biostimulant') || lowerHtml.includes('fertilizer') || lowerHtml.includes('crop') || lowerHtml.includes('agriculture')) data.industry = 'Agrochemicals / Biostimulants';
+      if (lowerHtml.includes('yacht') || lowerHtml.includes('yachts') || lowerHtml.includes('marine') || lowerHtml.includes('nautical') || lowerHtml.includes('boat') || lowerHtml.includes('vessel') || lowerHtml.includes('sailing')) data.industry = 'Luxury Marine / Yacht Manufacturing';
+      else if (lowerHtml.includes('biostimulant') || lowerHtml.includes('fertilizer') || lowerHtml.includes('crop') || lowerHtml.includes('agriculture')) data.industry = 'Agrochemicals / Biostimulants';
       else if (lowerHtml.includes('software') || lowerHtml.includes('saas') || lowerHtml.includes('platform')) data.industry = 'B2B SaaS / Enterprise Software';
       else if (lowerHtml.includes('finance') || lowerHtml.includes('banking') || lowerHtml.includes('fintech')) data.industry = 'Financial Services / Fintech';
       else if (lowerHtml.includes('health') || lowerHtml.includes('medical') || lowerHtml.includes('pharma')) data.industry = 'Healthcare / Healthtech';
@@ -1036,43 +1203,43 @@ function generateViewHTML(view) {
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-h">
-              <span class="kpi-label">Total Leads Generated</span>
+              <span class="kpi-label">Active Prospects</span>
               <div class="kpi-icon"><i data-lucide="users"></i></div>
             </div>
-            <div class="kpi-val">1,248</div>
-            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +12.4% vs last month</div>
+            <div class="kpi-val">${leadsData.length}</div>
+            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +6 since Cannes 2025</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-h">
-              <span class="kpi-label">Active Opportunities</span>
+              <span class="kpi-label">Hot Opportunities</span>
               <div class="kpi-icon"><i data-lucide="target"></i></div>
             </div>
-            <div class="kpi-val">84</div>
-            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +4 new today</div>
+            <div class="kpi-val">${leadsData.filter(l=>l.status==='hot').length}</div>
+            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> Sea trials confirmed</div>
           </div>
           <div class="kpi-card ai-kpi">
             <div class="kpi-h">
-              <span class="kpi-label">Predictive Win Rate</span>
+              <span class="kpi-label">Avg Closing Probability</span>
               <div class="kpi-icon"><i data-lucide="sparkles"></i></div>
             </div>
-            <div class="kpi-val">28.5%</div>
-            <div class="kpi-trend" style="color:var(--ai-accent)"><i data-lucide="zap" style="width:14px"></i> AI-Powered</div>
+            <div class="kpi-val">${Math.round(leadsData.reduce((s,l)=>s+l.closingProb,0)/leadsData.length)}%</div>
+            <div class="kpi-trend" style="color:var(--ai-accent)"><i data-lucide="zap" style="width:14px"></i> Predictive Score</div>
           </div>
           <div class="kpi-card danger-kpi">
             <div class="kpi-h">
-              <span class="kpi-label">At-Risk Accounts (Churn)</span>
+              <span class="kpi-label">Dormant Prospects</span>
               <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
             </div>
-            <div class="kpi-val">3</div>
-            <div class="kpi-trend trend-down"><i data-lucide="trending-down" style="width:14px"></i> Immediate action required</div>
+            <div class="kpi-val">${leadsData.filter(l=>l.status==='dormant').length}</div>
+            <div class="kpi-trend trend-down"><i data-lucide="trending-down" style="width:14px"></i> Reactivation recommended</div>
           </div>
         </div>
 
         <div class="dash-layout">
           <!-- Charts -->
-          <div class="card">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
             <h3 class="card-title"><i data-lucide="bar-chart-3"></i> Conversion Rate (Pipeline)</h3>
-            <canvas id="conversionChart" height="250"></canvas>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="conversionChart"></canvas></div>
           </div>
 
           <!-- AI Insights Panel -->
@@ -1082,8 +1249,8 @@ function generateViewHTML(view) {
             <div class="insight-item">
               <div class="insight-icon">🔥</div>
               <div class="insight-body">
-                <h4>Contact Acme Corp</h4>
-                <p>AI Score jumped to 95. They opened your last email 3 times this morning.</p>
+                <h4>Priority: Alessandro Ferrara</h4>
+                <p>Score 97 — confirmed private sea trial for Navetta 75 on May 3. Prepare shipyard visit briefing.</p>
                 <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
               </div>
             </div>
@@ -1091,18 +1258,18 @@ function generateViewHTML(view) {
             <div class="insight-item">
               <div class="insight-icon">⚠️</div>
               <div class="insight-body">
-                <h4>Stall risk detected</h4>
-                <p>Opportunity "TechFlow SaaS" has had no activity for 14 days. Close probability dropped to 40%.</p>
-                <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Schedule auto follow-up</button>
+                <h4>Dormant: Catherine Beaumont</h4>
+                <p>No activity for 35 days. Last opened Navetta 68 brochure in Feb. Cannes 2026 approaching — ideal trigger to re-engage.</p>
+                <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send VIP invitation</button>
               </div>
             </div>
-            
+
              <div class="insight-item">
               <div class="insight-icon">💡</div>
               <div class="insight-body">
-                <h4>Sequence optimizer</h4>
-                <p>Emails with subject line "Quick question about sales" are getting 35% higher Open Rate.</p>
-                <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> Apply to current campaign</button>
+                <h4>Market signal: Ferretti price increase</h4>
+                <p>Ferretti 780 listed at +8% vs 2024. Value positioning advantage for Flybridge 60 — update dealer talking points.</p>
+                <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
               </div>
             </div>
           </div>
@@ -1307,6 +1474,16 @@ function generateViewHTML(view) {
         
         <div class="card" style="margin-top:24px; padding:24px">
           <h3 class="card-title" style="margin-bottom:16px;">Target Website</h3>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;">Scan language</span>
+            <div style="display:flex; gap:6px;" id="lang-selector">
+              <button onclick="setScanLanguage('en')" data-lang="en" style="padding:5px 12px;border-radius:6px;border:1px solid var(--ai-accent);background:var(--ai-accent);color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇬🇧 EN</button>
+              <button onclick="setScanLanguage('it')" data-lang="it" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇮🇹 IT</button>
+              <button onclick="setScanLanguage('es')" data-lang="es" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇪🇸 ES</button>
+              <button onclick="setScanLanguage('fr')" data-lang="fr" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇫🇷 FR</button>
+              <button onclick="setScanLanguage('de')" data-lang="de" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇩🇪 DE</button>
+            </div>
+          </div>
           <div style="display:flex; gap:12px;">
             <input type="text" id="company-url-input" placeholder="e.g. https://www.acme-corp.com" style="flex:1; padding:12px; border:1px solid var(--border); border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main);" />
             <button class="lm-btn-primary" style="padding:0 24px" onclick="scanCompanyBio()"><i data-lucide="scan" style="width:18px;margin-right:8px;vertical-align:middle"></i> Scan Web</button>
@@ -1453,11 +1630,11 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🔍</div>
           <div class="agent-header-text">
             <h2>LeadMiner™</h2>
-            <p>AI-powered prospecting engine that identifies, enriches and updates leads matching your ICP — including outreach status per channel.</p>
+            <p>Your complete prospect database — identifies, enriches, and tracks high-net-worth buyers from boat shows, dealer networks, web inquiries, and owner referrals. Every lead with full context and outreach status.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Agent Active</div><br>
-            <span class="agent-tag">Autonomous · Continuous Mode</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">Continuous Enrichment</span>
           </div>
         </div>
 
@@ -1499,13 +1676,13 @@ function generateViewHTML(view) {
                 <tr>
                   <th><input type="checkbox" class="lm-check"></th>
                   <th>Name <i data-lucide="chevrons-up-down" style="width:12px;opacity:0.4;vertical-align:middle"></i></th>
-                  <th>Organization Name</th>
-                  <th>Current Job Title</th>
-                  <th>Current Job Duration</th>
+                  <th>Context</th>
+                  <th>Profile</th>
+                  <th>Source / Since</th>
                   <th>Email</th>
-                  <th>City of Lead</th>
-                  <th>Mail message</th>
-                  <th>LinkedIn Message</th>
+                  <th>Location</th>
+                  <th>Email Sent</th>
+                  <th>LinkedIn</th>
                 </tr>
               </thead>
               <tbody>
@@ -1532,11 +1709,11 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🎯</div>
           <div class="agent-header-text">
             <h2>ICP Scorer™</h2>
-            <p>Predictive lead prioritization using close probability, ideal customer profile matching, and real-time behavioral engagement signals.</p>
+            <p>Ranks every prospect by likelihood to purchase — based on wealth profile, engagement behavior, model interest, and buying signals. Tells your team exactly who to focus on and why.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Running</div><br>
-            <span class="agent-tag">Autonomous · Updates hourly</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">Updates Continuously</span>
           </div>
         </div>
 
@@ -1581,11 +1758,11 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">✍️</div>
           <div class="agent-header-text">
             <h2>MessageTailor™</h2>
-            <p>Generates hyper-personalized outreach messages per lead, tone, channel, and sales stage using generative AI.</p>
+            <p>Crafts personalized outreach for each prospect — adapted to their profile, preferred channel, buying stage, and the specific yacht model they showed interest in. Every message feels one-to-one.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Generative · GPT-4o</span>
+            <span class="agent-tag">Personalized Outreach</span>
           </div>
         </div>
 
@@ -1612,7 +1789,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="sparkles"></i> AI-generated message for ICP Scorer's #1 lead</h3>
           <div style="background:#F8F9FF;border-radius:10px;padding:20px;border:1px dashed rgba(142,84,233,0.3)">
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px"><strong>To:</strong> ${getTopLead().name} · <strong>Org:</strong> ${getTopLead().org} · <strong>Channel:</strong> ${getTopLead().channel} · <strong>Score:</strong> ${getTopLead().icpScore}</p>
-            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Hi ${getTopLead().name.split(' ')[0]} 👋  ${getTopLead().signal.replace(/[🔥📊💰🏢💬🌙🎯👀]/g,'').trim()}. I work with teams similar to ${getTopLead().org} and was wondering if you have a structured process for prioritizing who to contact each day. Do you have 15 minutes this week?"</p>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a private viewing of the vessel at our Piacenza shipyard, where you can experience the craftsmanship and interior options firsthand. We have select build slots available for late 2026 delivery. Would next week work for a brief call to discuss configuration preferences?"</p>
             <div style="display:flex;gap:10px;margin-top:14px">
               <button class="btn-sm btn-primary"><i data-lucide="send"></i> Send now</button>
               <button class="btn-sm btn-ai"><i data-lucide="refresh-cw"></i> Regenerate variant</button>
@@ -1625,17 +1802,17 @@ function generateViewHTML(view) {
           <div class="feature-card">
             <div class="feature-icon">🎭</div>
             <h4>Adaptive Tone</h4>
-            <p>Adjusts the message register (formal, friendly, technical, disruptive) based on the prospect’s LinkedIn profile and industry.</p>
+            <p>Adjusts the message style based on the buyer profile — formal for family offices, warm for returning owners, concierge-level for UHNWI prospects.</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">📡</div>
             <h4>Native Multichannel</h4>
-            <p>Generates optimized variants for Email, LinkedIn, WhatsApp and SMS respecting character limits and style per channel.</p>
+            <p>Generates tailored variants for Email, LinkedIn, and WhatsApp — each adapted to channel etiquette and the prospect’s preferred communication style.</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">📈</div>
-            <h4>Continuous Learning</h4>
-            <p>Learns from messages that generate the most replies and automatically improves future generations for that segment.</p>
+            <h4>Context-Aware</h4>
+            <p>References the specific model of interest, last interaction (sea trial, boat show visit, brochure download), and timing for maximum relevance.</p>
           </div>
         </div>
       </div>
@@ -1647,11 +1824,11 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">📤</div>
           <div class="agent-header-text">
             <h2>OutreachFlow™</h2>
-            <p>Executes multichannel sequences (Email, LinkedIn, WhatsApp, SMS) adapting cadence in real-time based on each prospect’s behavior.</p>
+            <p>Orchestrates the full outreach journey across email, LinkedIn, and WhatsApp — adapting timing and channel based on how each prospect responds. Designed for long-cycle, relationship-driven sales.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> 3 Active Campaigns</div><br>
-            <span class="agent-tag">Autonomous · Reactive</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> 3 Active Sequences</div><br>
+            <span class="agent-tag">Adaptive Cadence</span>
           </div>
         </div>
 
@@ -1675,38 +1852,54 @@ function generateViewHTML(view) {
         </div>
 
         <div class="card">
-          <h3 class="card-title"><i data-lucide="git-branch"></i> Sequence: Cold Outbound Q2 — 8 steps</h3>
+          <h3 class="card-title"><i data-lucide="git-branch"></i> Sequence: Post-Boat Show Follow-Up — 6 touchpoints</h3>
           <div class="seq-steps">
             <div class="seq-step">
               <div class="seq-num">1</div>
               <div class="seq-body">
-                <h4>LinkedIn Connection</h4>
-                <p>Personalized request with 300-character note. Sent: Day 1 · 10 AM prospect’s local time.</p>
-                <div class="seq-channels"><span class="ch-badge">💼 LinkedIn</span><span class="act-score" style="color:var(--success);margin-left:8px">41% acceptance</span></div>
+                <h4>Personal Thank You Email</h4>
+                <p>Personalized follow-up referencing the specific model viewed and conversation at the show. Sent: Day 1 after event.</p>
+                <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--success);margin-left:8px">62% open rate</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">2</div>
               <div class="seq-body">
-                <h4>Intro Email (if connection not accepted in 48hrs)</h4>
-                <p>Personalized subject line generated by MessageTailor™. Sent: Day 3.</p>
-                <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--warning);margin-left:8px">38% open rate</span></div>
+                <h4>Brochure & Configuration Options</h4>
+                <p>If email opened: send digital brochure + interior configuration link. If not opened: resend with adjusted subject line. Day 4.</p>
+                <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--warning);margin-left:8px">48% click rate</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">3</div>
               <div class="seq-body">
-                <h4>Value message (relevant case study)</h4>
-                <p>If email was opened, sends relevant case study. If not opened, changes subject and retries.</p>
-                <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="ch-badge">💼 LinkedIn DM</span></div>
+                <h4>LinkedIn Connection + Shipyard Invitation</h4>
+                <p>Connect on LinkedIn with a note referencing the show meeting. Include an invitation to visit the Piacenza shipyard. Day 7.</p>
+                <div class="seq-channels"><span class="ch-badge">💼 LinkedIn</span><span class="act-score" style="color:var(--success);margin-left:8px">55% acceptance</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">4</div>
               <div class="seq-body">
-                <h4>WhatsApp sequence close</h4>
-                <p>Short, direct closing message with clear CTA. Only if prospect has WhatsApp on their profile.</p>
-                <div class="seq-channels"><span class="ch-badge">💬 WhatsApp</span></div>
+                <h4>Sea Trial Invitation (if engaged)</h4>
+                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive sea trial event. If no engagement: send lifestyle content instead. Day 14.</p>
+                <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="ch-badge">💬 WhatsApp</span></div>
+              </div>
+            </div>
+            <div class="seq-step">
+              <div class="seq-num">5</div>
+              <div class="seq-body">
+                <h4>Build Slot Availability Update</h4>
+                <p>Notify about remaining delivery slots for their model of interest. Creates urgency without pressure. Day 21.</p>
+                <div class="seq-channels"><span class="ch-badge">📧 Email</span></div>
+              </div>
+            </div>
+            <div class="seq-step">
+              <div class="seq-num">6</div>
+              <div class="seq-body">
+                <h4>Dealer Handoff or Direct Call</h4>
+                <p>If high engagement: schedule a direct call with commercial team. If moderate: warm handoff to nearest authorized dealer. Day 30.</p>
+                <div class="seq-channels"><span class="ch-badge">💬 WhatsApp</span><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--success);margin-left:8px">28% conversion to meeting</span></div>
               </div>
             </div>
           </div>
@@ -1720,11 +1913,11 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">💬</div>
           <div class="agent-header-text">
             <h2>Smart Nurture™</h2>
-            <p>Reactivates dormant leads with messages based on intent signals and engagement. Autonomously turns "not right now" into future opportunities.</p>
+            <p>Keeps dormant prospects warm by detecting re-engagement signals — a brochure reopened, a boat show approaching, a competitor price change — and triggers the right message at the right moment to bring them back into the pipeline.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Monitoring</div><br>
-            <span class="agent-tag">Autonomous · Intent-triggered</span>
+            <span class="agent-tag">Intent-Triggered</span>
           </div>
         </div>
 
@@ -2204,143 +2397,147 @@ function generateViewHTML(view) {
       </div>
     `,
 
-    'sicit-agri': `
+    // ═══════════════════════════════════════════════════
+    //  COMPETITIVE INTELLIGENCE — 5 AI MARKET AGENTS
+    // ═══════════════════════════════════════════════════
+
+    'price-intelligence': `
       <div class="view-section active">
-        <!-- Header -->
-        <div class="agent-header" style="background: linear-gradient(135deg, #047857 0%, #065F46 100%)">
-          <div class="agent-bigicon">🌱</div>
+        <div class="agent-header" style="background: linear-gradient(135deg, #B45309 0%, #92400E 100%)">
+          <div class="agent-bigicon">💰</div>
           <div class="agent-header-text">
-            <h2>Fertilizers & Biostimulants - Market Intelligence</h2>
-            <p>Analysis of crop trends, biostimulant adoption (amino acids), and global competitive benchmarking.</p>
+            <h2>Price Intelligence Agent</h2>
+            <p>Consolidates competitor pricing across markets, dealer networks, and boat show catalogs — giving you a clear view of where you stand versus Ferretti, Azimut, Sunseeker, and Princess at any given moment.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Agri-Data Engine Active</div><br>
-            <span class="agent-tag">Tracking 150+ Markets</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">6 Competitors · 32 Models</span>
           </div>
         </div>
 
-        <!-- KPIs -->
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:14 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 4 market feeds active</span>
+        </div>
+
         <div class="agent-stats">
           <div class="agent-stat">
-            <div class="agent-stat-val">115K</div>
-            <div class="agent-stat-lbl">Hectares Analyzed (30d)</div>
+            <div class="agent-stat-val">32</div>
+            <div class="agent-stat-lbl">Models Tracked</div>
           </div>
           <div class="agent-stat">
-            <div class="agent-stat-val" style="color:#EF4444">High</div>
-            <div class="agent-stat-lbl">Fastest Growing Constraint: Abiotic Stress</div>
+            <div class="agent-stat-val" style="color:#10B981">-3.2%</div>
+            <div class="agent-stat-lbl">Avg Price Gap vs Market</div>
           </div>
           <div class="agent-stat">
-            <div class="agent-stat-val">12.5%</div>
-            <div class="agent-stat-lbl">Avg Yield Lift (Amino Acids)</div>
+            <div class="agent-stat-val">4</div>
+            <div class="agent-stat-lbl">Price Alerts This Week</div>
           </div>
           <div class="agent-stat">
-            <div class="agent-stat-val">3</div>
-            <div class="agent-stat-lbl">Market Reformulation Opportunities</div>
+            <div class="agent-stat-val">6</div>
+            <div class="agent-stat-lbl">Competitors Monitored</div>
           </div>
         </div>
 
-        <!-- Charts -->
-        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top: 24px;">
-          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Sentiment by Competitor</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitCompetitorChart"></canvas></div>
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Avg Base Price by Brand (50-60 ft segment)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceCompChart"></canvas></div>
           </div>
-          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Biostimulant Modalities</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitModalityChart"></canvas></div>
-          </div>
-          <div class="card" style="height: 300px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Grower Friction Points Heatmap</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0; display:flex; justify-content:center; align-items:center;"><canvas id="sicitFrictionChart"></canvas></div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Price Trend — Flybridge Segment (12 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceTrendChart"></canvas></div>
           </div>
         </div>
 
-        <!-- Live Intelligence Feed -->
-        <div class="card" style="margin-top: 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-            <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Field Intelligence Feed</h3>
-            <div>
-              <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
-                <option>Filter by Competitor...</option>
-                <option>Valagro (Syngenta)</option>
-                <option>Biolchim</option>
-                <option>COMPO EXPERT</option>
-                <option>ICL Group</option>
-              </select>
-            </div>
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Price Intelligence Feed</h3>
+            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              <option>All Competitors</option>
+              <option>Ferretti Group</option>
+              <option>Azimut-Benetti</option>
+              <option>Sunseeker</option>
+              <option>Princess Yachts</option>
+              <option>Prestige</option>
+            </select>
           </div>
-          
           <div style="overflow-x:auto;">
             <table class="lm-table">
               <thead>
-                <tr>
-                  <th>Source</th>
-                  <th>Competitor / Product</th>
-                  <th>Crop Focus</th>
-                  <th>Sentiment</th>
-                  <th>Theme</th>
-                  <th>Impact</th>
-                  <th>Snippet</th>
-                  <th></th>
-                </tr>
+                <tr><th>Date</th><th>Competitor</th><th>Model</th><th>Signal</th><th>Detail</th><th>Impact</th><th></th></tr>
               </thead>
               <tbody>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">AgriForums</span></td>
-                  <td><strong>Valagro</strong><br><span style="font-size:11px;color:#6B7280">Megafol</span></td>
-                  <td>Vineyards<br><span style="font-size:11px;color:#6B7280">Foliar App</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Stress Recovery</span></td>
-                  <td>High Yield</td>
-                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Applied after the late frost. Saved about 40% of the buds that normally would dry out."</td>
-                  <td><button class="lm-btn-outline" style="padding:2px 6px">Deep Dive</button></td>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Apr 2026</span></td>
+                  <td><strong>Ferretti Group</strong></td>
+                  <td>Ferretti 780</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Listed at Cannes 2025 at EUR 2.1M — 8% above previous year pricing</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr class="hidden" style="background:#F8FAFC">
-                  <td colspan="8" style="padding:16px; border-bottom:1px solid var(--border);">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-                      <div style="padding:12px; border-left:3px solid #10B981; background:white; border-radius:4px;">
-                        <strong>Field Report:</strong><br>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">"Applied after the late frost in Northern Italy. Saved about 40% of the buds that normally would dry out. Mixability with standard fungicides was perfect."</p>
+                  <td colspan="7" style="padding:16px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                      <div style="padding:12px; border-left:3px solid #F59E0B; background:white; border-radius:4px;">
+                        <strong>Price Signal:</strong>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">Ferretti 780 listed at EUR 2.1M at Cannes Yachting Festival. This represents an 8% increase over the 2024 list price of EUR 1.94M. The increase is attributed to new interior package and upgraded Volvo IPS 950 engines.</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
-                        <strong>🤖 SICIT Intelligence Engine</strong>
+                        <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Opportunity:</strong> High demand for frost-recovery biostimulants in European vineyards.</li>
-                          <li><strong>Actionable Insight:</strong> Push animal-derived amino acid complexes highlighting superior anti-stress performance compared to plant-based in extreme cold.</li>
+                          <li><strong>Opportunity:</strong> Absolute Flybridge 60 sits 12% below Ferretti 780 in the same segment. Price gap is widening — positioning advantage.</li>
+                          <li><strong>Recommendation:</strong> Arm dealers with updated competitive pricing sheet highlighting value-per-foot advantage.</li>
                         </ul>
                       </div>
                     </div>
                   </td>
                 </tr>
-
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
-                  <td><span class="lm-tag" style="background:#3B82F6;color:white;font-weight:600">Distributor Net</span></td>
-                  <td><strong>Biolchim</strong><br><span style="font-size:11px;color:#6B7280">Fylloton</span></td>
-                  <td>Horticulture<br><span style="font-size:11px;color:#6B7280">Irrigation</span></td>
-                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Mixability</span></td>
-                  <td>Clogging</td>
-                  <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The new batch is precipitating when mixed with high-calcium fertilizers in the tank."</td>
-                  <td><button class="lm-btn-outline" style="padding:2px 6px">Deep Dive</button></td>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
+                  <td><strong>Azimut</strong></td>
+                  <td>Azimut Magellano 66</td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">New Pricing</span></td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Revised upward to EUR 1.85M following strong euro and Volvo engine cost pass-through</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Neutral</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr class="hidden" style="background:#F8FAFC">
-                  <td colspan="8" style="padding:16px; border-bottom:1px solid var(--border);">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                  <td colspan="7" style="padding:16px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                       <div style="padding:12px; border-left:3px solid #EF4444; background:white; border-radius:4px;">
-                        <strong>Field Report:</strong><br>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">"The new batch is precipitating when mixed with high-calcium fertilizers in the tank. Had to clean the filters twice today."</p>
+                        <strong>Price Signal:</strong>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">Azimut Magellano 66 price adjusted to EUR 1.85M from EUR 1.72M. Increase reflects engine cost pass-through (Volvo IPS) and euro appreciation against GBP and USD, impacting export market competitiveness.</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
-                        <strong>🤖 SICIT Intelligence Engine</strong>
+                        <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Friction Point:</strong> Physical incompatibility of vegetal amino acids with Calcium.</li>
-                          <li><strong>Sales Strategy:</strong> Highlight SICIT's superior solubility and tank-mix compatibility profiles to distributors replacing Biolchim stock.</li>
+                          <li><strong>Impact:</strong> Magellano 66 now directly competes with Navetta 68 on price. Historically Azimut was 5-8% cheaper in this segment.</li>
+                          <li><strong>Recommendation:</strong> Highlight Navetta 68 livability advantage and fuel efficiency in dealer talking points for US and UK buyers.</li>
                         </ul>
                       </div>
                     </div>
                   </td>
                 </tr>
-
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
+                  <td><strong>Sunseeker</strong></td>
+                  <td>Manhattan 55</td>
+                  <td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Promo</span></td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">UK dealer offering 5% early-order discount on 2027 build slots — clearing inventory pressure</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Watch</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
+                  <td><strong>Princess</strong></td>
+                  <td>Princess F55</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">GBP 1.2M base — 6% increase YoY. Attributed to carbon fiber hard-top option becoming standard</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -2348,39 +2545,790 @@ function generateViewHTML(view) {
       </div>
     `,
 
-    'sicit-plaster': `
+    'launch-tracker': `
       <div class="view-section active">
         <div class="agent-header" style="background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%)">
-          <div class="agent-bigicon">🏗️</div>
+          <div class="agent-bigicon">🚀</div>
           <div class="agent-header-text">
-            <h2>Plaster Retarders - Industrial Intelligence</h2>
-            <p>Analysis of formulations, setting times, and on-site performance for the construction industry.</p>
+            <h2>Product Launch Tracker</h2>
+            <p>Tracks what your competitors are bringing to market — new models, boat show debuts, design partnerships, and segment expansions — so you always know what you are competing against before it hits the water.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">14 Launches (12m)</span>
           </div>
         </div>
-        <div class="agent-stats" style="margin-top:24px;">
-           <h3 style="color:#64748B;">Module in configuration to analyze gypsum board manufacturers globally...</h3>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 08:45 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 6 industry feeds active</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat">
+            <div class="agent-stat-val">14</div>
+            <div class="agent-stat-lbl">New Launches (12 months)</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">3</div>
+            <div class="agent-stat-lbl">Upcoming Boat Shows</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">7</div>
+            <div class="agent-stat-lbl">Models in Pipeline</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#F59E0B">6</div>
+            <div class="agent-stat-lbl">Launch Alerts This Quarter</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Launches per Brand (Last 24 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciLaunchBarChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Launch by Segment</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciLaunchSegmentChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Upcoming Boat Shows -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="calendar"></i> Upcoming Boat Shows & Expected Debuts</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+            <div style="padding:20px; border:1px solid var(--border); border-radius:10px; background:linear-gradient(135deg, rgba(109,40,217,0.04) 0%, transparent 60%);">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#6D28D9,#A78BFA);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">SEP</div>
+                <div><strong style="font-size:14px;">Cannes Yachting Festival</strong><br><span style="font-size:12px;color:var(--text-muted)">Sep 9-14, 2026</span></div>
+              </div>
+              <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
+              <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti 860</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Azimut S7</span>
+                <span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Absolute Navetta 75</span>
+              </div>
+            </div>
+            <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#0369A1,#38BDF8);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">JAN</div>
+                <div><strong style="font-size:14px;">Boot Düsseldorf</strong><br><span style="font-size:12px;color:var(--text-muted)">Jan 18-26, 2027</span></div>
+              </div>
+              <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
+              <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Sunseeker 65 Sport</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Princess Y72</span>
+              </div>
+            </div>
+            <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                <div style="width:40px;height:40px;background:linear-gradient(135deg,#EA580C,#FB923C);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">FEB</div>
+                <div><strong style="font-size:14px;">Miami Int'l Boat Show</strong><br><span style="font-size:12px;color:var(--text-muted)">Feb 17-21, 2027</span></div>
+              </div>
+              <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
+              <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti Infynito 80</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Prestige M48</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Launches Feed -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="rocket"></i> Recent Launch Intelligence</h3>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Date</th><th>Brand</th><th>Model</th><th>Segment</th><th>Key Specs</th><th>Threat Level</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
+                  <td><strong>Ferretti</strong></td>
+                  <td>INFYNITO 80</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Navetta/Explorer</span></td>
+                  <td style="font-size:12px;">80 ft · Hybrid propulsion · Interior by Ideaworks</td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
+                  <td><strong>Azimut</strong></td>
+                  <td>Grande Trideck</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Superyacht</span></td>
+                  <td style="font-size:12px;">90 ft · Triple-deck · Alberto Mancini design</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Jan 2026</span></td>
+                  <td><strong>Sunseeker</strong></td>
+                  <td>Ocean 182</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
+                  <td style="font-size:12px;">60 ft · New hull platform · Volvo IPS 950</td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Dec 2025</span></td>
+                  <td><strong>Princess</strong></td>
+                  <td>X80 Superfly</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
+                  <td style="font-size:12px;">80 ft · Carbon superstructure · MTU engines</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
+                </tr>
+                <tr>
+                  <td><span style="font-size:12px;color:var(--text-muted)">Nov 2025</span></td>
+                  <td><strong>Prestige</strong></td>
+                  <td>M-Line 48</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Coupe/Sport</span></td>
+                  <td style="font-size:12px;">48 ft · Catamaran hull · Electric option</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     `,
-    
-    'sicit-biofuel': `
+
+    'sentiment-analyzer': `
       <div class="view-section active">
-        <div class="agent-header" style="background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%)">
-          <div class="agent-bigicon">♻️</div>
+        <div class="agent-header" style="background: linear-gradient(135deg, #047857 0%, #065F46 100%)">
+          <div class="agent-bigicon">📡</div>
           <div class="agent-header-text">
-            <h2>Biofuel Fats - Sustainability & Market Indicators</h2>
-            <p>Monitoring emission regulations, biofuel adoption, and circular economy markets.</p>
+            <h2>Sentiment Analyzer</h2>
+            <p>Shows how owners, press, and the market perceive Absolute versus the competition — across forums, editorial coverage, social channels, and dealer networks. Turns fragmented opinions into a clear picture of brand positioning.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">2,840 Mentions (30d)</span>
           </div>
         </div>
-        <div class="agent-stats" style="margin-top:24px;">
-           <h3 style="color:#64748B;">Module in configuration to track European renewable energy directives (RED II/III)...</h3>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 10:02 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 5 channels monitored</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat">
+            <div class="agent-stat-val">2,840</div>
+            <div class="agent-stat-lbl">Total Mentions (30d)</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#10B981">78%</div>
+            <div class="agent-stat-lbl">Absolute Positive Sentiment</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">+42</div>
+            <div class="agent-stat-lbl">Net Promoter Signal</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#F59E0B">3</div>
+            <div class="agent-stat-lbl">Competitor Alerts Active</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Brand Sentiment Comparison</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciSentimentBarChart"></canvas></div>
+          </div>
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Mention Sources</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciSentimentSourceChart"></canvas></div>
+          </div>
+          <div class="card" style="height:300px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Sentiment Trend (6 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciSentimentTrendChart"></canvas></div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3 class="card-title" style="margin:0"><i data-lucide="message-circle"></i> Live Sentiment Feed</h3>
+            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              <option>All Brands</option>
+              <option>Absolute Yachts</option>
+              <option>Ferretti Group</option>
+              <option>Azimut-Benetti</option>
+              <option>Sunseeker</option>
+              <option>Princess Yachts</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Source</th><th>Brand</th><th>Sentiment</th><th>Topic</th><th>Mention</th><th>Reach</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="lm-tag" style="background:#0A66C2;color:white;font-weight:600">LinkedIn</span></td>
+                  <td><strong>Absolute</strong></td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Design</span></td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The Navetta 68 interior is the best livable space I have ever experienced on a yacht this size."</td>
+                  <td>12.4K</td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">YachtForums</span></td>
+                  <td><strong>Ferretti</strong></td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">After-Sales</span></td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Waited 6 months for warranty parts on my 720. Dealer communication was almost nonexistent."</td>
+                  <td>8.2K</td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#E4405F;color:white;font-weight:600">Instagram</span></td>
+                  <td><strong>Sunseeker</strong></td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Lifestyle</span></td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Summer at its finest on the Predator 60. British craftsmanship at its peak."</td>
+                  <td>45.1K</td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#3B82F6;color:white;font-weight:600">Press</span></td>
+                  <td><strong>Absolute</strong></td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Innovation</span></td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Absolute continues to push boundaries with the Navetta 75 — a serious contender in the superyacht entry segment."</td>
+                  <td>28.7K</td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">Dealer Net</span></td>
+                  <td><strong>Azimut</strong></td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Mixed</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Delivery</span></td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Great product but build slot availability remains a challenge. Customers waiting 14+ months."</td>
+                  <td>3.1K</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `,
+
+    'demand-intelligence': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #1D4ED8 0%, #1E3A8A 100%)">
+          <div class="agent-bigicon">📊</div>
+          <div class="agent-header-text">
+            <h2>Demand Intelligence Agent</h2>
+            <p>Identifies where buyer interest is growing — by region, by segment, by season — and highlights which opportunities deserve attention before the competition gets there first.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">847 Signals (30d)</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:38 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 3 demand feeds active</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat">
+            <div class="agent-stat-val">847</div>
+            <div class="agent-stat-lbl">Demand Signals (30d)</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#10B981">+34%</div>
+            <div class="agent-stat-lbl">Top Growth: Middle East</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">23</div>
+            <div class="agent-stat-lbl">High-Intent Inquiries</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#3B82F6">High</div>
+            <div class="agent-stat-lbl">Seasonal Demand Index</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Monthly Inquiry Volume (12 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciDemandTrendChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Demand by Region</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciDemandRegionChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Geographic Demand Cards -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="map-pin"></i> Regional Demand Signals</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;">
+            <div style="padding:16px; border-radius:10px; border:1px solid #BBF7D0; background:#F0FDF4;">
+              <strong style="font-size:14px; color:#166534;">Mediterranean</strong>
+              <p style="font-size:24px; font-weight:700; color:#166534; margin:8px 0 4px 0;">312</p>
+              <span style="font-size:12px; color:#15803D;">+18% YoY · Peak Season</span>
+            </div>
+            <div style="padding:16px; border-radius:10px; border:1px solid #BBF7D0; background:#F0FDF4;">
+              <strong style="font-size:14px; color:#166534;">North America</strong>
+              <p style="font-size:24px; font-weight:700; color:#166534; margin:8px 0 4px 0;">224</p>
+              <span style="font-size:12px; color:#15803D;">+12% YoY · FL/CA focus</span>
+            </div>
+            <div style="padding:16px; border-radius:10px; border:1px solid #FDE68A; background:#FFFBEB;">
+              <strong style="font-size:14px; color:#92400E;">Middle East</strong>
+              <p style="font-size:24px; font-weight:700; color:#92400E; margin:8px 0 4px 0;">178</p>
+              <span style="font-size:12px; color:#B45309;">+34% YoY · Dubai/Qatar surge</span>
+            </div>
+            <div style="padding:16px; border-radius:10px; border:1px solid var(--border); background:white;">
+              <strong style="font-size:14px; color:var(--text-main);">Asia-Pacific</strong>
+              <p style="font-size:24px; font-weight:700; color:var(--text-main); margin:8px 0 4px 0;">133</p>
+              <span style="font-size:12px; color:var(--text-muted);">+8% YoY · Emerging</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Demand Feed -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="signal"></i> High-Intent Demand Signals</h3>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Signal</th><th>Source</th><th>Region</th><th>Segment</th><th>Detail</th><th>Intent</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
+                  <td>Dealer Network</td>
+                  <td>Dubai, UAE</td>
+                  <td>Navetta 68</td>
+                  <td style="font-size:12px;">5 qualified inquiries from HNWI clients in Q1 2026 — all first-time buyers</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Event Signal</span></td>
+                  <td>Boat Show Lead</td>
+                  <td>Fort Lauderdale, US</td>
+                  <td>Flybridge 52</td>
+                  <td style="font-size:12px;">12 sea trial requests post-FLIBS — highest conversion rate in US market</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Market Shift</span></td>
+                  <td>Industry Report</td>
+                  <td>Southern Europe</td>
+                  <td>All Segments</td>
+                  <td style="font-size:12px;">Italian yacht market up 22% in value (2025 vs 2024) — Confindustria Nautica report</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
+                </tr>
+                <tr>
+                  <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
+                  <td>Website / CRM</td>
+                  <td>Hong Kong</td>
+                  <td>Navetta 52</td>
+                  <td style="font-size:12px;">3 qualified leads from HK in 2 weeks — all referencing Cannes 2025 debut</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `,
+
+    'supply-chain-ci': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%)">
+          <div class="agent-bigicon">🔗</div>
+          <div class="agent-header-text">
+            <h2>Supply Chain CI</h2>
+            <p>Tracks your critical suppliers — engines, electronics, composites, interiors — identifying cost shifts, delivery risks, and component bottlenecks before they impact your production schedule.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">34 Suppliers Tracked</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 07:30 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 8 supplier feeds active</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat">
+            <div class="agent-stat-val">34</div>
+            <div class="agent-stat-lbl">Suppliers Monitored</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#EF4444">2</div>
+            <div class="agent-stat-lbl">Critical Alerts</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">+12d</div>
+            <div class="agent-stat-lbl">Avg Lead Time Shift</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#F59E0B">+4.8%</div>
+            <div class="agent-stat-lbl">Material Cost Variance (vs Q4)</div>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Material Cost Index (12 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciSupplyCostChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Lead Time by Component (weeks)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciSupplyLeadChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Supplier Risk Dashboard -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="shield-alert"></i> Supplier Risk Dashboard</h3>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Supplier</th><th>Category</th><th>Risk Level</th><th>Lead Time</th><th>Cost Trend</th><th>Alert</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>Volvo Penta</strong></td>
+                  <td>Engines / IPS</td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
+                  <td>22 weeks <span style="font-size:11px;color:#EF4444">(+4w)</span></td>
+                  <td style="color:#EF4444; font-weight:600;">+6.2%</td>
+                  <td style="font-size:12px;">IPS 950 allocation reduced for Q3. Production backlog in Gothenburg.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Besenzoni</strong></td>
+                  <td>Marine Accessories</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
+                  <td>6 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
+                  <td style="color:#10B981; font-weight:600;">+1.1%</td>
+                  <td style="font-size:12px;">On schedule. New gangway model available for 2027 build slots.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Webasto Marine</strong></td>
+                  <td>AC / Climate</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
+                  <td>14 weeks <span style="font-size:11px;color:#F59E0B">(+2w)</span></td>
+                  <td style="color:#F59E0B; font-weight:600;">+3.4%</td>
+                  <td style="font-size:12px;">Semiconductor constraint affecting control units. Alternative sourcing under review.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Poltrona Frau</strong></td>
+                  <td>Leather / Interior</td>
+                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
+                  <td>8 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
+                  <td style="color:#10B981; font-weight:600;">+0.8%</td>
+                  <td style="font-size:12px;">Full capacity. Premium leather grades available for custom orders.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Garmin Marine</strong></td>
+                  <td>Navigation / Electronics</td>
+                  <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
+                  <td>18 weeks <span style="font-size:11px;color:#EF4444">(+6w)</span></td>
+                  <td style="color:#EF4444; font-weight:600;">+8.1%</td>
+                  <td style="font-size:12px;">GPSMAP 9000 series backordered globally. Recommend securing allocations for H2 builds.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+                <tr>
+                  <td><strong>Fiberglass Italia</strong></td>
+                  <td>Hull / Composite</td>
+                  <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
+                  <td>10 weeks <span style="font-size:11px;color:#F59E0B">(+1w)</span></td>
+                  <td style="color:#F59E0B; font-weight:600;">+5.3%</td>
+                  <td style="font-size:12px;">Resin prices elevated due to EU chemical regulation (REACH). Stable supply volume.</td>
+                  <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `,
+
+    // ═══════════════════════════════════════════════════
+    //  ANALYTICS & METRICS — SOCIAL & BRAND INTELLIGENCE
+    // ═══════════════════════════════════════════════════
+
+    'analytics': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%)">
+          <div class="agent-bigicon">📈</div>
+          <div class="agent-header-text">
+            <h2>Analytics & Metrics</h2>
+            <p>Consolidated view of social media performance, brand reach, audience engagement, and review intelligence across all digital channels.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">4 Platforms Tracked</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 10:30 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: Instagram, LinkedIn, YouTube, Facebook, Reviews</span>
+        </div>
+
+        <!-- KPIs -->
+        <div class="agent-stats">
+          <div class="agent-stat">
+            <div class="agent-stat-val">284K</div>
+            <div class="agent-stat-lbl">Total Social Reach</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#10B981">4.2%</div>
+            <div class="agent-stat-lbl">Avg Engagement Rate</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val">4.7<span style="font-size:14px;color:var(--text-muted)">/5</span></div>
+            <div class="agent-stat-lbl">Review Score (Avg)</div>
+          </div>
+          <div class="agent-stat">
+            <div class="agent-stat-val" style="color:#3B82F6">1,840</div>
+            <div class="agent-stat-lbl">Brand Mentions (30d)</div>
+          </div>
+        </div>
+
+        <!-- Platform Cards -->
+        <div class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr 1fr; margin-top:24px;">
+          <div class="card" style="padding:20px; border-left:4px solid #E4405F;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+              <div style="width:36px;height:36px;background:#E4405F;border-radius:8px;display:flex;align-items:center;justify-content:center;"><i data-lucide="instagram" style="width:18px;color:white"></i></div>
+              <strong style="font-size:14px;">Instagram</strong>
+            </div>
+            <div style="font-size:28px; font-weight:800; color:var(--text-main);">145K</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Followers</div>
+            <div style="display:flex; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+              <div><span style="font-size:16px; font-weight:700; color:#10B981;">5.1%</span><br><span style="font-size:11px;color:var(--text-muted)">Engagement</span></div>
+              <div><span style="font-size:16px; font-weight:700; color:#10B981;">+12%</span><br><span style="font-size:11px;color:var(--text-muted)">Growth (3m)</span></div>
+            </div>
+          </div>
+          <div class="card" style="padding:20px; border-left:4px solid #0A66C2;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+              <div style="width:36px;height:36px;background:#0A66C2;border-radius:8px;display:flex;align-items:center;justify-content:center;"><i data-lucide="linkedin" style="width:18px;color:white"></i></div>
+              <strong style="font-size:14px;">LinkedIn</strong>
+            </div>
+            <div style="font-size:28px; font-weight:800; color:var(--text-main);">48K</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Followers</div>
+            <div style="display:flex; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+              <div><span style="font-size:16px; font-weight:700; color:#10B981;">3.8%</span><br><span style="font-size:11px;color:var(--text-muted)">Engagement</span></div>
+              <div><span style="font-size:16px; font-weight:700; color:#10B981;">+22%</span><br><span style="font-size:11px;color:var(--text-muted)">Growth (3m)</span></div>
+            </div>
+          </div>
+          <div class="card" style="padding:20px; border-left:4px solid #FF0000;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+              <div style="width:36px;height:36px;background:#FF0000;border-radius:8px;display:flex;align-items:center;justify-content:center;"><i data-lucide="youtube" style="width:18px;color:white"></i></div>
+              <strong style="font-size:14px;">YouTube</strong>
+            </div>
+            <div style="font-size:28px; font-weight:800; color:var(--text-main);">67K</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Subscribers</div>
+            <div style="display:flex; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+              <div><span style="font-size:16px; font-weight:700; color:var(--text-main);">2.4M</span><br><span style="font-size:11px;color:var(--text-muted)">Total Views</span></div>
+              <div><span style="font-size:16px; font-weight:700; color:#10B981;">+8%</span><br><span style="font-size:11px;color:var(--text-muted)">Growth (3m)</span></div>
+            </div>
+          </div>
+          <div class="card" style="padding:20px; border-left:4px solid #1877F2;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+              <div style="width:36px;height:36px;background:#1877F2;border-radius:8px;display:flex;align-items:center;justify-content:center;"><i data-lucide="facebook" style="width:18px;color:white"></i></div>
+              <strong style="font-size:14px;">Facebook</strong>
+            </div>
+            <div style="font-size:28px; font-weight:800; color:var(--text-main);">24K</div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;">Followers</div>
+            <div style="display:flex; gap:16px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border);">
+              <div><span style="font-size:16px; font-weight:700; color:var(--text-muted);">1.9%</span><br><span style="font-size:11px;color:var(--text-muted)">Engagement</span></div>
+              <div><span style="font-size:16px; font-weight:700; color:#EF4444;">-3%</span><br><span style="font-size:11px;color:var(--text-muted)">Growth (3m)</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Engagement by Content Type</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="analyticsEngagementChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Follower Growth Trend (6 months)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="analyticsGrowthChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Review Intelligence -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="star"></i> Review Intelligence</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:24px;">
+            <div style="padding:20px; border-radius:10px; background:#FFFBEB; border:1px solid #FDE68A; text-align:center;">
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#92400E; margin-bottom:8px;">Google Reviews</div>
+              <div style="font-size:36px; font-weight:800; color:#B45309;">4.7</div>
+              <div style="color:#F59E0B; font-size:16px; letter-spacing:2px; margin:4px 0;">★★★★★</div>
+              <div style="font-size:12px; color:#92400E;">312 reviews</div>
+            </div>
+            <div style="padding:20px; border-radius:10px; background:#F0FDF4; border:1px solid #BBF7D0; text-align:center;">
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#166534; margin-bottom:8px;">Trustpilot</div>
+              <div style="font-size:36px; font-weight:800; color:#166534;">4.5</div>
+              <div style="color:#10B981; font-size:16px; letter-spacing:2px; margin:4px 0;">★★★★☆</div>
+              <div style="font-size:12px; color:#15803D;">89 reviews</div>
+            </div>
+            <div style="padding:20px; border-radius:10px; background:#EFF6FF; border:1px solid #BFDBFE; text-align:center;">
+              <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#1E40AF; margin-bottom:8px;">Owner Forums</div>
+              <div style="font-size:36px; font-weight:800; color:#1E40AF;">4.8</div>
+              <div style="color:#3B82F6; font-size:16px; letter-spacing:2px; margin:4px 0;">★★★★★</div>
+              <div style="font-size:12px; color:#1D4ED8;">156 mentions analyzed</div>
+            </div>
+          </div>
+
+          <h4 style="font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Recent Reviews</h4>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div><strong>Marco R.</strong> <span style="font-size:12px; color:var(--text-muted);">· Google Reviews</span></div>
+                <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 days ago</span></div>
+              </div>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"The Navetta 68 is simply in another league. The interior space feels like a luxury apartment on water. The Absolute team made the entire buying experience seamless — from the Cannes sea trial to delivery in Sardinia."</p>
+            </div>
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div><strong>James W.</strong> <span style="font-size:12px; color:var(--text-muted);">· Trustpilot</span></div>
+                <div><span style="color:#F59E0B;">★★★★☆</span> <span style="font-size:12px; color:var(--text-muted);">1 week ago</span></div>
+              </div>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Purchased a Flybridge 52 through the Fort Lauderdale dealer. Beautiful boat, great fuel efficiency. Only minor complaint is the wait time for custom interior options — took 3 weeks longer than quoted."</p>
+            </div>
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div><strong>Abdullah K.</strong> <span style="font-size:12px; color:var(--text-muted);">· YachtForums</span></div>
+                <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 weeks ago</span></div>
+              </div>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from a Sunseeker 55, the Absolute Navetta 52 is a completely different experience. Quieter, more livable, better use of space. The Italian design philosophy shows in every detail. Best decision I made."</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Top Performing Content -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="trending-up"></i> Top Performing Content (30d)</h3>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Content</th><th>Platform</th><th>Type</th><th>Reach</th><th>Engagement</th><th>Saves/Shares</th><th>Date</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><strong>Navetta 75 — First Sea Trial</strong></td>
+                  <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Video Reel</span></td>
+                  <td style="font-weight:700;">248K</td>
+                  <td style="font-weight:700; color:#10B981;">8.4%</td>
+                  <td>3,200</td>
+                  <td style="font-size:12px; color:var(--text-muted);">Apr 8</td>
+                </tr>
+                <tr>
+                  <td><strong>Sunset in Portofino — Owner Story</strong></td>
+                  <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Carousel</span></td>
+                  <td style="font-weight:700;">186K</td>
+                  <td style="font-weight:700; color:#10B981;">6.7%</td>
+                  <td>2,840</td>
+                  <td style="font-size:12px; color:var(--text-muted);">Apr 2</td>
+                </tr>
+                <tr>
+                  <td><strong>Full Walkthrough — Flybridge 60</strong></td>
+                  <td><span class="lm-tag" style="background:#FF0000;color:white">YouTube</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Long Video</span></td>
+                  <td style="font-weight:700;">142K</td>
+                  <td style="font-weight:700; color:#10B981;">5.2%</td>
+                  <td>1,450</td>
+                  <td style="font-size:12px; color:var(--text-muted);">Mar 28</td>
+                </tr>
+                <tr>
+                  <td><strong>CEO Interview — Vision for 2026</strong></td>
+                  <td><span class="lm-tag" style="background:#0A66C2;color:white">LinkedIn</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Article</span></td>
+                  <td style="font-weight:700;">89K</td>
+                  <td style="font-weight:700; color:#10B981;">4.1%</td>
+                  <td>720</td>
+                  <td style="font-size:12px; color:var(--text-muted);">Mar 22</td>
+                </tr>
+                <tr>
+                  <td><strong>Cannes 2025 — Behind the Scenes</strong></td>
+                  <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Stories</span></td>
+                  <td style="font-weight:700;">72K</td>
+                  <td style="font-weight:700;">3.8%</td>
+                  <td>580</td>
+                  <td style="font-size:12px; color:var(--text-muted);">Mar 15</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Competitor Social Comparison -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="bar-chart-2"></i> Competitive Social Benchmarking</h3>
+          <div style="overflow-x:auto;">
+            <table class="lm-table">
+              <thead><tr><th>Brand</th><th>Instagram</th><th>LinkedIn</th><th>YouTube</th><th>Avg Engagement</th><th>Review Score</th><th>Trend</th></tr></thead>
+              <tbody>
+                <tr style="background:rgba(124,58,237,0.04);">
+                  <td><strong style="color:#7C3AED;">Absolute Yachts</strong></td>
+                  <td style="font-weight:700;">145K</td>
+                  <td style="font-weight:700;">48K</td>
+                  <td style="font-weight:700;">67K</td>
+                  <td style="font-weight:700; color:#10B981;">4.2%</td>
+                  <td><span style="color:#F59E0B;">★</span> 4.7</td>
+                  <td><span style="color:#10B981; font-weight:600;">↑ Growing</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Ferretti Group</strong></td>
+                  <td>312K</td>
+                  <td>85K</td>
+                  <td>120K</td>
+                  <td>3.1%</td>
+                  <td><span style="color:#F59E0B;">★</span> 4.2</td>
+                  <td><span style="color:var(--text-muted);">→ Stable</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Azimut-Benetti</strong></td>
+                  <td>280K</td>
+                  <td>72K</td>
+                  <td>95K</td>
+                  <td>2.8%</td>
+                  <td><span style="color:#F59E0B;">★</span> 4.3</td>
+                  <td><span style="color:var(--text-muted);">→ Stable</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Sunseeker</strong></td>
+                  <td>420K</td>
+                  <td>38K</td>
+                  <td>52K</td>
+                  <td>3.6%</td>
+                  <td><span style="color:#F59E0B;">★</span> 4.0</td>
+                  <td><span style="color:#EF4444; font-weight:600;">↓ Declining</span></td>
+                </tr>
+                <tr>
+                  <td><strong>Princess Yachts</strong></td>
+                  <td>198K</td>
+                  <td>45K</td>
+                  <td>78K</td>
+                  <td>2.9%</td>
+                  <td><span style="color:#F59E0B;">★</span> 4.1</td>
+                  <td><span style="color:#10B981; font-weight:600;">↑ Growing</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="margin-top:16px; padding:16px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px;">
+            <strong style="color:#166534; font-size:13px;">Key Insight:</strong>
+            <span style="color:#15803D; font-size:13px;"> Absolute has the highest engagement rate (4.2%) and review score (4.7) among all competitors despite having fewer followers. Growth trajectory is positive across all platforms except Facebook. Sunseeker leads in Instagram reach but shows declining engagement — quantity over quality.</span>
+          </div>
         </div>
       </div>
     `
   };
 
   // Default fallback
-  return views[view] || `<div class="view-section active"><h2>${view} - Under Construction 🚀</h2></div>`;
+  return views[view] || `<div class="view-section active"><h2>${view} - Under Construction</h2></div>`;
 }
 
 
@@ -2389,7 +3337,7 @@ function generateViewHTML(view) {
 function renderDashboardCharts() {
   const ctx = document.getElementById('conversionChart');
   if(!ctx) return;
-  new Chart(ctx, {
+  chartInstances['conversionChart'] = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
@@ -2418,55 +3366,203 @@ function renderDashboardCharts() {
   });
 }
 
-function renderSICITCharts(viewId) {
-  if (viewId === 'sicit-agri') {
-    const compCtx = document.getElementById('sicitCompetitorChart');
-    const modCtx = document.getElementById('sicitModalityChart');
-    const fricCtx = document.getElementById('sicitFrictionChart');
-    
-    if (compCtx) {
-      new Chart(compCtx, {
+function renderCICharts(viewId) {
+  const chartOpts = { responsive: true, maintainAspectRatio: false };
+
+  if (viewId === 'price-intelligence') {
+    const comp = document.getElementById('ciPriceCompChart');
+    const trend = document.getElementById('ciPriceTrendChart');
+    if (comp) {
+      chartInstances['ciPriceCompChart'] = new Chart(comp, {
         type: 'bar',
         data: {
-          labels: ['Valagro', 'Biolchim', 'ICL', 'COMPO'],
+          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige'],
           datasets: [
-            { label: 'Positive', data: [80, 50, 70, 60], backgroundColor: '#10B981', borderRadius: 4 },
-            { label: 'Neutral',  data: [15, 25, 20, 25], backgroundColor: '#F59E0B', borderRadius: 4 },
-            { label: 'Negative', data: [5, 25, 10, 15], backgroundColor: '#EF4444', borderRadius: 4 }
+            { label: 'Base Price (EUR K)', data: [1420, 1680, 1580, 1520, 1610, 1180], backgroundColor: ['#7C3AED','#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981'], borderRadius: 4 }
           ]
         },
-        options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true } } }
+        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => 'EUR ' + v + 'K' } } } }
       });
     }
-
-    if (modCtx) {
-      new Chart(modCtx, {
-        type: 'doughnut',
+    if (trend) {
+      chartInstances['ciPriceTrendChart'] = new Chart(trend, {
+        type: 'line',
         data: {
-          labels: ['Animal Amino Acids', 'Plant Amino Acids', 'Seaweed', 'Humic/Fulvic'],
-          datasets: [{ data: [40, 25, 20, 15], backgroundColor: ['#059669', '#3B82F6', '#8B5CF6', '#EC4899'] }]
+          labels: ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
+          datasets: [
+            { label: 'Absolute', data: [1380,1380,1390,1400,1400,1410,1410,1420,1420,1420,1420,1420], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Ferretti', data: [1550,1560,1580,1590,1600,1620,1640,1650,1660,1670,1680,1680], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Azimut',   data: [1480,1490,1500,1510,1520,1530,1540,1550,1560,1570,1580,1580], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Sunseeker',data: [1460,1470,1470,1480,1490,1490,1500,1500,1510,1510,1520,1520], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+          ]
         },
-        options: { 
-          responsive: true, 
-          maintainAspectRatio: false, 
-          cutout: '65%',
-          plugins: {
-            legend: { position: 'bottom' }
-          }
-        }
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => v + 'K' } } } }
       });
     }
+  }
 
-    if (fricCtx) {
-      new Chart(fricCtx, {
+  if (viewId === 'launch-tracker') {
+    const bar = document.getElementById('ciLaunchBarChart');
+    const seg = document.getElementById('ciLaunchSegmentChart');
+    if (bar) {
+      chartInstances['ciLaunchBarChart'] = new Chart(bar, {
         type: 'bar',
         data: {
-          labels: ['Price/ROI', 'Mixability', 'Odor', 'Residues'],
-          datasets: [{ label: 'Complaint Volume', data: [310, 250, 180, 90], backgroundColor: '#EF4444', borderRadius: 4 }]
+          labels: ['Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige', 'Absolute'],
+          datasets: [{ label: 'Launches (24m)', data: [4, 3, 3, 2, 1, 1], backgroundColor: ['#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981','#7C3AED'], borderRadius: 4 }]
         },
-        options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+        options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
       });
     }
+    if (seg) {
+      chartInstances['ciLaunchSegmentChart'] = new Chart(seg, {
+        type: 'doughnut',
+        data: {
+          labels: ['Flybridge', 'Navetta/Explorer', 'Coupe/Sport', 'Superyacht'],
+          datasets: [{ data: [5, 4, 3, 2], backgroundColor: ['#3B82F6','#7C3AED','#F59E0B','#EF4444'] }]
+        },
+        options: { ...chartOpts, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+  }
+
+  if (viewId === 'sentiment-analyzer') {
+    const bar = document.getElementById('ciSentimentBarChart');
+    const src = document.getElementById('ciSentimentSourceChart');
+    const trend = document.getElementById('ciSentimentTrendChart');
+    if (bar) {
+      chartInstances['ciSentimentBarChart'] = new Chart(bar, {
+        type: 'bar',
+        data: {
+          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess'],
+          datasets: [
+            { label: 'Positive', data: [78, 65, 70, 72, 68], backgroundColor: '#10B981', borderRadius: 4 },
+            { label: 'Neutral',  data: [16, 20, 18, 17, 22], backgroundColor: '#F59E0B', borderRadius: 4 },
+            { label: 'Negative', data: [6, 15, 12, 11, 10],  backgroundColor: '#EF4444', borderRadius: 4 }
+          ]
+        },
+        options: { ...chartOpts, scales: { x: { stacked: true }, y: { stacked: true } } }
+      });
+    }
+    if (src) {
+      chartInstances['ciSentimentSourceChart'] = new Chart(src, {
+        type: 'doughnut',
+        data: {
+          labels: ['Social Media', 'Press/Editorial', 'Owner Forums', 'Dealer Feedback'],
+          datasets: [{ data: [42, 28, 18, 12], backgroundColor: ['#3B82F6','#7C3AED','#F59E0B','#10B981'] }]
+        },
+        options: { ...chartOpts, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+    if (trend) {
+      chartInstances['ciSentimentTrendChart'] = new Chart(trend, {
+        type: 'line',
+        data: {
+          labels: ['Nov','Dec','Jan','Feb','Mar','Apr'],
+          datasets: [
+            { label: 'Absolute',  data: [74,75,76,77,77,78], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Ferretti',  data: [68,67,66,65,65,65], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Azimut',    data: [71,70,71,70,70,70], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+          ]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 50, max: 100, ticks: { callback: v => v + '%' } } } }
+      });
+    }
+  }
+
+  if (viewId === 'demand-intelligence') {
+    const trend = document.getElementById('ciDemandTrendChart');
+    const region = document.getElementById('ciDemandRegionChart');
+    if (trend) {
+      chartInstances['ciDemandTrendChart'] = new Chart(trend, {
+        type: 'line',
+        data: {
+          labels: ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
+          datasets: [
+            { label: 'Total Inquiries', data: [52,61,78,92,85,64,48,42,55,68,74,82], borderColor: '#3B82F6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.3, borderWidth: 2 },
+            { label: 'High-Intent', data: [8,12,18,24,20,14,10,8,11,16,19,23], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+          ]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+    if (region) {
+      chartInstances['ciDemandRegionChart'] = new Chart(region, {
+        type: 'bar',
+        data: {
+          labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+          datasets: [{ label: 'Demand Signals', data: [312, 224, 178, 133, 67], backgroundColor: ['#059669','#3B82F6','#F59E0B','#8B5CF6','#94A3B8'], borderRadius: 4 }]
+        },
+        options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { display: false } } }
+      });
+    }
+  }
+
+  if (viewId === 'supply-chain-ci') {
+    const cost = document.getElementById('ciSupplyCostChart');
+    const lead = document.getElementById('ciSupplyLeadChart');
+    if (cost) {
+      chartInstances['ciSupplyCostChart'] = new Chart(cost, {
+        type: 'line',
+        data: {
+          labels: ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
+          datasets: [
+            { label: 'Engines',      data: [100,101,102,103,104,104,105,105,106,106,107,106], borderColor: '#EF4444', tension: 0.3, borderWidth: 2 },
+            { label: 'Composites',   data: [100,100,101,102,103,103,104,104,105,105,106,105], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2 },
+            { label: 'Electronics',  data: [100,102,103,105,106,107,108,108,109,110,110,108], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2 },
+            { label: 'Interior/Leather', data: [100,100,100,101,101,101,101,101,101,101,101,101], borderColor: '#10B981', tension: 0.3, borderWidth: 2 },
+          ]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => v } } } }
+      });
+    }
+    if (lead) {
+      chartInstances['ciSupplyLeadChart'] = new Chart(lead, {
+        type: 'bar',
+        data: {
+          labels: ['Engines (Volvo)', 'Electronics (Garmin)', 'AC (Webasto)', 'Composites', 'Interior (Poltrona Frau)', 'Accessories (Besenzoni)'],
+          datasets: [
+            { label: 'Current (wks)', data: [22, 18, 14, 10, 8, 6], backgroundColor: '#3B82F6', borderRadius: 4 },
+            { label: 'Normal (wks)',   data: [18, 12, 12, 9, 8, 6],  backgroundColor: '#E2E8F0', borderRadius: 4 },
+          ]
+        },
+        options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+  }
+}
+
+function renderAnalyticsCharts() {
+  const chartOpts = { responsive: true, maintainAspectRatio: false };
+
+  const engCtx = document.getElementById('analyticsEngagementChart');
+  const growCtx = document.getElementById('analyticsGrowthChart');
+
+  if (engCtx) {
+    chartInstances['analyticsEngagementChart'] = new Chart(engCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Yacht Tours', 'Lifestyle / Sunset', 'Boat Show', 'Design Detail', 'Owner Stories', 'Behind the Scenes'],
+        datasets: [{ label: 'Avg Engagement %', data: [7.8, 6.2, 5.1, 4.4, 3.9, 3.2], backgroundColor: ['#7C3AED','#3B82F6','#F59E0B','#EC4899','#10B981','#94A3B8'], borderRadius: 4 }]
+      },
+      options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => v + '%' } } } }
+    });
+  }
+
+  if (growCtx) {
+    chartInstances['analyticsGrowthChart'] = new Chart(growCtx, {
+      type: 'line',
+      data: {
+        labels: ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
+        datasets: [
+          { label: 'Instagram', data: [128000,131000,134000,138000,142000,145000], borderColor: '#E4405F', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+          { label: 'YouTube',   data: [58000,60000,62000,63000,65000,67000], borderColor: '#FF0000', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+          { label: 'LinkedIn',  data: [35000,38000,40000,43000,46000,48000], borderColor: '#0A66C2', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+          { label: 'Facebook',  data: [25000,25200,25100,24800,24500,24000], borderColor: '#1877F2', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+        ]
+      },
+      options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => (v/1000) + 'K' } } } }
+    });
   }
 }
 
