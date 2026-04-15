@@ -1,0 +1,12 @@
+# Seguridad — nunca subir
+_project/
+.env
+*.env
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Skills (repos externos — demasiado pesados para subir)
+skills/
