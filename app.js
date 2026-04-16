@@ -17,7 +17,120 @@ let _originalLeadsData = null; // backup of the original leads
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
 // ══════════════════════════════════════════════════
-const leadsData = [];
+const leadsData = [
+  {
+    name: 'Giulia Moretti',      org: 'Brembo S.p.A.',          title: 'Head of CNC Manufacturing · Automotive',  dur: 'Since EMO 2025',
+    email: 'g.moretti@brembo.com',               city: 'Bergamo, IT',
+    mailSent: true,  liSent: true,
+    icpScore: 96, closingProb: 89, channel: 'Email',
+    signal: 'Expanding Stezzano plant — RFQ sent for 200 Weldon holders, reply expected this week',
+    status: 'hot'
+  },
+  {
+    name: 'Francesco Conti',     org: 'Leonardo S.p.A.',        title: 'Procurement Director · Tooling',          dur: 'Since BI-MU 2025',
+    email: 'f.conti@leonardo.com',               city: 'Rome, IT',
+    mailSent: true,  liSent: true,
+    icpScore: 94, closingProb: 82, channel: 'Email',
+    signal: 'Open tender for aerospace milling tooling — Kintek shortlisted, decision by May 15',
+    status: 'hot'
+  },
+  {
+    name: 'Matteo Bianchi',      org: 'Ferrari S.p.A.',         title: 'Production Engineering Lead',             dur: 'Since MECSPE 2026',
+    email: 'm.bianchi@ferrari.com',              city: 'Maranello, IT',
+    mailSent: true,  liSent: true,
+    icpScore: 92, closingProb: 76, channel: 'LinkedIn',
+    signal: 'New V6 hybrid line launching Q3 — requires custom high-precision tooling solutions',
+    status: 'hot'
+  },
+  {
+    name: 'Andrea Ricci',        org: 'Iveco Group',            title: 'CNC Operations Manager',                  dur: 'Since Mar 2026',
+    email: 'a.ricci@iveco.com',                  city: 'Turin, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 90, closingProb: 71, channel: 'Email',
+    signal: 'Post-CNH spinoff — rebuilding tooling supplier stack, geographic proximity advantage',
+    status: 'hot'
+  },
+  {
+    name: 'Alessandro Bruno',    org: 'Comau S.p.A.',           title: 'Plant Manager',                           dur: 'Since Feb 2026',
+    email: 'a.bruno@comau.com',                  city: 'Turin, IT',
+    mailSent: true,  liSent: true,
+    icpScore: 87, closingProb: 65, channel: 'Email',
+    signal: 'Geographic neighbor — onsite facility visit scheduled for June 10',
+    status: 'active'
+  },
+  {
+    name: 'David Stewart',       org: 'CNH Industrial',         title: 'Global Sourcing Manager — Tooling',       dur: 'Since Jan 2026',
+    email: 'd.stewart@cnhind.com',               city: 'Turin, IT / London, UK',
+    mailSent: true,  liSent: true,
+    icpScore: 85, closingProb: 58, channel: 'LinkedIn',
+    signal: 'Consolidating EU tooling vendors — requested pricing breakdown by region',
+    status: 'active'
+  },
+  {
+    name: 'Laura Conti',         org: 'Ducati Motor Holding',   title: 'Manufacturing Engineer — Machining',      dur: 'Since Feb 2026',
+    email: 'l.conti@ducati.com',                 city: 'Bologna, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 82, closingProb: 54, channel: 'Email',
+    signal: 'Gait plant (Kintek Bologna) is 12km away — onsite demo requested for April 24',
+    status: 'active'
+  },
+  {
+    name: 'Sophie Müller',       org: 'Airbus Italia',          title: 'Head of Tier Supplier Development',       dur: 'Since Mar 2026',
+    email: 's.muller@airbus.it',                 city: 'Naples, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 80, closingProb: 48, channel: 'Email',
+    signal: 'EU supplier localization program — tier 2 onboarding for precision tooling',
+    status: 'active'
+  },
+  {
+    name: 'Paolo Ferrari',       org: 'Medtronic Italia',       title: 'Procurement Manager — Precision Tooling', dur: 'Since Mar 2026',
+    email: 'p.ferrari@medtronic.it',             city: 'Milan, IT',
+    mailSent: false, liSent: true,
+    icpScore: 77, closingProb: 42, channel: 'LinkedIn',
+    signal: 'Post-COVID reshoring initiative — EU supplier strongly preferred for medical devices',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Marco Rossi',         org: 'Prima Industrie',        title: 'Head of Operations',                      dur: 'Since Jan 2026',
+    email: 'm.rossi@primaindustrie.com',         city: 'Turin, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 74, closingProb: 38, channel: 'Email',
+    signal: 'Laser-cutting OEM — potential partnership for integrated tool holder bundles',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Daniele Greco',       org: 'MCM S.p.A.',             title: 'CNC Integration Manager',                 dur: 'Since MECSPE 2026',
+    email: 'd.greco@mcmspa.com',                 city: 'Vigolzone (PC), IT',
+    mailSent: true,  liSent: false,
+    icpScore: 71, closingProb: 33, channel: 'Email',
+    signal: 'Evaluating shrink-fit chucks for installed base upgrade program',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Zoltán Kovács',       org: 'Rába Automotive Group',  title: 'Head of Manufacturing',                   dur: 'Since Feb 2026',
+    email: 'z.kovacs@raba.hu',                   city: 'Győr, HU',
+    mailSent: true,  liSent: true,
+    icpScore: 68, closingProb: 28, channel: 'WhatsApp',
+    signal: 'Local Hungary market — Kintek Békéscsaba plant proximity advantage',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Chiara De Luca',      org: 'Avio Aero (GE Aerospace)', title: 'Head of Supplier Development',          dur: 'Since Oct 2025',
+    email: 'c.deluca@avioaero.com',              city: 'Turin, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 64, closingProb: 22, channel: 'Email',
+    signal: 'No activity for 42 days — stalled after Q4 budget freeze',
+    status: 'dormant'
+  },
+  {
+    name: 'Mehmet Yılmaz',       org: 'TEI (Turkish Engine Industries)', title: 'Tooling Procurement Specialist', dur: 'Since Jul 2025',
+    email: 'm.yilmaz@tei.com.tr',                city: 'Eskişehir, TR',
+    mailSent: false, liSent: true,
+    icpScore: 60, closingProb: 16, channel: 'LinkedIn',
+    signal: 'No activity for 58 days — lost to local supplier, re-engage at EMO 2026',
+    status: 'dormant'
+  },
+];
 
 // Save original leads so they can be restored after cache contamination
 _originalLeadsData = leadsData.map(l => ({ ...l }));
@@ -376,7 +489,215 @@ function switchView(viewId) {
 //  COMPANY BIO SCANNER — CACHED DB + LIVE SCRAPING FALLBACK
 // ═══════════════════════════════════════════════════════════
 
-const companyCacheDB = {};
+const companyCacheDB = {
+  'brembo.com': {
+    name: 'Brembo S.p.A.',
+    tagline: 'High-performance braking systems for automotive',
+    description: 'Brembo S.p.A. is the global leader in design and production of high-performance disc brake systems. Founded in 1961 and headquartered in Bergamo, Italy, Brembo serves the worlds premier automotive, motorcycle, and commercial vehicle manufacturers with a strong focus on CNC-machined precision components and cast iron/aluminum brake calipers.',
+    industry: 'Automotive / Braking Systems',
+    headcount: '12,000+ employees',
+    location: 'Stezzano (Bergamo), Italy',
+    founded: 1961,
+    services: [
+      'Disc Brake Systems',
+      'Brake Calipers (CNC-Machined)',
+      'Brake Discs',
+      'High-Performance Racing Systems',
+      'OEM Partnerships',
+      'Aftermarket Distribution',
+    ],
+    techStack: ['SAP', 'Siemens PLM', 'DMG MORI CNC', 'Custom MES'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/brembo/',
+      twitter: 'https://twitter.com/officialbrembo',
+      instagram: 'https://www.instagram.com/brembobrakes/',
+      facebook: 'https://www.facebook.com/Brembo/',
+      youtube: 'https://www.youtube.com/@brembo',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'disc', title: 'Brake Disc Manufacturing', desc: 'CNC-machined high-performance brake discs for premium automotive and motorsport.' },
+      { icon: 'cog', title: 'Caliper Machining', desc: 'Aluminum and cast iron brake calipers produced on high-precision CNC centers.' },
+      { icon: 'trophy', title: 'Motorsport Tech', desc: 'Supplies F1, MotoGP, WEC teams with track-proven braking systems.' },
+      { icon: 'factory', title: 'Global Manufacturing', desc: '29 production plants across 15 countries with integrated supply chain.' },
+    ],
+    differentiators: [
+      '60+ years as global leader in disc brake systems',
+      'F1 supplier since 1975 — 48 constructors championships',
+      'Vertically integrated from casting to final machining',
+      'Public company on Milan Stock Exchange (Euronext)',
+      'R&D investment ~5% of revenue (€250M+ annually)',
+    ],
+    recentMoves: [
+      { date: '2026', event: 'Announced €300M expansion of Stezzano plant for EV brake systems' },
+      { date: '2025', event: 'Acquired Öhlins Racing — advanced suspension technology' },
+      { date: '2024', event: 'Launched new hybrid caliper line — 30% weight reduction' },
+    ],
+    icpMatch: { score: 96, label: 'Perfect ICP Match', text: 'Brembo fits Kintek\'s Tier 1 ICP perfectly: high-volume precision CNC manufacturer with strong vertical integration, ongoing plant expansion requiring tooling upgrades, and geographic proximity (Bergamo ⟷ Mappano Turin <200km). Highest priority prospect.' },
+    leads: [
+      { name: 'Giulia Moretti', title: 'Head of CNC Manufacturing', score: 96, action: 'Close RFQ for 200 Weldon holders — meeting Apr 22', actionType: 'hot' },
+      { name: 'Roberto Maffi', title: 'VP Operations', score: 88, action: 'Executive briefing on Kintek capacity & lead times', actionType: 'hot' },
+      { name: 'Paolo Venturini', title: 'Director of Procurement', score: 82, action: 'Send annual volume pricing proposal', actionType: 'warm' },
+      { name: 'Elena Ricci', title: 'Head of R&D — Braking Systems', score: 75, action: 'Invite to EMO 2026 customization workshop', actionType: 'warm' },
+    ],
+  },
+
+  'leonardo.com': {
+    name: 'Leonardo S.p.A.',
+    tagline: 'Global aerospace, defense and security leader',
+    description: 'Leonardo S.p.A. is a global leader in aerospace, defense and security systems, founded in 1948 and headquartered in Rome, Italy. The company operates across helicopters, aircraft, electronics, cybersecurity, and space, serving governments and defense ministries across 150+ countries. Leonardo has major CNC machining operations for precision aerospace components.',
+    industry: 'Aerospace & Defense',
+    headcount: '50,000+ employees',
+    location: 'Rome, Italy',
+    founded: 1948,
+    services: [
+      'Military & Civil Helicopters',
+      'Aircraft & Trainers',
+      'Defense Electronics',
+      'Cybersecurity Systems',
+      'Space & Satellites',
+      'Precision Machining (Aerospace)',
+    ],
+    techStack: ['SAP', 'CATIA (Dassault)', 'Siemens NX', 'DMG MORI / Mazak CNC'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/leonardo-company/',
+      twitter: 'https://twitter.com/leonardo_live',
+      instagram: '',
+      facebook: 'https://www.facebook.com/LeonardoCompany/',
+      youtube: 'https://www.youtube.com/@leonardocompany',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'plane', title: 'Helicopters & Aircraft', desc: 'AW139, AW169, M-346 trainers — manufactured with in-house CNC machining.' },
+      { icon: 'shield', title: 'Defense Electronics', desc: 'Radar, avionics, electronic warfare systems for NATO and allied forces.' },
+      { icon: 'satellite', title: 'Space Systems', desc: 'Satellites, launchers (via Thales Alenia Space JV), space exploration.' },
+      { icon: 'lock', title: 'Cybersecurity', desc: 'Mission-critical cybersecurity solutions for governments and critical infrastructure.' },
+    ],
+    differentiators: [
+      'Top-10 global defense contractor by revenue',
+      'Italian state-owned (30.2% stake — Ministry of Economy)',
+      'Strategic partner to NATO, EU, and 150+ nations',
+      'Integrated OEM — designs and machines aerospace components in-house',
+      'Recent €8B Eurofighter Typhoon contract — drives tooling demand',
+    ],
+    recentMoves: [
+      { date: '2026', event: 'Open tender for aerospace milling tooling — Kintek shortlisted' },
+      { date: '2025', event: 'Launched €1.5B investment plan for Italian manufacturing modernization' },
+      { date: '2024', event: 'Acquired cybersecurity firm Rheinmetall Group' },
+    ],
+    icpMatch: { score: 94, label: 'Tier 1 Strategic Match', text: 'Leonardo is a top-priority ICP: strategic aerospace manufacturer with active tooling tender, Italian government backing, and €1.5B modernization plan creating multiple entry points. Shortlisted position means Kintek is competitive — close aggressively.' },
+    leads: [
+      { name: 'Francesco Conti', title: 'Procurement Director — Tooling', score: 94, action: 'Close the tender — decision by May 15', actionType: 'hot' },
+      { name: 'Alberto Moretti', title: 'Head of Manufacturing Engineering', score: 86, action: 'Send aerospace-specific technical brief', actionType: 'hot' },
+      { name: 'Silvia Marchetti', title: 'Supplier Quality Lead', score: 80, action: 'Share ISO 9100 certification documents', actionType: 'warm' },
+      { name: 'Giovanni Esposito', title: 'Category Manager — Precision Tooling', score: 74, action: 'Quarterly business review invitation', actionType: 'warm' },
+    ],
+  },
+
+  'ferrari.com': {
+    name: 'Ferrari S.p.A.',
+    tagline: 'Luxury sports car manufacturer — "Il Cavallino Rampante"',
+    description: 'Ferrari S.p.A. is the iconic Italian luxury sports car manufacturer, founded in 1947 by Enzo Ferrari and headquartered in Maranello, Italy. Ferrari produces approximately 13,000 vehicles per year with some of the highest precision CNC machining standards in the automotive industry. Listed on NYSE and Milan Stock Exchange.',
+    industry: 'Automotive / Luxury',
+    headcount: '5,000+ employees',
+    location: 'Maranello (Modena), Italy',
+    founded: 1947,
+    services: [
+      'Luxury Sports Cars (GT, Hypercar)',
+      'Formula 1 Racing Engineering',
+      'Engine Manufacturing (V6, V8, V12)',
+      'Precision Machined Components',
+      'Exclusive Customization (Tailor Made)',
+      'Brand Licensing & Experiences',
+    ],
+    techStack: ['Dassault CATIA', 'PTC Windchill', 'DMG MORI CNC', 'Siemens MES'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/ferrari/',
+      twitter: 'https://twitter.com/Ferrari',
+      instagram: 'https://www.instagram.com/ferrari/',
+      facebook: 'https://www.facebook.com/Ferrari/',
+      youtube: 'https://www.youtube.com/@Ferrari',
+      tiktok: 'https://www.tiktok.com/@ferrari',
+    },
+    whatTheyDo: [
+      { icon: 'car', title: 'Luxury Sports Cars', desc: 'Roma, 296 GTB, SF90, 812, Purosangue — CNC-machined precision engines and chassis.' },
+      { icon: 'flag', title: 'Formula 1', desc: 'Scuderia Ferrari — most successful F1 team with 16 constructors titles.' },
+      { icon: 'wrench', title: 'Engine Machining', desc: 'In-house V6 hybrid, V8 turbo, V12 NA engines produced to sub-micron tolerances.' },
+      { icon: 'sparkles', title: 'Tailor Made', desc: 'Bespoke customization with luxury materials, individualized interiors.' },
+    ],
+    differentiators: [
+      'World\'s most recognized luxury automotive brand',
+      '77 years of heritage with unbroken F1 presence since 1950',
+      '€5.9B revenue (2024) with ~27% operating margin',
+      'Highest automotive quality standards in the industry',
+      'Deep in-house machining — 80%+ engine components made in Maranello',
+    ],
+    recentMoves: [
+      { date: '2026', event: 'New V6 hybrid line launching Q3 — requires custom high-precision tooling' },
+      { date: '2025', event: 'Opened new E-building factory for electric vehicles (EV launch 2026)' },
+      { date: '2024', event: 'Record €1.5B operating profit — raised long-term targets' },
+    ],
+    icpMatch: { score: 92, label: 'Tier 1 Strategic Match', text: 'Ferrari is a marquee ICP: ultra-high precision requirements, active new-line investment (V6 hybrid + EV), brand prestige that elevates Kintek\'s positioning with other automotive Tier 1s. Close this and Kintek can reference it across all automotive prospects.' },
+    leads: [
+      { name: 'Matteo Bianchi', title: 'Production Engineering Lead', score: 92, action: 'LinkedIn InMail + technical proposal for V6 line', actionType: 'hot' },
+      { name: 'Benedetta Capello', title: 'Head of Engine Manufacturing', score: 85, action: 'Onsite demo at Maranello requested', actionType: 'hot' },
+      { name: 'Claudio Rizzi', title: 'Director of Supplier Quality', score: 78, action: 'Share aerospace-grade quality certifications', actionType: 'warm' },
+      { name: 'Veronica Amato', title: 'Category Manager — Tooling', score: 72, action: 'Pricing benchmark for 2026 contracts', actionType: 'warm' },
+    ],
+  },
+
+  'comau.com': {
+    name: 'Comau S.p.A.',
+    tagline: 'Industrial automation — part of Stellantis',
+    description: 'Comau S.p.A. is a leading global supplier of industrial automation products, services and systems, headquartered in Turin, Italy. Founded in 1973, Comau specializes in robotics, electrification, and connected automated systems for industries including automotive, aerospace, and consumer goods. Part of Stellantis Group.',
+    industry: 'Industrial Automation / Robotics',
+    headcount: '3,500+ employees',
+    location: 'Turin, Italy',
+    founded: 1973,
+    services: [
+      'Industrial Robotics',
+      'Body Assembly Systems',
+      'Powertrain Automation',
+      'Battery Assembly (EV)',
+      'Service & MRO',
+      'Automation Consulting',
+    ],
+    techStack: ['Siemens PLM', 'ABB Robotics', 'Custom MES', 'AutomationML'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/comau/',
+      twitter: 'https://twitter.com/comau_official',
+      instagram: 'https://www.instagram.com/comau_official/',
+      facebook: 'https://www.facebook.com/Comau.Official/',
+      youtube: 'https://www.youtube.com/@comau',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'cpu', title: 'Robotics', desc: 'Industrial robots for welding, handling, and precision assembly.' },
+      { icon: 'factory', title: 'Body-in-White', desc: 'Complete automotive body assembly lines for global OEMs.' },
+      { icon: 'battery', title: 'EV Battery Systems', desc: 'Turnkey battery pack assembly lines — surging demand from EV transition.' },
+      { icon: 'wrench', title: 'Service & MRO', desc: 'Lifecycle service, upgrades and retrofits for installed base.' },
+    ],
+    differentiators: [
+      'Part of Stellantis Group (14 brands, 300+ plants)',
+      '70+ years of automation and industrial engineering',
+      'Strong EV transition play — battery assembly systems',
+      'Turin HQ 8km from Kintek Mappano — ideal for onsite collaboration',
+      'Global footprint: 14 countries, 20,000+ robots installed',
+    ],
+    recentMoves: [
+      { date: '2026', event: 'Announced new EV battery plant automation for Stellantis North America' },
+      { date: '2025', event: 'Acquired advanced vision systems startup for Industry 4.0 stack' },
+      { date: '2024', event: 'Launched next-gen NJ-4 six-axis robot series' },
+    ],
+    icpMatch: { score: 87, label: 'Strong ICP Match', text: 'Comau is a strategic ICP: geographic proximity (8km from Kintek HQ), active EV expansion requiring new tooling, and part of Stellantis opening doors to 14 automotive brands. Leverage proximity for high-touch relationship building.' },
+    leads: [
+      { name: 'Alessandro Bruno', title: 'Plant Manager', score: 87, action: 'Onsite facility visit scheduled June 10', actionType: 'hot' },
+      { name: 'Laura Ferri', title: 'Director of Procurement — Tooling', score: 80, action: 'Share EV-line specific tooling portfolio', actionType: 'warm' },
+      { name: 'Massimo Galli', title: 'Head of Manufacturing Engineering', score: 74, action: 'Joint whitepaper on Industry 4.0 tool integration', actionType: 'warm' },
+      { name: 'Federica Santoro', title: 'Global Category Manager', score: 68, action: 'Annual framework agreement proposal', actionType: 'sequence' },
+    ],
+  },
+};
 
 function getCompanyCache(domain, lang = 'en') {
   let cleanDomain = domain.replace(/^www\./, '').split('/')[0];
@@ -767,7 +1088,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">🔥</span>
               <strong style="font-size:13px; color:var(--text-main);">Priority Prospect</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Alessandro Ferrara — Score 97. Sea trial for Navetta 75 confirmed May 3.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Giulia Moretti (Brembo) — Score 96. RFQ for 200 Weldon holders — reply due this week.</p>
             <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
@@ -775,15 +1096,15 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">⚠️</span>
               <strong style="font-size:13px; color:var(--text-main);">Reactivation Alert</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Catherine Beaumont dormant 35 days. Cannes 2026 approaching — ideal trigger.</p>
-            <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send VIP invitation</button>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Avio Aero dormant 42 days. Q1 budget thaw announced — ideal moment to re-engage.</p>
+            <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send reactivation</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
               <span style="font-size:18px;">💡</span>
               <strong style="font-size:13px; color:var(--text-main);">Market Signal</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Ferretti 780 at +8% vs 2024. Value advantage for Flybridge 60 — brief dealers.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Sandvik Coromant raised prices +7% in Q1. Kintek 24h shipping = strong value wedge.</p>
             <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #7C3AED;">
@@ -791,7 +1112,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">📅</span>
               <strong style="font-size:13px; color:var(--text-main);">Upcoming Event</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Cannes Yachting Festival in 147 days. 4 prospects flagged for VIP. Navetta 75 debut.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">EMO Hannover in 178 days. 6 prospects flagged for stand visit — prep VIP schedule.</p>
             <button class="insight-action"><i data-lucide="users" style="width:12px"></i> View prospect list</button>
           </div>
         </div>
