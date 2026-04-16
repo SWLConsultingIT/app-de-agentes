@@ -135,6 +135,121 @@ const leadsData = [
 // Save original leads so they can be restored after cache contamination
 _originalLeadsData = leadsData.map(l => ({ ...l }));
 
+// ══════════════════════════════════════════════════
+//  MARKETING PILOT — Company Branding Kit state
+//  Editable at runtime; every Marketing Pilot agent reads from here
+// ══════════════════════════════════════════════════
+const brandKitData = {
+  name: 'Acme Corp',
+  industry: 'Enterprise SaaS · B2B',
+  tagline: 'Ship faster. Debug less.',
+  mission: 'We help engineering teams ship reliable software faster by replacing fragile in-house tooling with a single observability + incident platform — opinionated defaults, zero config, 5-minute setup.',
+  palette: [
+    { hex: '#6366F1', name: 'Indigo 500',  role: 'Primary' },
+    { hex: '#0F172A', name: 'Slate 900',   role: 'Text / Dark' },
+    { hex: '#F59E0B', name: 'Amber 500',   role: 'Accent' },
+    { hex: '#10B981', name: 'Emerald 500', role: 'Success' },
+    { hex: '#EF4444', name: 'Red 500',     role: 'Warning' },
+    { hex: '#F8FAFC', name: 'Slate 50',    role: 'Background' },
+  ],
+  typography: {
+    heading: 'Outfit',
+    body: 'Plus Jakarta Sans',
+    mono: 'JetBrains Mono',
+  },
+  values: [
+    { title: 'Craft',           desc: 'We sweat the small stuff because engineers notice it. Typography, latency, error messages.', color: '#6366F1' },
+    { title: 'Reliability',     desc: 'The thing we sell is trust. If our dashboard goes down, we\'ve lost — no excuses.',       color: '#10B981' },
+    { title: 'Developer-first', desc: 'We write docs before code. We expose APIs before UIs. We respect engineering time.',      color: '#F59E0B' },
+  ],
+  personas: [
+    { code: 'P1', role: 'VP of Engineering', label: 'Primary buyer',      size: '100–2,000 engineers', pains: 'Fragile tooling stack, on-call burnout, post-mortem quality', triggers: 'Recent outage, new funding round, scale inflection' },
+    { code: 'P2', role: 'Staff Engineer / Tech Lead', label: 'Technical champion', size: 'Platform or SRE', pains: 'Debugging time, cross-team visibility, alert fatigue', triggers: 'Self-serve trial, peer reference, technical deep-dive' },
+  ],
+  competitors: [
+    { name: 'Datadog',        positioning: 'All-in-one observability',   tier: 'Premium', diff: 'Breadth of integrations · enterprise mindshare' },
+    { name: 'New Relic',      positioning: 'APM + infra',                 tier: 'Mid',     diff: 'APM depth · long-standing brand' },
+    { name: 'Honeycomb',      positioning: 'Observability for SREs',      tier: 'Mid',     diff: 'Event-driven model · technical credibility' },
+    { name: 'Grafana Cloud',  positioning: 'Open-source stack, hosted',   tier: 'Low',     diff: 'OSS story · low entry cost' },
+  ],
+  channels: [
+    { name: 'LinkedIn',         icon: 'linkedin', color: '#0A66C2', handle: '@acme-corp',          audience: '18.4K followers · primary channel' },
+    { name: 'X / Twitter',      icon: 'at-sign',  color: '#0F172A', handle: '@acmehq',             audience: '6.2K followers · thought-leadership' },
+    { name: 'YouTube',          icon: 'youtube',  color: '#EF4444', handle: '@acmecorp',           audience: '1.8K subs · tutorials + post-mortems' },
+    { name: 'Email / Newsletter', icon: 'mail',  color: '#F59E0B', handle: 'newsletter@acme.dev', audience: '4.1K subscribers · weekly eng brief' },
+  ],
+  toneByChannel: [
+    { channel: 'LinkedIn',     tone: 'Contrarian · confident',            formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"We killed 40% of our dashboards…" — short sentences, line breaks, founder POV' },
+    { channel: 'X / Twitter',  tone: 'Dry · technical · witty',           formality: 'Casual',     formalityColor: '#D1FAE5,#065F46', pattern: 'Threads on debugging stories. One-liners with a code snippet. Self-deprecating on failures.' },
+    { channel: 'YouTube',      tone: 'Calm · explanatory · no hype',      formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: 'Screen recordings, real dashboards, voice-over. No intro music. No "like and subscribe" CTAs.' },
+    { channel: 'Email',        tone: 'Newsletter-style · crisp',          formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"Hi [first name] —" opener. 3 sections max. One actionable takeaway per email.' },
+  ],
+  samples: [
+    { title: '"Why we killed our roadmap" — Founder post',   channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: '18.4K reactions',  voiceFit: 98 },
+    { title: '"How we cut CI time by 60%" — Blog',            channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: '12.1K views',      voiceFit: 95 },
+    { title: '"Debugging a 2ms latency spike" — Post-mortem', channel: 'YouTube',   channelColor: '#FEE2E2,#991B1B', perf: '9.2K views',       voiceFit: 92 },
+    { title: '"A new way to handle incidents" — Launch email', channel: 'Email',    channelColor: '#FEF3C7,#B45309', perf: '48% open rate',    voiceFit: 81 },
+    { title: '"Hiring our first SRE" — Thread',               channel: 'X/Twitter', channelColor: '#F3F4F6,#374151', perf: '4.3K likes',       voiceFit: 94 },
+    { title: '"Old blog draft — Transform your workflow"',    channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Archived',         voiceFit: 42 },
+  ],
+};
+
+// Preset color palettes the user can pick in one click
+const brandPresets = [
+  { name: 'Indigo Dev',  palette: ['#6366F1','#0F172A','#F59E0B','#10B981','#EF4444','#F8FAFC'] },
+  { name: 'Neo Mint',    palette: ['#059669','#064E3B','#FBBF24','#14B8A6','#DC2626','#F0FDFA'] },
+  { name: 'Sunset B2C',  palette: ['#F97316','#7C2D12','#FACC15','#EC4899','#DC2626','#FFF7ED'] },
+  { name: 'Nordic Cool', palette: ['#0EA5E9','#0C4A6E','#A78BFA','#22D3EE','#F43F5E','#F0F9FF'] },
+  { name: 'Monochrome+', palette: ['#18181B','#52525B','#EAB308','#71717A','#DC2626','#FAFAFA'] },
+  { name: 'Rose Luxury', palette: ['#BE185D','#500724','#FBBF24','#F43F5E','#DC2626','#FFF1F2'] },
+  { name: 'Forest Trust',palette: ['#166534','#14532D','#CA8A04','#22C55E','#DC2626','#F0FDF4'] },
+  { name: 'Tech Noir',   palette: ['#A855F7','#0F0F17','#22D3EE','#EC4899','#F43F5E','#111827'] },
+];
+
+const paletteRoles = ['Primary', 'Text / Dark', 'Accent', 'Success', 'Warning', 'Background'];
+
+// Apply a preset palette to brandKitData and re-render
+function applyBrandPreset(idx) {
+  const preset = brandPresets[idx];
+  if (!preset) return;
+  brandKitData.palette = preset.palette.map((hex, i) => ({
+    hex,
+    name: hex.toUpperCase(),
+    role: paletteRoles[i] || '—',
+  }));
+  switchView(state.currentView);
+}
+
+// Update a single palette color (from native color picker)
+function updatePaletteColor(idx, hex) {
+  if (brandKitData.palette[idx]) {
+    brandKitData.palette[idx].hex = hex;
+    brandKitData.palette[idx].name = hex.toUpperCase();
+    // Update the swatch in-place without full re-render so focus stays on picker
+    const swatch = document.getElementById('bk-swatch-' + idx);
+    const hexLabel = document.getElementById('bk-hex-' + idx);
+    if (swatch) swatch.style.background = hex;
+    if (hexLabel) hexLabel.textContent = hex.toUpperCase();
+  }
+}
+
+// Update a top-level brandKitData text field silently
+function updateBrandField(key, value) { brandKitData[key] = value; }
+function updateBrandTypography(key, value) { brandKitData.typography[key] = value; }
+function updateBrandListItem(list, idx, key, value) {
+  if (brandKitData[list] && brandKitData[list][idx]) brandKitData[list][idx][key] = value;
+}
+
+// Add / remove items in list sections
+function addBrandListItem(list, template) {
+  brandKitData[list].push(template);
+  switchView(state.currentView);
+}
+function removeBrandListItem(list, idx) {
+  brandKitData[list].splice(idx, 1);
+  switchView(state.currentView);
+}
+
 // ── Helpers shared across all modules ──
 
 function getLeadStats() {
@@ -460,7 +575,7 @@ function switchView(viewId) {
     'supply-chain-ci':     { name: 'Supply Chain CI', sub: 'Competitive Intelligence · Which suppliers are at risk and how it affects your production timeline' },
 
     // Marketing Pilot — Tier 1 Light agents (content engine, not campaign manager)
-    'branding-kit':        { name: 'Company Branding Kit', sub: 'Marketing Pilot · Foundation input — your brand data fuels every downstream agent' },
+    'branding-kit':        { name: 'Branding Bio', sub: 'Marketing Pilot · Foundation input — your brand data fuels every downstream agent' },
     'brandvoice-optimizer': { name: 'BrandVoice Optimizer', sub: 'Marketing Pilot · Codifies your brand voice into reusable rules the rest of the agents follow' },
     'content-engine':      { name: 'ContentEngine', sub: 'Marketing Pilot · Analyzes top-performing content in your industry and surfaces what actually gets engagement' },
     'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
@@ -2920,15 +3035,32 @@ function generateViewHTML(view) {
 
     'branding-kit': `
       <div class="view-section active">
+        <style>
+          .bk-input { width:100%; padding:10px 12px; background:white; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600; font-family:inherit; color:var(--text-main); transition:border-color 0.15s, box-shadow 0.15s; }
+          .bk-input:focus { outline:none; border-color:#6366F1; box-shadow:0 0 0 3px rgba(99,102,241,0.15); }
+          .bk-input.area { min-height:72px; resize:vertical; line-height:1.5; font-weight:500; }
+          .bk-label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:block; }
+          .bk-preset { cursor:pointer; border:1px solid var(--border); border-radius:8px; overflow:hidden; transition:transform 0.15s, box-shadow 0.15s; }
+          .bk-preset:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+          .bk-preset-strip { display:flex; height:36px; }
+          .bk-preset-strip span { flex:1; }
+          .bk-preset-name { padding:6px 10px; font-size:11px; font-weight:600; background:white; text-align:center; }
+          .bk-color-picker { width:100%; height:50px; border:1px solid var(--border); border-radius:6px; cursor:pointer; background:transparent; padding:0; }
+          .bk-row-action { background:none; border:none; color:#DC2626; cursor:pointer; font-size:11px; padding:4px 8px; border-radius:4px; }
+          .bk-row-action:hover { background:#FEE2E2; }
+          .bk-add-btn { padding:6px 12px; border:1px dashed var(--border); background:transparent; border-radius:6px; font-size:12px; color:var(--text-muted); cursor:pointer; width:100%; transition:all 0.15s; }
+          .bk-add-btn:hover { border-color:#6366F1; color:#6366F1; background:#EEF2FF; }
+        </style>
+
         <div class="agent-header" style="background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%)">
           <div class="agent-bigicon">🎯</div>
           <div class="agent-header-text">
-            <h2>Company Branding Kit</h2>
-            <p>Foundation input for the entire Marketing Pilot flow. Complete your brand fingerprint once — colors, typography, voice by channel, audience, competitors. Every downstream agent (BrandVoice Optimizer, ContentEngine, HookMiner, ContentBuilder, CreativeBrain) reads from this single source.</p>
+            <h2>Branding Bio</h2>
+            <p>Foundation input for the entire Marketing Pilot flow. Fill in your brand fingerprint — colors, typography, voice by channel, audience, competitors — and every downstream agent (BrandVoice, ContentEngine, HookMiner, ContentBuilder, CreativeBrain) will use it as the single source of truth.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Completed</div><br>
-            <span class="agent-tag">v3.1 · Updated 2 days ago</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Editing live</div><br>
+            <span class="agent-tag">v3.1 · auto-saves as you type</span>
           </div>
         </div>
 
@@ -2948,24 +3080,24 @@ function generateViewHTML(view) {
         <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="award"></i> 1. Brand Identity</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
             <div>
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Company Name</div>
-              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Acme Corp</div>
+              <label class="bk-label">Company Name</label>
+              <input class="bk-input" type="text" value="${brandKitData.name}" oninput="updateBrandField('name', this.value)" placeholder="Your company name">
             </div>
             <div>
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Industry</div>
-              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+              <label class="bk-label">Industry</label>
+              <input class="bk-input" type="text" value="${brandKitData.industry}" oninput="updateBrandField('industry', this.value)" placeholder="e.g. Enterprise SaaS · B2B">
             </div>
             <div>
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Tagline</div>
-              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Ship faster. Debug less.</div>
+              <label class="bk-label">Tagline</label>
+              <input class="bk-input" type="text" value="${brandKitData.tagline}" oninput="updateBrandField('tagline', this.value)" placeholder="Short phrase that captures your value prop">
             </div>
             <div style="grid-column:span 3;">
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Mission / What we do</div>
-              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:13px; line-height:1.5;">We help engineering teams ship reliable software faster by replacing fragile in-house tooling with a single observability + incident platform — opinionated defaults, zero config, 5-minute setup.</div>
+              <label class="bk-label">Mission / What we do</label>
+              <textarea class="bk-input area" oninput="updateBrandField('mission', this.value)" placeholder="1-3 sentences describing what you do and who for">${brandKitData.mission}</textarea>
             </div>
           </div>
         </div>
@@ -2974,23 +3106,35 @@ function generateViewHTML(view) {
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="palette"></i> 2. Colorimetry</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Pick or customize</span>
           </div>
+
+          <!-- Preset palettes -->
+          <div style="margin-bottom:20px;">
+            <label class="bk-label">Quick presets — click to apply</label>
+            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:12px;">
+              ${brandPresets.map((p, i) => `
+                <div class="bk-preset" onclick="applyBrandPreset(${i})">
+                  <div class="bk-preset-strip">
+                    ${p.palette.map(h => `<span style="background:${h}"></span>`).join('')}
+                  </div>
+                  <div class="bk-preset-name">${p.name}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Individual color pickers -->
+          <label class="bk-label">Fine-tune — click any swatch to change the color</label>
           <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;">
-            ${[
-              {hex:'#6366F1', name:'Indigo 500', role:'Primary'},
-              {hex:'#0F172A', name:'Slate 900', role:'Text / Dark'},
-              {hex:'#F59E0B', name:'Amber 500', role:'Accent'},
-              {hex:'#10B981', name:'Emerald 500', role:'Success'},
-              {hex:'#EF4444', name:'Red 500', role:'Warning'},
-              {hex:'#F8FAFC', name:'Slate 50', role:'Background'},
-            ].map(c => `
-              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-                <div style="height:70px; background:${c.hex};"></div>
+            ${brandKitData.palette.map((c, i) => `
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative;">
+                <div id="bk-swatch-${i}" style="height:70px; background:${c.hex}; position:relative; cursor:pointer;">
+                  <input type="color" value="${c.hex}" oninput="updatePaletteColor(${i}, this.value)" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:none; padding:0;">
+                </div>
                 <div style="padding:8px 10px;">
-                  <div style="font-size:12px; font-weight:600;">${c.name}</div>
-                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-family:monospace;">${c.hex}</div>
-                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${c.role}</div>
+                  <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${c.role}</div>
+                  <div id="bk-hex-${i}" style="font-size:11px; font-weight:600; margin-top:2px; font-family:monospace;">${c.hex.toUpperCase()}</div>
                 </div>
               </div>
             `).join('')}
@@ -3001,122 +3145,209 @@ function generateViewHTML(view) {
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="type"></i> 3. Typography</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Headings</div>
-              <div style="font-size:24px; font-weight:800; font-family:'Outfit', sans-serif; margin-top:6px;">Outfit</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 600, 700, 800</div>
-              <div style="font-size:14px; margin-top:8px; font-family:'Outfit', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
+              <label class="bk-label">Headings</label>
+              <input class="bk-input" type="text" value="${brandKitData.typography.heading}" oninput="updateBrandTypography('heading', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts" style="font-family:'${brandKitData.typography.heading}', sans-serif; font-size:20px; font-weight:700;">
+              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Body</div>
-              <div style="font-size:24px; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif; margin-top:6px;">Plus Jakarta Sans</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 400, 500, 600</div>
-              <div style="font-size:13px; margin-top:8px; font-family:'Plus Jakarta Sans', sans-serif;">Fix production issues before your customers do.</div>
+              <label class="bk-label">Body</label>
+              <input class="bk-input" type="text" value="${brandKitData.typography.body}" oninput="updateBrandTypography('body', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts" style="font-family:'${brandKitData.typography.body}', sans-serif; font-size:20px; font-weight:600;">
+              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.body}', sans-serif;">Fix production issues before your customers do.</div>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
-              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Mono / Code</div>
-              <div style="font-size:24px; font-weight:600; font-family:'JetBrains Mono', monospace; margin-top:6px;">JetBrains Mono</div>
-              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 400, 600</div>
-              <div style="font-size:13px; margin-top:8px; font-family:'JetBrains Mono', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">acme.trace()</div>
+              <label class="bk-label">Mono / Code</label>
+              <input class="bk-input" type="text" value="${brandKitData.typography.mono}" oninput="updateBrandTypography('mono', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts-mono" style="font-family:'${brandKitData.typography.mono}', monospace; font-size:20px; font-weight:600;">
+              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.mono}', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">${brandKitData.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.trace()</div>
             </div>
           </div>
+          <datalist id="bk-fonts"><option value="Inter"><option value="Outfit"><option value="Plus Jakarta Sans"><option value="Poppins"><option value="Montserrat"><option value="DM Sans"><option value="Manrope"><option value="Space Grotesk"><option value="Satoshi"><option value="IBM Plex Sans"></datalist>
+          <datalist id="bk-fonts-mono"><option value="JetBrains Mono"><option value="Fira Code"><option value="IBM Plex Mono"><option value="Space Mono"><option value="Source Code Pro"><option value="Roboto Mono"></datalist>
         </div>
 
         <!-- 4. Values -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="heart"></i> 4. Core Values</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
-            <div style="padding:14px; border-left:3px solid #6366F1; background:#EEF2FF; border-radius:6px;"><strong style="font-size:13px;">Craft</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">We sweat the small stuff because engineers notice it. Typography, latency, error messages.</p></div>
-            <div style="padding:14px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:6px;"><strong style="font-size:13px;">Reliability</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">The thing we sell is trust. If our dashboard goes down, we've lost — no excuses.</p></div>
-            <div style="padding:14px; border-left:3px solid #F59E0B; background:#FFFBEB; border-radius:6px;"><strong style="font-size:13px;">Developer-first</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">We write docs before code. We expose APIs before UIs. We respect engineering time.</p></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+            ${brandKitData.values.map((v, i) => `
+              <div style="padding:14px; border-left:3px solid ${v.color}; background:${v.color}11; border-radius:6px; position:relative;">
+                <button class="bk-row-action" onclick="removeBrandListItem('values', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
+                <input class="bk-input" type="text" value="${v.title}" oninput="updateBrandListItem('values', ${i}, 'title', this.value)" style="background:transparent; border:none; padding:0; font-size:14px; font-weight:700;">
+                <textarea class="bk-input area" oninput="updateBrandListItem('values', ${i}, 'desc', this.value)" style="background:transparent; border:none; padding:4px 0 0 0; font-size:12px; color:var(--text-muted); min-height:44px; font-weight:400;">${v.desc}</textarea>
+              </div>
+            `).join('')}
           </div>
+          <button class="bk-add-btn" onclick="addBrandListItem('values', { title:'New value', desc:'Describe what this value means in practice.', color:'#6366F1' })" style="margin-top:12px;">+ Add value</button>
         </div>
 
         <!-- 5. Target Audience -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="users"></i> 5. Target Audience</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;">
-              <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-                <div style="width:40px; height:40px; border-radius:50%; background:#EEF2FF; color:#4338CA; font-weight:700; display:flex; align-items:center; justify-content:center;">P1</div>
-                <div><strong style="font-size:14px;">VP of Engineering</strong><div style="font-size:11px; color:var(--text-muted);">Primary buyer</div></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;">
+            ${brandKitData.personas.map((p, i) => `
+              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
+                <button class="bk-row-action" onclick="removeBrandListItem('personas', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                  <div style="width:40px; height:40px; border-radius:50%; background:#EEF2FF; color:#4338CA; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${p.code}</div>
+                  <div style="flex:1;">
+                    <input class="bk-input" type="text" value="${p.role}" oninput="updateBrandListItem('personas', ${i}, 'role', this.value)" placeholder="Role" style="padding:4px 8px; font-size:14px;">
+                    <input class="bk-input" type="text" value="${p.label}" oninput="updateBrandListItem('personas', ${i}, 'label', this.value)" placeholder="Label (e.g. Primary buyer)" style="padding:4px 8px; font-size:11px; margin-top:4px; font-weight:400; color:var(--text-muted);">
+                  </div>
+                </div>
+                <label class="bk-label" style="margin-top:8px;">Company size / context</label>
+                <input class="bk-input" type="text" value="${p.size}" oninput="updateBrandListItem('personas', ${i}, 'size', this.value)" style="font-size:12px; font-weight:400;">
+                <label class="bk-label" style="margin-top:8px;">Pain points</label>
+                <textarea class="bk-input area" oninput="updateBrandListItem('personas', ${i}, 'pains', this.value)" style="font-size:12px; font-weight:400; min-height:48px;">${p.pains}</textarea>
+                <label class="bk-label" style="margin-top:8px;">Buying triggers</label>
+                <textarea class="bk-input area" oninput="updateBrandListItem('personas', ${i}, 'triggers', this.value)" style="font-size:12px; font-weight:400; min-height:48px;">${p.triggers}</textarea>
               </div>
-              <div style="font-size:12px; color:var(--text-muted); line-height:1.6;"><strong>Company size:</strong> 100–2,000 engineers<br><strong>Pain points:</strong> Fragile tooling stack, on-call burnout, post-mortem quality<br><strong>Buying triggers:</strong> Recent outage, new funding round, scale inflection</div>
-            </div>
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;">
-              <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-                <div style="width:40px; height:40px; border-radius:50%; background:#FFF7ED; color:#C2410C; font-weight:700; display:flex; align-items:center; justify-content:center;">P2</div>
-                <div><strong style="font-size:14px;">Staff Engineer / Tech Lead</strong><div style="font-size:11px; color:var(--text-muted);">Technical champion</div></div>
-              </div>
-              <div style="font-size:12px; color:var(--text-muted); line-height:1.6;"><strong>Role:</strong> Platform or SRE<br><strong>Pain points:</strong> Debugging time, cross-team visibility, alert fatigue<br><strong>Buying triggers:</strong> Self-serve trial, peer reference, technical deep-dive</div>
-            </div>
+            `).join('')}
           </div>
+          <button class="bk-add-btn" onclick="addBrandListItem('personas', { code:'P'+(brandKitData.personas.length+1), role:'New persona', label:'Role context', size:'', pains:'', triggers:'' })" style="margin-top:12px;">+ Add persona</button>
         </div>
 
         <!-- 6. Competitors -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="swords"></i> 6. Competitors Tracked</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
           <table class="lm-table">
-            <thead><tr><th>Competitor</th><th>Positioning</th><th>Price Tier</th><th>Differentiator vs Us</th></tr></thead>
+            <thead><tr><th style="width:22%;">Competitor</th><th style="width:28%;">Positioning</th><th style="width:16%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:40px;"></th></tr></thead>
             <tbody>
-              <tr><td><strong>Datadog</strong></td><td>All-in-one observability</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Premium</span></td><td style="font-size:12px;color:var(--text-muted)">Breadth of integrations · enterprise mindshare</td></tr>
-              <tr><td><strong>New Relic</strong></td><td>APM + infra</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid</span></td><td style="font-size:12px;color:var(--text-muted)">APM depth · long-standing brand</td></tr>
-              <tr><td><strong>Honeycomb</strong></td><td>Observability for SREs</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid</span></td><td style="font-size:12px;color:var(--text-muted)">Event-driven model · technical credibility</td></tr>
-              <tr><td><strong>Grafana Cloud</strong></td><td>Open-source stack, hosted</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td><td style="font-size:12px;color:var(--text-muted)">OSS story · low entry cost</td></tr>
+              ${brandKitData.competitors.map((c, i) => `
+                <tr>
+                  <td><input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('competitors', ${i}, 'name', this.value)" style="padding:6px 8px; font-size:13px;"></td>
+                  <td><input class="bk-input" type="text" value="${c.positioning}" oninput="updateBrandListItem('competitors', ${i}, 'positioning', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
+                  <td>
+                    <select class="bk-input" onchange="updateBrandListItem('competitors', ${i}, 'tier', this.value)" style="padding:6px 8px; font-size:12px; font-weight:600;">
+                      <option ${c.tier==='Premium'?'selected':''}>Premium</option>
+                      <option ${c.tier==='Mid'?'selected':''}>Mid</option>
+                      <option ${c.tier==='Low'?'selected':''}>Low</option>
+                    </select>
+                  </td>
+                  <td><input class="bk-input" type="text" value="${c.diff}" oninput="updateBrandListItem('competitors', ${i}, 'diff', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400; color:var(--text-muted);"></td>
+                  <td><button class="bk-row-action" onclick="removeBrandListItem('competitors', ${i})" title="Remove">✕</button></td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different' })" style="margin-top:12px;">+ Add competitor</button>
         </div>
 
         <!-- 7. Logos -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> 7. Logos & Assets</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Uploaded</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Preview generated from brand</span>
           </div>
           <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
             <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:28px; color:#0F172A;">acme<span style="color:#6366F1;">.</span></span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · SVG · PNG · 1.2 MB</div>
+              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:28px; color:${brandKitData.palette[1]?.hex || '#0F172A'};">${brandKitData.name.toLowerCase().split(' ')[0]}<span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">.</span></span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · auto-generated</div>
             </div>
             <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:#0F172A; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:28px; color:white;">acme<span style="color:#6366F1;">.</span></span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · SVG · PNG</div>
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[1]?.hex || '#0F172A'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:28px; color:white;">${brandKitData.name.toLowerCase().split(' ')[0]}<span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">.</span></span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · auto-generated</div>
             </div>
             <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:#6366F1; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:42px; color:white;">A.</span></div>
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:42px; color:white;">${(brandKitData.name[0] || 'A').toUpperCase()}.</span></div>
               <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon · App</div>
             </div>
             <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:#F8FAFC; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">+ Upload variant</div>
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload variant</div>
               <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Social avatar · 512×512</div>
             </div>
           </div>
+          <p style="margin-top:12px; font-size:11px; color:var(--text-muted);">💡 These previews update automatically as you change brand name, colors and typography.</p>
         </div>
 
         <!-- 8. Social Channels -->
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="share-2"></i> 8. Social Channels</h3>
-            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Connected</span>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="linkedin" style="color:#0A66C2"></i><strong style="font-size:13px;">LinkedIn</strong></div><div style="font-size:12px; color:var(--text-muted);">@acme-corp</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">18.4K followers · primary channel</div></div>
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="at-sign" style="color:#0F172A"></i><strong style="font-size:13px;">X / Twitter</strong></div><div style="font-size:12px; color:var(--text-muted);">@acmehq</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">6.2K followers · thought-leadership</div></div>
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="youtube" style="color:#EF4444"></i><strong style="font-size:13px;">YouTube</strong></div><div style="font-size:12px; color:var(--text-muted);">@acmecorp</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">1.8K subs · tutorials + post-mortems</div></div>
-            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="mail" style="color:#F59E0B"></i><strong style="font-size:13px;">Email / Newsletter</strong></div><div style="font-size:12px; color:var(--text-muted);">newsletter@acme.dev</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">4.1K subscribers · weekly eng brief</div></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px;">
+            ${brandKitData.channels.map((c, i) => `
+              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
+                <button class="bk-row-action" onclick="removeBrandListItem('channels', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="${c.icon}" style="color:${c.color}"></i>
+                  <input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('channels', ${i}, 'name', this.value)" style="padding:4px 6px; font-size:13px; font-weight:600;">
+                </div>
+                <label class="bk-label">Handle / URL</label>
+                <input class="bk-input" type="text" value="${c.handle}" oninput="updateBrandListItem('channels', ${i}, 'handle', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;">
+                <label class="bk-label" style="margin-top:8px;">Audience / context</label>
+                <input class="bk-input" type="text" value="${c.audience}" oninput="updateBrandListItem('channels', ${i}, 'audience', this.value)" style="padding:6px 8px; font-size:11px; font-weight:400;">
+              </div>
+            `).join('')}
           </div>
+          <button class="bk-add-btn" onclick="addBrandListItem('channels', { name:'New channel', icon:'globe', color:'#6366F1', handle:'@yourhandle', audience:'Describe audience size / purpose' })" style="margin-top:12px;">+ Add channel</button>
+        </div>
+
+        <!-- 9. Tone by Channel -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="message-circle"></i> 9. Tone by Channel</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th style="width:16%;">Channel</th><th style="width:22%;">Primary Tone</th><th style="width:14%;">Formality</th><th>Examples / Patterns</th><th style="width:40px;"></th></tr></thead>
+            <tbody>
+              ${brandKitData.toneByChannel.map((t, i) => `
+                <tr>
+                  <td><input class="bk-input" type="text" value="${t.channel}" oninput="updateBrandListItem('toneByChannel', ${i}, 'channel', this.value)" style="padding:6px 8px; font-size:13px;"></td>
+                  <td><input class="bk-input" type="text" value="${t.tone}" oninput="updateBrandListItem('toneByChannel', ${i}, 'tone', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
+                  <td>
+                    <select class="bk-input" onchange="updateBrandListItem('toneByChannel', ${i}, 'formality', this.value)" style="padding:6px 8px; font-size:12px;">
+                      <option ${t.formality==='Casual'?'selected':''}>Casual</option>
+                      <option ${t.formality==='Mid-formal'?'selected':''}>Mid-formal</option>
+                      <option ${t.formality==='Formal'?'selected':''}>Formal</option>
+                    </select>
+                  </td>
+                  <td><textarea class="bk-input area" oninput="updateBrandListItem('toneByChannel', ${i}, 'pattern', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400; min-height:44px; color:var(--text-muted);">${t.pattern}</textarea></td>
+                  <td><button class="bk-row-action" onclick="removeBrandListItem('toneByChannel', ${i})" title="Remove">✕</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <button class="bk-add-btn" onclick="addBrandListItem('toneByChannel', { channel:'New channel', tone:'Primary tone · adjective', formality:'Mid-formal', formalityColor:'#FEF3C7,#B45309', pattern:'Describe the writing pattern / example' })" style="margin-top:12px;">+ Add tone by channel</button>
+        </div>
+
+        <!-- 10. Existing Content Samples -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="paperclip"></i> 10. Existing Content Samples</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Add/remove samples</span>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Sample</th><th style="width:16%;">Channel</th><th style="width:16%;">Performance</th><th style="width:12%;">Voice Fit</th><th style="width:40px;"></th></tr></thead>
+            <tbody>
+              ${brandKitData.samples.map((s, i) => {
+                const fitColor = s.voiceFit >= 90 ? '#D1FAE5,#065F46' : s.voiceFit >= 75 ? '#FEF3C7,#B45309' : '#FEE2E2,#991B1B';
+                const [fitBg, fitFg] = fitColor.split(',');
+                return `
+                  <tr>
+                    <td><input class="bk-input" type="text" value="${s.title.replace(/"/g,'&quot;')}" oninput="updateBrandListItem('samples', ${i}, 'title', this.value)" style="padding:6px 8px; font-size:13px; font-weight:600;"></td>
+                    <td><input class="bk-input" type="text" value="${s.channel}" oninput="updateBrandListItem('samples', ${i}, 'channel', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
+                    <td><input class="bk-input" type="text" value="${s.perf}" oninput="updateBrandListItem('samples', ${i}, 'perf', this.value)" style="padding:6px 8px; font-size:12px; font-weight:600; color:#10B981;"></td>
+                    <td><span class="lm-tag" style="background:${fitBg};color:${fitFg}">${s.voiceFit}%</span></td>
+                    <td><button class="bk-row-action" onclick="removeBrandListItem('samples', ${i})" title="Remove">✕</button></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          <button class="bk-add-btn" onclick="addBrandListItem('samples', { title:'New sample — paste link or description', channel:'LinkedIn', channelColor:'#EFF6FF,#1D4ED8', perf:'—', voiceFit:85 })" style="margin-top:12px;">+ Add content sample</button>
         </div>
 
         <!-- 9. Tone by Channel -->
