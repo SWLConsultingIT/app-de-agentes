@@ -581,6 +581,7 @@ function switchView(viewId) {
     'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
     'content-builder':     { name: 'ContentBuilder', sub: 'Marketing Pilot · Generates publish-ready posts, emails and copies calibrated to your voice and audience' },
     'creative-brain':      { name: 'CreativeBrain', sub: 'Marketing Pilot · Renders multi-format creatives (banners, templates, ad variants) on-brand at scale' },
+    'auto-publisher':      { name: 'AutoPublisher', sub: 'Marketing Pilot · Schedules and publishes content across social + blog channels using optimal-timing models' },
   };
   const meta = viewMeta[viewId] || { name: viewId, sub: '' };
   const nameEl = document.getElementById('topbar-view-name');
@@ -3814,6 +3815,110 @@ Ship faster. Debug less.</p>
       </div>
     `,
 
+    'auto-publisher': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #0EA5E9 0%, #0369A1 100%)">
+          <div class="agent-bigicon">🚀</div>
+          <div class="agent-header-text">
+            <h2>AutoPublisher</h2>
+            <p>Schedules and publishes content autonomously across your social and blog channels — using per-channel, per-audience optimal-timing models learned from engagement history.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Publishing</div><br>
+            <span class="agent-tag">4 channels · next publish in 1h 22m</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last publish: Today, 09:15 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Source: ContentBuilder approved queue</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">34</div><div class="agent-stat-lbl">Scheduled (next 7d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Published this week</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">+23%</div><div class="agent-stat-lbl">Engagement vs manual baseline</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">98.6%</div><div class="agent-stat-lbl">Publish success rate</div></div>
+        </div>
+
+        <!-- Week calendar -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="calendar"></i> Publishing Calendar — This Week</h3>
+            <div style="display:flex; gap:8px;">
+              <button class="lm-btn-outline" style="padding:4px 10px; font-size:12px;"><i data-lucide="chevron-left" style="width:12px"></i></button>
+              <span style="font-size:12px; padding:4px 10px; color:var(--text-muted);">Apr 14 – 20, 2026</span>
+              <button class="lm-btn-outline" style="padding:4px 10px; font-size:12px;"><i data-lucide="chevron-right" style="width:12px"></i></button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;">
+            ${[
+              {day:'Mon', date:'14', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:15',title:'We killed 40% of dashboards…',status:'published'}]},
+              {day:'Tue', date:'15', items:[{t:'Blog',c:'#374151',when:'10:30',title:'How we cut CI from 47 to 6 min',status:'scheduled'},{t:'Email',c:'#F59E0B',when:'07:00',title:'Weekly Eng Brief #42',status:'scheduled'}]},
+              {day:'Wed', date:'16', items:[{t:'LinkedIn',c:'#0A66C2',when:'08:45',title:'Stop writing runbooks…',status:'queue'},{t:'X',c:'#0F172A',when:'14:00',title:'Debugging thread · 8 tweets',status:'queue'}]},
+              {day:'Thu', date:'17', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:10',title:'The 3-line Slack msg…',status:'queue'},{t:'YouTube',c:'#EF4444',when:'16:00',title:'Post-mortem: 2ms latency',status:'queue'}]},
+              {day:'Fri', date:'18', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:00',title:'Every VP Eng has the same 3 complaints',status:'queue'},{t:'Blog',c:'#374151',when:'11:15',title:'Handling on-call at 12 engineers',status:'queue'}]},
+              {day:'Sat', date:'19', items:[]},
+              {day:'Sun', date:'20', items:[{t:'X',c:'#0F172A',when:'18:30',title:'Weekly roundup thread',status:'queue'}]},
+            ].map(d => `
+              <div style="border:1px solid var(--border); border-radius:8px; padding:10px; min-height:140px; background:${d.items.length===0?'#F9FAFB':'white'};">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+                  <strong style="font-size:12px; color:var(--text-muted);">${d.day}</strong>
+                  <span style="font-size:16px; font-weight:700;">${d.date}</span>
+                </div>
+                ${d.items.map(it => {
+                  const bg = it.status==='published' ? '#D1FAE5' : it.status==='scheduled' ? '#EEF2FF' : '#FEF3C7';
+                  const fg = it.status==='published' ? '#065F46' : it.status==='scheduled' ? '#4338CA' : '#B45309';
+                  return `<div style="padding:6px 8px; background:${bg}; border-radius:4px; margin-bottom:4px; font-size:10px;">
+                    <div style="display:flex; gap:4px; align-items:center; font-weight:700; color:${fg};"><span style="width:6px;height:6px;border-radius:50%;background:${it.c};"></span>${it.t} · ${it.when}</div>
+                    <div style="color:${fg}; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${it.title}</div>
+                  </div>`;
+                }).join('') || '<div style="font-size:10px; color:var(--text-muted); text-align:center; padding:20px 0;">—</div>'}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Optimal timing model + queue -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:340px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Optimal Posting Times by Channel (learned)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpTimingChart"></canvas></div>
+          </div>
+          <div class="card">
+            <h3 class="card-title"><i data-lucide="list-ordered"></i> Next-up Queue</h3>
+            <table class="lm-table" style="margin-top:10px;">
+              <thead><tr><th>When</th><th>Channel</th><th>Piece</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td style="font-size:12px; color:var(--text-muted);">in 1h 22m</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td style="font-size:12px;"><strong>How we cut CI from 47 to 6 min</strong></td><td><span class="lm-tag" style="background:#EEF2FF;color:#4338CA">Scheduled</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 08:45</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Stop writing runbooks…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 14:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td style="font-size:12px;"><strong>Debugging thread · 8 tweets</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>The 3-line Slack msg…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 16:00</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td style="font-size:12px;"><strong>Post-mortem: 2ms latency</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Fri · 09:00</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Every VP Eng has 3 complaints</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Publish log -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="check-circle"></i> Recent Publish Log</h3>
+          <table class="lm-table" style="margin-top:10px;">
+            <thead><tr><th>Published</th><th>Channel</th><th>Piece</th><th>Reach (1h)</th><th>Engagement</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-size:12px;">Today · 09:15</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">We killed 40% of dashboards…</strong></td><td><strong>2.4K</strong></td><td style="color:#10B981;font-weight:600;">+18%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Mon · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">The 3-line Slack msg replaces standup</strong></td><td><strong>3.1K</strong></td><td style="color:#10B981;font-weight:600;">+24%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Sun · 18:30</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td><strong style="font-size:13px;">Weekly roundup thread · 7 tweets</strong></td><td><strong>1.8K</strong></td><td style="color:#10B981;font-weight:600;">+12%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Fri · 11:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="font-size:13px;">How we handle on-call at 12 engineers</strong></td><td><strong>1.2K</strong></td><td style="color:#10B981;font-weight:600;">+9%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Thu · 07:00</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="font-size:13px;">Weekly Eng Brief #41</strong></td><td><strong>4.1K sent</strong></td><td style="color:#10B981;font-weight:600;">52% open</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Delivered</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `,
+
     // ═══════════════════════════════════════════════════
     //  ANALYTICS & METRICS — SOCIAL & BRAND INTELLIGENCE
     // ═══════════════════════════════════════════════════
@@ -4421,6 +4526,25 @@ function renderCICharts(viewId) {
           datasets: [{ label: 'Assets (30d)', data: [68, 42, 36, 24, 16], backgroundColor: '#A855F7', borderRadius: 4 }]
         },
         options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { display: false } } }
+      });
+    }
+  }
+
+  if (viewId === 'auto-publisher') {
+    const tc = document.getElementById('mpTimingChart');
+    if (tc) {
+      chartInstances['mpTimingChart'] = new Chart(tc, {
+        type: 'bar',
+        data: {
+          labels: ['6am','7am','8am','9am','10am','11am','12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm'],
+          datasets: [
+            { label: 'LinkedIn',  data: [2,4,6,9,7,5,3,3,4,4,3,3,2,1,1], backgroundColor: '#0A66C2' },
+            { label: 'X/Twitter', data: [1,2,3,4,4,5,6,5,6,4,3,3,5,6,4], backgroundColor: '#0F172A' },
+            { label: 'Blog',      data: [1,2,3,5,6,5,3,2,2,2,2,2,1,1,1], backgroundColor: '#374151' },
+            { label: 'Email',     data: [2,7,5,3,2,1,1,1,1,1,1,1,1,1,1], backgroundColor: '#F59E0B' },
+          ]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }, scales: { y: { stacked: false, title: { display: true, text: 'Avg engagement' } }, x: { stacked: false } } }
       });
     }
   }
