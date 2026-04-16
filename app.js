@@ -10,8 +10,8 @@ const chartInstances = {};
 let scanLanguage = 'en';
 let lastScannedDomain = null;
 
-// LeadMiner pre-loaded for demo
-let leadsRevealed = true;
+// LeadMiner starts empty — boss demos the chatbot "bring me leads" flow
+let leadsRevealed = false;
 let _originalLeadsData = null; // backup of the original leads
 
 // ══════════════════════════════════════════════════
@@ -2710,7 +2710,7 @@ function generateViewHTML(view) {
                   <td>12.4K</td>
                 </tr>
                 <tr>
-                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">YachtForums</span></td>
+                  <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">CNCZone Forum</span></td>
                   <td><strong>Sandvik</strong></td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">After-Sales</span></td>
@@ -3508,7 +3508,7 @@ function renderCICharts(viewId) {
       chartInstances['ciSupplyLeadChart'] = new Chart(lead, {
         type: 'bar',
         data: {
-          labels: ['Engines (Volvo)', 'Electronics (Garmin)', 'AC (Webasto)', 'Composites', 'Interior (Poltrona Frau)', 'Accessories (Besenzoni)'],
+          labels: ['Carbide (Ceratizit)', 'Steel (Böhler)', 'Coating (Oerlikon)', 'Grinding (Studer)', 'Tool Steel (Thyssenkrupp)', 'Inserts (Iscar)'],
           datasets: [
             { label: 'Current (wks)', data: [22, 18, 14, 10, 8, 6], backgroundColor: '#3B82F6', borderRadius: 4 },
             { label: 'Normal (wks)',   data: [18, 12, 12, 9, 8, 6],  backgroundColor: '#E2E8F0', borderRadius: 4 },
