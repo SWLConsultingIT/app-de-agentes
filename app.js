@@ -460,6 +460,7 @@ function switchView(viewId) {
     'supply-chain-ci':     { name: 'Supply Chain CI', sub: 'Competitive Intelligence · Which suppliers are at risk and how it affects your production timeline' },
 
     // Marketing Pilot — Tier 1 Light agents (content engine, not campaign manager)
+    'branding-kit':        { name: 'Company Branding Kit', sub: 'Marketing Pilot · Foundation input — your brand data fuels every downstream agent' },
     'brandvoice-optimizer': { name: 'BrandVoice Optimizer', sub: 'Marketing Pilot · Codifies your brand voice into reusable rules the rest of the agents follow' },
     'content-engine':      { name: 'ContentEngine', sub: 'Marketing Pilot · Analyzes top-performing content in your industry and surfaces what actually gets engagement' },
     'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
@@ -2914,8 +2915,258 @@ function generateViewHTML(view) {
 
     // ═══════════════════════════════════════════════════
     //  MARKETING PILOT — TIER 1 LIGHT AGENTS
-    //  Autonomous content engine: brand voice → insights → hooks → content → creatives
+    //  Flow: branding-kit → brandvoice → content-engine → hook-miner → content-builder → creative-brain
     // ═══════════════════════════════════════════════════
+
+    'branding-kit': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%)">
+          <div class="agent-bigicon">🎯</div>
+          <div class="agent-header-text">
+            <h2>Company Branding Kit</h2>
+            <p>Foundation input for the entire Marketing Pilot flow. Complete your brand fingerprint once — colors, typography, voice by channel, audience, competitors. Every downstream agent (BrandVoice Optimizer, ContentEngine, HookMiner, ContentBuilder, CreativeBrain) reads from this single source.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Completed</div><br>
+            <span class="agent-tag">v3.1 · Updated 2 days ago</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="check-circle-2" style="width:11px;vertical-align:middle;margin-right:4px"></i>All 10 sections completed</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="arrow-right" style="width:11px;vertical-align:middle;margin-right:4px"></i>Feeds: BrandVoice Optimizer · ContentBuilder · CreativeBrain</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">100%</div><div class="agent-stat-lbl">Kit Completion</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">10</div><div class="agent-stat-lbl">Sections Filled</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">4</div><div class="agent-stat-lbl">Active Channels</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Content Samples Linked</div></div>
+        </div>
+
+        <!-- 1. Brand Identity -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="award"></i> 1. Brand Identity</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Company Name</div>
+              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Acme Corp</div>
+            </div>
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Industry</div>
+              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+            </div>
+            <div>
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Tagline</div>
+              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:14px; font-weight:600;">Ship faster. Debug less.</div>
+            </div>
+            <div style="grid-column:span 3;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Mission / What we do</div>
+              <div style="padding:10px 12px; background:#F9FAFB; border:1px solid var(--border); border-radius:6px; font-size:13px; line-height:1.5;">We help engineering teams ship reliable software faster by replacing fragile in-house tooling with a single observability + incident platform — opinionated defaults, zero config, 5-minute setup.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Colorimetría -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="palette"></i> 2. Colorimetry</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;">
+            ${[
+              {hex:'#6366F1', name:'Indigo 500', role:'Primary'},
+              {hex:'#0F172A', name:'Slate 900', role:'Text / Dark'},
+              {hex:'#F59E0B', name:'Amber 500', role:'Accent'},
+              {hex:'#10B981', name:'Emerald 500', role:'Success'},
+              {hex:'#EF4444', name:'Red 500', role:'Warning'},
+              {hex:'#F8FAFC', name:'Slate 50', role:'Background'},
+            ].map(c => `
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="height:70px; background:${c.hex};"></div>
+                <div style="padding:8px 10px;">
+                  <div style="font-size:12px; font-weight:600;">${c.name}</div>
+                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-family:monospace;">${c.hex}</div>
+                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${c.role}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- 3. Typography -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="type"></i> 3. Typography</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Headings</div>
+              <div style="font-size:24px; font-weight:800; font-family:'Outfit', sans-serif; margin-top:6px;">Outfit</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 600, 700, 800</div>
+              <div style="font-size:14px; margin-top:8px; font-family:'Outfit', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
+            </div>
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Body</div>
+              <div style="font-size:24px; font-weight:600; font-family:'Plus Jakarta Sans', sans-serif; margin-top:6px;">Plus Jakarta Sans</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 400, 500, 600</div>
+              <div style="font-size:13px; margin-top:8px; font-family:'Plus Jakarta Sans', sans-serif;">Fix production issues before your customers do.</div>
+            </div>
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
+              <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Mono / Code</div>
+              <div style="font-size:24px; font-weight:600; font-family:'JetBrains Mono', monospace; margin-top:6px;">JetBrains Mono</div>
+              <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Weights: 400, 600</div>
+              <div style="font-size:13px; margin-top:8px; font-family:'JetBrains Mono', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">acme.trace()</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Values -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="heart"></i> 4. Core Values</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+            <div style="padding:14px; border-left:3px solid #6366F1; background:#EEF2FF; border-radius:6px;"><strong style="font-size:13px;">Craft</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">We sweat the small stuff because engineers notice it. Typography, latency, error messages.</p></div>
+            <div style="padding:14px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:6px;"><strong style="font-size:13px;">Reliability</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">The thing we sell is trust. If our dashboard goes down, we've lost — no excuses.</p></div>
+            <div style="padding:14px; border-left:3px solid #F59E0B; background:#FFFBEB; border-radius:6px;"><strong style="font-size:13px;">Developer-first</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">We write docs before code. We expose APIs before UIs. We respect engineering time.</p></div>
+          </div>
+        </div>
+
+        <!-- 5. Target Audience -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="users"></i> 5. Target Audience</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;">
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                <div style="width:40px; height:40px; border-radius:50%; background:#EEF2FF; color:#4338CA; font-weight:700; display:flex; align-items:center; justify-content:center;">P1</div>
+                <div><strong style="font-size:14px;">VP of Engineering</strong><div style="font-size:11px; color:var(--text-muted);">Primary buyer</div></div>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); line-height:1.6;"><strong>Company size:</strong> 100–2,000 engineers<br><strong>Pain points:</strong> Fragile tooling stack, on-call burnout, post-mortem quality<br><strong>Buying triggers:</strong> Recent outage, new funding round, scale inflection</div>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;">
+              <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                <div style="width:40px; height:40px; border-radius:50%; background:#FFF7ED; color:#C2410C; font-weight:700; display:flex; align-items:center; justify-content:center;">P2</div>
+                <div><strong style="font-size:14px;">Staff Engineer / Tech Lead</strong><div style="font-size:11px; color:var(--text-muted);">Technical champion</div></div>
+              </div>
+              <div style="font-size:12px; color:var(--text-muted); line-height:1.6;"><strong>Role:</strong> Platform or SRE<br><strong>Pain points:</strong> Debugging time, cross-team visibility, alert fatigue<br><strong>Buying triggers:</strong> Self-serve trial, peer reference, technical deep-dive</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. Competitors -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="swords"></i> 6. Competitors Tracked</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Completed</span>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Competitor</th><th>Positioning</th><th>Price Tier</th><th>Differentiator vs Us</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Datadog</strong></td><td>All-in-one observability</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Premium</span></td><td style="font-size:12px;color:var(--text-muted)">Breadth of integrations · enterprise mindshare</td></tr>
+              <tr><td><strong>New Relic</strong></td><td>APM + infra</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid</span></td><td style="font-size:12px;color:var(--text-muted)">APM depth · long-standing brand</td></tr>
+              <tr><td><strong>Honeycomb</strong></td><td>Observability for SREs</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid</span></td><td style="font-size:12px;color:var(--text-muted)">Event-driven model · technical credibility</td></tr>
+              <tr><td><strong>Grafana Cloud</strong></td><td>Open-source stack, hosted</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td><td style="font-size:12px;color:var(--text-muted)">OSS story · low entry cost</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 7. Logos -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> 7. Logos & Assets</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Uploaded</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:28px; color:#0F172A;">acme<span style="color:#6366F1;">.</span></span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · SVG · PNG · 1.2 MB</div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:#0F172A; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:28px; color:white;">acme<span style="color:#6366F1;">.</span></span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · SVG · PNG</div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:#6366F1; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'Outfit',sans-serif; font-weight:800; font-size:42px; color:white;">A.</span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon · App</div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:#F8FAFC; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">+ Upload variant</div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Social avatar · 512×512</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Social Channels -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="share-2"></i> 8. Social Channels</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Connected</span>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="linkedin" style="color:#0A66C2"></i><strong style="font-size:13px;">LinkedIn</strong></div><div style="font-size:12px; color:var(--text-muted);">@acme-corp</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">18.4K followers · primary channel</div></div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="at-sign" style="color:#0F172A"></i><strong style="font-size:13px;">X / Twitter</strong></div><div style="font-size:12px; color:var(--text-muted);">@acmehq</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">6.2K followers · thought-leadership</div></div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="youtube" style="color:#EF4444"></i><strong style="font-size:13px;">YouTube</strong></div><div style="font-size:12px; color:var(--text-muted);">@acmecorp</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">1.8K subs · tutorials + post-mortems</div></div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px;"><div style="display:flex; gap:10px; align-items:center; margin-bottom:8px;"><i data-lucide="mail" style="color:#F59E0B"></i><strong style="font-size:13px;">Email / Newsletter</strong></div><div style="font-size:12px; color:var(--text-muted);">newsletter@acme.dev</div><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">4.1K subscribers · weekly eng brief</div></div>
+          </div>
+        </div>
+
+        <!-- 9. Tone by Channel -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="message-circle"></i> 9. Tone by Channel</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Defined</span>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Channel</th><th>Primary Tone</th><th>Formality</th><th>Examples / Patterns</th></tr></thead>
+            <tbody>
+              <tr><td><strong>LinkedIn</strong></td><td>Contrarian · confident</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">"We killed 40% of our dashboards…" — short sentences, line breaks, founder POV</td></tr>
+              <tr><td><strong>X / Twitter</strong></td><td>Dry · technical · witty</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Casual</span></td><td style="font-size:12px;color:var(--text-muted)">Threads on debugging stories. One-liners with a code snippet. Self-deprecating on failures.</td></tr>
+              <tr><td><strong>YouTube</strong></td><td>Calm · explanatory · no hype</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">Screen recordings, real dashboards, voice-over. No intro music. No "like and subscribe" CTAs.</td></tr>
+              <tr><td><strong>Email</strong></td><td>Newsletter-style · crisp</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">"Hi [first name] —" opener. 3 sections max. One actionable takeaway per email.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- 10. Content Samples -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="paperclip"></i> 10. Existing Content Samples</h3>
+            <span class="lm-tag" style="background:#D1FAE5;color:#065F46">12 attached</span>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Sample</th><th>Channel</th><th>Performance</th><th>Voice Fit</th></tr></thead>
+            <tbody>
+              <tr><td><strong>"Why we killed our roadmap"</strong> — Founder post</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="color:#10B981">18.4K reactions</strong></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">98%</span></td></tr>
+              <tr><td><strong>"How we cut CI time by 60%"</strong> — Blog</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">12.1K views</strong></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">95%</span></td></tr>
+              <tr><td><strong>"Debugging a 2ms latency spike"</strong> — Post-mortem</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td><strong style="color:#10B981">9.2K views</strong></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">92%</span></td></tr>
+              <tr><td><strong>"A new way to handle incidents"</strong> — Launch email</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="color:#10B981">48% open rate</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">81%</span></td></tr>
+              <tr><td><strong>"Hiring our first SRE"</strong> — Thread</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X/Twitter</span></td><td><strong style="color:#10B981">4.3K likes</strong></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">94%</span></td></tr>
+              <tr><td><strong>"Old blog draft — Transform your workflow"</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><span style="color:var(--text-muted);font-size:12px;">Archived</span></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">42% · flagged</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Next step CTA -->
+        <div class="card" style="margin-top:24px; background:linear-gradient(135deg, #EEF2FF 0%, #FDF2F8 100%); border:1px solid #E0E7FF;">
+          <div style="display:flex; align-items:center; gap:16px;">
+            <div style="flex:1;">
+              <strong style="font-size:15px;">Your kit feeds BrandVoice Optimizer →</strong>
+              <p style="font-size:13px; color:var(--text-muted); margin-top:6px;">Every update here auto-propagates: voice rules recalibrate, ContentBuilder gets new constraints, CreativeBrain re-checks compliance on existing assets. One source of truth for the whole Marketing Pilot stack.</p>
+            </div>
+            <button class="btn-sm btn-primary" onclick="switchView('brandvoice-optimizer')"><i data-lucide="arrow-right" style="width:14px"></i> Open BrandVoice Optimizer</button>
+          </div>
+        </div>
+      </div>
+    `,
 
     'brandvoice-optimizer': `
       <div class="view-section active">
