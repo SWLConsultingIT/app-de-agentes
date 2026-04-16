@@ -458,6 +458,13 @@ function switchView(viewId) {
     'sentiment-analyzer':  { name: 'Sentiment Analyzer', sub: 'Competitive Intelligence · How the market perceives your brand versus the competition' },
     'demand-intelligence': { name: 'Demand Intelligence Agent', sub: 'Competitive Intelligence · Where demand is growing and which opportunities to prioritize' },
     'supply-chain-ci':     { name: 'Supply Chain CI', sub: 'Competitive Intelligence · Which suppliers are at risk and how it affects your production timeline' },
+
+    // Marketing Pilot — Tier 1 Light agents (content engine, not campaign manager)
+    'brandvoice-optimizer': { name: 'BrandVoice Optimizer', sub: 'Marketing Pilot · Codifies your brand voice into reusable rules the rest of the agents follow' },
+    'content-engine':      { name: 'ContentEngine', sub: 'Marketing Pilot · Analyzes top-performing content in your industry and surfaces what actually gets engagement' },
+    'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
+    'content-builder':     { name: 'ContentBuilder', sub: 'Marketing Pilot · Generates publish-ready posts, emails and copies calibrated to your voice and audience' },
+    'creative-brain':      { name: 'CreativeBrain', sub: 'Marketing Pilot · Renders multi-format creatives (banners, templates, ad variants) on-brand at scale' },
   };
   const meta = viewMeta[viewId] || { name: viewId, sub: '' };
   const nameEl = document.getElementById('topbar-view-name');
@@ -2906,6 +2913,426 @@ function generateViewHTML(view) {
     `,
 
     // ═══════════════════════════════════════════════════
+    //  MARKETING PILOT — TIER 1 LIGHT AGENTS
+    //  Autonomous content engine: brand voice → insights → hooks → content → creatives
+    // ═══════════════════════════════════════════════════
+
+    'brandvoice-optimizer': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #EC4899 0%, #BE185D 100%)">
+          <div class="agent-bigicon">🎙️</div>
+          <div class="agent-header-text">
+            <h2>BrandVoice Optimizer</h2>
+            <p>Codifies your brand voice into reusable rules every downstream agent follows. One onboarding, and every post, email and ad sounds exactly like you — consistently, forever.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">Brand: Acme Corp</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last calibration: Today, 08:12 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 42 sample posts · 6 landing pages · brand deck</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">28</div><div class="agent-stat-lbl">Voice Rules Coded</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">96%</div><div class="agent-stat-lbl">Brand Consistency Score</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">42</div><div class="agent-stat-lbl">Sample Pieces Analyzed</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">5</div><div class="agent-stat-lbl">Tone Dimensions</div></div>
+        </div>
+
+        <!-- Brand Profile -->
+        <div class="kpi-grid" style="grid-template-columns:2fr 1fr; margin-top:24px;">
+          <div class="card">
+            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — Acme Corp</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Industry</div>
+                <div style="font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+              </div>
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Target Audience</div>
+                <div style="font-size:14px; font-weight:600;">VPs of Engineering · CTOs · Tech Leaders</div>
+              </div>
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Primary Channels</div>
+                <div style="display:flex; gap:4px; margin-top:4px;"><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></div>
+              </div>
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Core Values</div>
+                <div style="font-size:14px; font-weight:600;">Craft · Reliability · Developer-first</div>
+              </div>
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Palette</div>
+                <div style="display:flex; gap:6px; margin-top:6px;">
+                  <span style="width:28px;height:28px;background:#6366F1;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
+                  <span style="width:28px;height:28px;background:#0F172A;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
+                  <span style="width:28px;height:28px;background:#F59E0B;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
+                  <span style="width:28px;height:28px;background:#F8FAFC;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
+                </div>
+              </div>
+              <div>
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Production Goal</div>
+                <div style="font-size:14px; font-weight:600;">12 pieces / week</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 class="card-title"><i data-lucide="sliders"></i> Tone Dimensions</h3>
+            <div style="margin-top:16px;">
+              ${['Formal ↔ Casual|72', 'Technical ↔ Accessible|65', 'Serious ↔ Playful|40', 'Humble ↔ Bold|68', 'Short ↔ Expansive|55'].map(t => {
+                const [label, val] = t.split('|');
+                return `<div style="margin-bottom:14px;">
+                  <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${label}</span><span style="color:var(--ai-accent); font-weight:600;">${val}%</span></div>
+                  <div style="height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden;"><div style="height:100%; width:${val}%; background:linear-gradient(90deg, #EC4899, #BE185D);"></div></div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+        </div>
+
+        <!-- Voice Rules -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="check-circle-2"></i> Voice Rules (28 coded — excerpt)</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:12px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:4px;"><strong style="font-size:13px;">Always:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#065F46;"><li>Reference concrete customer outcomes (not features)</li><li>Use active voice in openers</li><li>End posts with a specific CTA, not a generic one</li><li>Name the persona you're writing to</li></ul></div>
+            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Never:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#991B1B;"><li>Use marketing jargon ("synergy", "leverage", "disruption")</li><li>Open with "In today's fast-paced world…"</li><li>Use more than 2 adjectives in a row</li><li>Reference the customer's competitors by name</li></ul></div>
+          </div>
+        </div>
+
+        <!-- Sample Learning -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="layers"></i> Sample Content Analyzed</h3>
+            <button class="lm-btn-outline" style="padding:4px 10px; font-size:12px;"><i data-lucide="plus" style="width:12px"></i> Feed more samples</button>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Source</th><th>Format</th><th>Voice Fit</th><th>Key Traits Extracted</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Founder's LinkedIn post · "Why we killed our roadmap"</strong></td><td>LinkedIn</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">98%</span></td><td style="font-size:12px;color:var(--text-muted)">Contrarian opener · direct second person · short sentences</td></tr>
+              <tr><td><strong>Homepage headline · "Ship faster. Debug less."</strong></td><td>Landing</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">95%</span></td><td style="font-size:12px;color:var(--text-muted)">Imperative mood · outcome-first · parallelism</td></tr>
+              <tr><td><strong>Engineering blog · "How we cut CI time by 60%"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">92%</span></td><td style="font-size:12px;color:var(--text-muted)">Numbers in headline · first-person plural · technical but accessible</td></tr>
+              <tr><td><strong>Launch email · "A new way to handle incidents"</strong></td><td>Email</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">81%</span></td><td style="font-size:12px;color:var(--text-muted)">Calm tone · problem-first · no superlatives</td></tr>
+              <tr><td><strong>Old blog draft · "Transform your workflow"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">42%</span></td><td style="font-size:12px;color:var(--text-muted)">Flagged: jargon ("transform", "seamless"), no specifics</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `,
+
+    'content-engine': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #06B6D4 0%, #0369A1 100%)">
+          <div class="agent-bigicon">🧠</div>
+          <div class="agent-header-text">
+            <h2>ContentEngine</h2>
+            <p>Scans top-performing content in your industry — competitors, thought leaders, adjacent categories — and surfaces the formats, themes and structures that are actually driving engagement right now.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">Enterprise SaaS · 142 pieces analyzed</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:40 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: LinkedIn, Substack, Medium, YouTube, X/Twitter</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">142</div><div class="agent-stat-lbl">Top Pieces Analyzed (30d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">7</div><div class="agent-stat-lbl">Formats Identified</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">+4.2x</div><div class="agent-stat-lbl">Avg Engagement vs Baseline</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Content Gaps Surfaced</div></div>
+        </div>
+
+        <!-- Top formats by engagement -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Avg Engagement by Format</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpFormatChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Theme Share of Top Content (30d)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpThemeChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Top pieces table -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="flame"></i> Top-Performing Pieces — Enterprise SaaS (last 30 days)</h3>
+          <table class="lm-table" style="margin-top:14px;">
+            <thead><tr><th>Piece</th><th>Author / Brand</th><th>Format</th><th>Engagement</th><th>Why it worked</th></tr></thead>
+            <tbody>
+              <tr><td><strong>"We killed 40% of our features — here's what happened"</strong></td><td>Linear · Karri Saarinen</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="color:#10B981">18.4K</strong></td><td style="font-size:12px; color:var(--text-muted)">Contrarian hook · specific number · founder POV</td></tr>
+              <tr><td><strong>"Stop building dashboards nobody looks at"</strong></td><td>Amplitude Blog</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">12.1K</strong></td><td style="font-size:12px; color:var(--text-muted)">Imperative headline · real anti-pattern · actionable</td></tr>
+              <tr><td><strong>"The 5-minute daily standup we replaced with one Slack thread"</strong></td><td>Notion Team</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">9.8K</strong></td><td style="font-size:12px; color:var(--text-muted)">Specific process · time-to-value in headline</td></tr>
+              <tr><td><strong>"How we debugged a 2ms latency spike — full post-mortem"</strong></td><td>Vercel Engineering</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td><strong style="color:#10B981">7.2K</strong></td><td style="font-size:12px; color:var(--text-muted)">Technical depth · post-mortem format · visual</td></tr>
+              <tr><td><strong>"3 onboarding emails that tripled our activation rate"</strong></td><td>Intercom Blog</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="color:#10B981">6.5K</strong></td><td style="font-size:12px; color:var(--text-muted)">List format · measurable outcome · vertical-specific</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Content gaps -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="zap"></i> Content Gaps — Themes your audience engages with but you haven't covered</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Engineering post-mortems</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">18 top pieces in the last 30d. You've published 0. High affinity with your VP Engineering persona.</p></div>
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Hiring & team-scaling</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">14 top pieces. 2x avg engagement. Natural fit for your "Craft" value.</p></div>
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Cost-to-debug narratives</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">11 top pieces. Direct overlap with your product outcome ("Ship faster. Debug less.").</p></div>
+          </div>
+        </div>
+      </div>
+    `,
+
+    'hook-miner': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #F97316 0%, #DC2626 100%)">
+          <div class="agent-bigicon">🎣</div>
+          <div class="agent-header-text">
+            <h2>HookMiner</h2>
+            <p>Extracts the opening hooks and narrative frameworks driving engagement in your industry. Every hook classified by channel, format, and proven performance — ready for ContentBuilder to use.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag">187 hooks · 6 frameworks</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last refresh: Today, 09:40 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Derived from ContentEngine's top-142 corpus</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">187</div><div class="agent-stat-lbl">Hooks Mined</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">6</div><div class="agent-stat-lbl">Frameworks Identified</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">82</div><div class="agent-stat-lbl">Avg Hook Score</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">LinkedIn</div><div class="agent-stat-lbl">Top Channel</div></div>
+        </div>
+
+        <!-- Framework distribution + top categories -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Hook Category Share</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpHookCategoryChart"></canvas></div>
+          </div>
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Avg Hook Score by Channel</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpHookChannelChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Hook library -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="book-open"></i> Hook Library — Top 8 of 187</h3>
+            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;"><option>All channels</option><option>LinkedIn</option><option>Email</option><option>Blog</option><option>YouTube</option></select>
+          </div>
+          <table class="lm-table">
+            <thead><tr><th>Hook</th><th>Framework</th><th>Channel</th><th>Score</th><th>Use Count</th></tr></thead>
+            <tbody>
+              <tr><td style="max-width:340px;"><strong>"We killed 40% of our features — here's what happened."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>LinkedIn</td><td><strong style="color:#10B981">96</strong></td><td>—</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Stop building dashboards nobody looks at."</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Imperative</span></td><td>Blog</td><td><strong style="color:#10B981">92</strong></td><td>12</td></tr>
+              <tr><td style="max-width:340px;"><strong>"The 3-line Slack message that replaced our daily standup."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">89</strong></td><td>8</td></tr>
+              <tr><td style="max-width:340px;"><strong>"I cut our CI pipeline from 47 to 6 minutes. Here's exactly how."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">87</strong></td><td>14</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Every VP Engineering I talk to has the same 3 complaints."</strong></td><td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona Aware</span></td><td>LinkedIn</td><td><strong style="color:#10B981">85</strong></td><td>6</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Why we moved off [category-leader] — and what changed."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>Blog</td><td><strong style="color:#10B981">83</strong></td><td>3</td></tr>
+              <tr><td style="max-width:340px;"><strong>"How we handle on-call at 12 engineers."</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">How-We Do X</span></td><td>Email</td><td><strong style="color:#10B981">80</strong></td><td>9</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Here's the question I ask in every engineering interview."</strong></td><td><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span></td><td>LinkedIn</td><td><strong style="color:#10B981">78</strong></td><td>11</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Frameworks breakdown -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="layout-grid"></i> 6 Frameworks Identified</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Contrarian (32 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Challenges conventional wisdom. Pattern: "Stop [common practice]" / "We killed [expected thing]"</p></div>
+            <div style="padding:12px; border-left:3px solid #3B82F6; background:#EFF6FF; border-radius:4px;"><strong style="font-size:13px;">Specific Number (41 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Includes measurable outcomes. Pattern: "I cut X from Y to Z" / "We 3x'd [metric] in [time]"</p></div>
+            <div style="padding:12px; border-left:3px solid #6B21A8; background:#F3E8FF; border-radius:4px;"><strong style="font-size:13px;">Open-Loop (28 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Creates curiosity gap. Pattern: "The question I ask every…" / "Here's the mistake most…"</p></div>
+            <div style="padding:12px; border-left:3px solid #F59E0B; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">How-We-Do-X (34 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Transparent operational narrative. Pattern: "How we [do internal process] at [scale]"</p></div>
+            <div style="padding:12px; border-left:3px solid #1D4ED8; background:#DBEAFE; border-radius:4px;"><strong style="font-size:13px;">Persona-Aware (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Names the reader directly. Pattern: "Every [persona] I talk to…" / "If you're a [role]…"</p></div>
+            <div style="padding:12px; border-left:3px solid #374151; background:#F3F4F6; border-radius:4px;"><strong style="font-size:13px;">Imperative (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Strong action verb opener. Pattern: "Stop [X]" / "Start [Y]" / "Ship [Z]"</p></div>
+          </div>
+        </div>
+      </div>
+    `,
+
+    'content-builder': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #22C55E 0%, #15803D 100%)">
+          <div class="agent-bigicon">✍️</div>
+          <div class="agent-header-text">
+            <h2>ContentBuilder</h2>
+            <p>Combines your brand voice, ContentEngine insights and HookMiner frameworks to generate publish-ready content at scale. Posts, emails and copies that sound like you — because they use your rules.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Producing</div><br>
+            <span class="agent-tag">12 pieces/week cadence</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 09:50 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Uses: BrandVoice rules · ContentEngine insights · HookMiner frameworks</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">47</div><div class="agent-stat-lbl">Pieces Generated (30d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">89%</div><div class="agent-stat-lbl">First-Draft Approval Rate</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">4</div><div class="agent-stat-lbl">Active Channels</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">86 hrs</div><div class="agent-stat-lbl">Team Hours Saved (30d)</div></div>
+        </div>
+
+        <!-- Generated content preview -->
+        <div class="card" style="margin-top:24px; border:1px solid rgba(34,197,94,0.2); background:linear-gradient(180deg,white,#F0FDF4);">
+          <h3 class="card-title"><i data-lucide="sparkles"></i> Latest Generated Piece — LinkedIn post</h3>
+          <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:20px; margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span>
+                <span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian hook</span>
+                <span class="lm-tag" style="background:#F0FDF4;color:#166534">Hook score 96</span>
+              </div>
+              <span style="font-size:11px; color:var(--text-muted);">Generated 3 min ago · Draft</span>
+            </div>
+            <p style="font-size:15px; line-height:1.7; color:var(--text-main); white-space:pre-line;">We killed 40% of our dashboards last quarter.
+
+Nobody complained.
+
+Turns out: most "essential" dashboards get opened twice a month. The third-most-viewed dashboard at a 500-person engineering org we worked with? Last opened 94 days ago.
+
+What we learned:
+
+1/ Dashboards multiply because adding one is free. Removing one requires a meeting.
+
+2/ Most teams don't need "data visibility" — they need a monthly one-pager with 3 numbers.
+
+3/ The dashboards that stuck had an owner, a cadence, and a decision tied to them.
+
+If you're a VP of Engineering drowning in Looker tabs, start with a 30-day audit: kill anything nobody opened.
+
+Ship faster. Debug less.</p>
+            <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+              <button class="btn-sm btn-primary"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
+              <button class="btn-sm btn-ai"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
+              <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
+              <button class="btn-sm" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content queue + channel split -->
+        <div class="kpi-grid" style="grid-template-columns: 2fr 1fr; margin-top:24px;">
+          <div class="card">
+            <h3 class="card-title"><i data-lucide="list"></i> Content Queue — awaiting approval</h3>
+            <table class="lm-table" style="margin-top:14px;">
+              <thead><tr><th>Title</th><th>Channel</th><th>Format</th><th>Hook Score</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><strong>We killed 40% of our dashboards…</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">96</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>Stop writing runbooks nobody reads</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Article · 800w</td><td><span style="color:#10B981;font-weight:600;">92</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>The 3-line Slack message that replaced our standup</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">89</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>How we cut our CI from 47 to 6 minutes</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Post-mortem · 1.2k</td><td><span style="color:#10B981;font-weight:600;">87</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
+                <tr><td><strong>Onboarding email #2 — "Set up your first alert"</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td>Email · seq day 3</td><td><span style="color:#10B981;font-weight:600;">84</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
+                <tr><td><strong>Every VP Eng has the same 3 complaints</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">85</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>Debug-cost calculator — lead magnet</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Interactive · 600w</td><td><span style="color:#10B981;font-weight:600;">80</span></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Research</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card" style="height:360px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Channel Distribution</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpChannelSplitChart"></canvas></div>
+          </div>
+        </div>
+      </div>
+    `,
+
+    'creative-brain': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #A855F7 0%, #6B21A8 100%)">
+          <div class="agent-bigicon">🎨</div>
+          <div class="agent-header-text">
+            <h2>CreativeBrain</h2>
+            <p>Renders the content produced by ContentBuilder into multi-format creatives — banners, ad variants, email templates, short-form video covers. Every asset on-brand by default.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Rendering</div><br>
+            <span class="agent-tag">Auto brand-compliance ON</span>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+        </div>
+
+        <div class="agent-stats">
+          <div class="agent-stat"><div class="agent-stat-val">186</div><div class="agent-stat-lbl">Assets Produced (30d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">5</div><div class="agent-stat-lbl">Formats</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">98%</div><div class="agent-stat-lbl">Brand Compliance</div></div>
+          <div class="agent-stat"><div class="agent-stat-val">2.4 min</div><div class="agent-stat-lbl">Avg Render Time</div></div>
+        </div>
+
+        <!-- Asset gallery -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> Asset Library — last batch</h3>
+            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;"><option>All formats</option><option>LinkedIn Banner</option><option>Email Header</option><option>Ad Variant</option><option>Video Cover</option><option>Blog Hero</option></select>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:14px;">
+            ${[
+              {grad:'linear-gradient(135deg, #6366F1 0%, #0F172A 100%)', label:'LinkedIn Banner', title:'Ship faster. Debug less.'},
+              {grad:'linear-gradient(135deg, #F59E0B 0%, #DC2626 100%)', label:'Email Header', title:'We killed 40% of dashboards'},
+              {grad:'linear-gradient(135deg, #0F172A 0%, #6366F1 100%)', label:'Ad Variant · A', title:'Stop building dashboards nobody looks at'},
+              {grad:'linear-gradient(135deg, #22C55E 0%, #0F172A 100%)', label:'Ad Variant · B', title:'From 47 min CI to 6 min'},
+              {grad:'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)', label:'YouTube Cover', title:'How we handle on-call at 12 engineers'},
+              {grad:'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)', label:'Blog Hero', title:'Engineering post-mortem: the 2ms spike'},
+              {grad:'linear-gradient(135deg, #0F172A 0%, #F59E0B 100%)', label:'Email Header', title:'Your weekly engineering brief'},
+              {grad:'linear-gradient(135deg, #A855F7 0%, #EC4899 100%)', label:'Social Story', title:'3 questions every VP Eng should ask'},
+            ].map(a => `
+              <div style="border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="aspect-ratio:16/9; background:${a.grad}; display:flex; align-items:center; justify-content:center; padding:14px; text-align:center;">
+                  <span style="color:white; font-weight:700; font-size:13px; line-height:1.4; font-family:var(--font-heading,inherit);">${a.title}</span>
+                </div>
+                <div style="padding:10px 12px; background:white;">
+                  <div style="font-size:11px; color:var(--text-muted);">${a.label}</div>
+                  <div style="display:flex; gap:6px; margin-top:6px;"><span class="lm-tag" style="background:#F0FDF4;color:#166534">On-brand</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Ready</span></div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Format distribution + compliance -->
+        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
+          <div class="card" style="height:320px; display:flex; flex-direction:column;">
+            <h3 class="card-title">Assets by Format (30d)</h3>
+            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpAssetFormatChart"></canvas></div>
+          </div>
+          <div class="card">
+            <h3 class="card-title"><i data-lucide="shield-check"></i> Brand Compliance Check</h3>
+            <div style="margin-top:14px;">
+              ${[
+                {label:'Logo placement & sizing', pct:100, color:'#10B981'},
+                {label:'Palette adherence', pct:98, color:'#10B981'},
+                {label:'Typography rules', pct:96, color:'#10B981'},
+                {label:'Tone alignment (vs voice rules)', pct:94, color:'#10B981'},
+                {label:'Imagery style guide', pct:87, color:'#F59E0B'},
+              ].map(c => `<div style="margin-bottom:14px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${c.label}</span><span style="color:${c.color}; font-weight:600;">${c.pct}%</span></div><div style="height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden;"><div style="height:100%; width:${c.pct}%; background:${c.color};"></div></div></div>`).join('')}
+              <div style="padding:10px 12px; background:#FFF7ED; border-left:3px solid #F59E0B; border-radius:4px; margin-top:14px;">
+                <strong style="font-size:12px;">⚠ 2 flagged assets</strong><p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Imagery style drift detected in 2 video covers — human review recommended before publish.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+
+    // ═══════════════════════════════════════════════════
     //  ANALYTICS & METRICS — SOCIAL & BRAND INTELLIGENCE
     // ═══════════════════════════════════════════════════
 
@@ -3433,6 +3860,85 @@ function renderCICharts(viewId) {
           ]
         },
         options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+  }
+
+  // ─── MARKETING PILOT charts ───
+  if (viewId === 'content-engine') {
+    const fmt = document.getElementById('mpFormatChart');
+    const thm = document.getElementById('mpThemeChart');
+    if (fmt) {
+      chartInstances['mpFormatChart'] = new Chart(fmt, {
+        type: 'bar',
+        data: {
+          labels: ['LinkedIn Post', 'Long-form Blog', 'YouTube', 'Email', 'Thread (X)', 'Short Video', 'Landing'],
+          datasets: [{ label: 'Avg Engagement Index', data: [8.4, 6.9, 5.8, 4.7, 4.2, 3.9, 2.6], backgroundColor: ['#06B6D4','#0369A1','#EF4444','#F59E0B','#6366F1','#EC4899','#94A3B8'], borderRadius: 4 }]
+        },
+        options: { ...chartOpts, plugins: { legend: { display:false } } }
+      });
+    }
+    if (thm) {
+      chartInstances['mpThemeChart'] = new Chart(thm, {
+        type: 'doughnut',
+        data: {
+          labels: ['Post-mortems', 'How-we-do-X', 'Team & hiring', 'Contrarian takes', 'Specific numbers', 'Other'],
+          datasets: [{ data: [24, 22, 18, 15, 12, 9], backgroundColor: ['#06B6D4','#0369A1','#22C55E','#EF4444','#F59E0B','#94A3B8'] }]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+      });
+    }
+  }
+
+  if (viewId === 'hook-miner') {
+    const cat = document.getElementById('mpHookCategoryChart');
+    const ch  = document.getElementById('mpHookChannelChart');
+    if (cat) {
+      chartInstances['mpHookCategoryChart'] = new Chart(cat, {
+        type: 'polarArea',
+        data: {
+          labels: ['Specific Number', 'How-We-Do-X', 'Contrarian', 'Open-Loop', 'Persona-Aware', 'Imperative'],
+          datasets: [{ data: [41, 34, 32, 28, 26, 26], backgroundColor: ['#3B82F6','#F59E0B','#EF4444','#A855F7','#0EA5E9','#374151'] }]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'right', labels: { font: { size: 11 } } } } }
+      });
+    }
+    if (ch) {
+      chartInstances['mpHookChannelChart'] = new Chart(ch, {
+        type: 'bar',
+        data: {
+          labels: ['LinkedIn', 'Blog', 'Email', 'YouTube', 'X/Twitter'],
+          datasets: [{ label: 'Avg Hook Score', data: [87, 82, 79, 76, 71], backgroundColor: ['#F97316','#DC2626','#F59E0B','#EF4444','#374151'], borderRadius: 4 }]
+        },
+        options: { ...chartOpts, plugins: { legend: { display:false } }, scales: { y: { beginAtZero: false, min: 60, max: 100 } } }
+      });
+    }
+  }
+
+  if (viewId === 'content-builder') {
+    const split = document.getElementById('mpChannelSplitChart');
+    if (split) {
+      chartInstances['mpChannelSplitChart'] = new Chart(split, {
+        type: 'doughnut',
+        data: {
+          labels: ['LinkedIn', 'Blog', 'Email', 'YouTube'],
+          datasets: [{ data: [22, 14, 9, 2], backgroundColor: ['#22C55E','#0369A1','#F59E0B','#EF4444'] }]
+        },
+        options: { ...chartOpts, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+      });
+    }
+  }
+
+  if (viewId === 'creative-brain') {
+    const af = document.getElementById('mpAssetFormatChart');
+    if (af) {
+      chartInstances['mpAssetFormatChart'] = new Chart(af, {
+        type: 'bar',
+        data: {
+          labels: ['Ad Variants', 'LinkedIn Banners', 'Email Headers', 'Video Covers', 'Blog Heros'],
+          datasets: [{ label: 'Assets (30d)', data: [68, 42, 36, 24, 16], backgroundColor: '#A855F7', borderRadius: 4 }]
+        },
+        options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { display: false } } }
       });
     }
   }
