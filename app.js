@@ -8,9 +8,11 @@ const chartInstances = {};
 
 // Company Bio Scanner — selected scrape language
 let scanLanguage = 'en';
+let lastScannedDomain = null;
 
 // LeadMiner pre-loaded for demo
-let leadsRevealed = true;
+let leadsRevealed = false;
+let _originalLeadsData = null; // backup of the original leads
 
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
@@ -129,6 +131,9 @@ const leadsData = [
     status: 'dormant'
   },
 ];
+
+// Save original leads so they can be restored after cache contamination
+_originalLeadsData = leadsData.map(l => ({ ...l }));
 
 // ── Helpers shared across all modules ──
 
@@ -485,63 +490,6 @@ function switchView(viewId) {
 // ═══════════════════════════════════════════════════════════
 
 const companyCacheDB = {
-  'sicitgroup.com': {
-    name: 'SICIT Group S.p.A.',
-    tagline: 'Circular Economy for Agriculture & Industry',
-    description: 'SICIT Group is a global leader in the production of biostimulants, retarders for plaster, and fats for biofuel. Founded in 1960 and headquartered in Chiampo (Vicenza), Italy, the company transforms residues from the tanning industry into high-added-value products using a circular economy model. SICIT operates across 80+ countries worldwide with a B2B model serving the agrochemical and construction industries.',
-    industry: 'Agrochemicals / Biostimulants',
-    headcount: '500 – 1,000 employees',
-    location: 'Chiampo (Vicenza), Italy',
-    founded: 1960,
-    services: [
-      'Biostimulants (Animal-Derived)',
-      'Biostimulants (Plant-Based)',
-      'Biostimulants (Seaweed-Based)',
-      'Protein Hydrolysates',
-      'Plaster Retarders',
-      'Fat for Biofuel',
-      'Custom Formulations',
-      'R&D Partnerships',
-    ],
-    techStack: ['SAP', 'Google Analytics', 'Custom ERP'],
-    socials: {
-      linkedin: 'https://www.linkedin.com/company/sicit-group/',
-      twitter: '',
-      instagram: '',
-      facebook: '',
-      youtube: 'https://www.youtube.com/@sicitgroup6886',
-      tiktok: '',
-    },
-    whatTheyDo: [
-      { icon: 'leaf', title: 'Biostimulant Manufacturing', desc: 'Production of amino acid and peptide-based biostimulants from animal, plant, and seaweed sources for enhanced crop performance.' },
-      { icon: 'building', title: 'Construction Chemical Additives', desc: 'Manufacturing of protein-based retarders that control the setting time of gypsum plaster, mortar, and plasterboard.' },
-      { icon: 'fuel', title: 'Biofuel Raw Material Processing', desc: 'Extraction and refining of animal fats from tanning industry residues for use as feedstock in biofuel production.' },
-      { icon: 'recycle', title: 'Circular Economy Model', desc: 'Transformation of tanning industry by-products into high-value products, achieving near-zero waste across the production chain.' },
-    ],
-    differentiators: [
-      '60+ years of experience in protein hydrolysis technology',
-      'Circular economy pioneer — zero-waste from tanning by-products',
-      'Global reach: operational in 80+ countries with B2B distribution',
-      'Vertically integrated: full control from raw material to finished product',
-      'Recent LATAM expansion with new production plant in Mexico',
-      'Acquired Patagonia Biotecnologia (Chile) for seaweed-based biostimulants',
-    ],
-    recentMoves: [
-      { date: '2025', event: 'Co-control acquisition by Renaissance Partners & TPG Rise Climate' },
-      { date: '2024', event: 'New production plant in Mexico announced for LATAM market expansion' },
-      { date: '2023', event: 'Acquisition of Patagonia Biotecnologia (Chile) — seaweed biostimulants' },
-      { date: '2022', event: 'Strategic partnership with leading European agrochemical distributors' },
-    ],
-    icpMatch: { score: 94, label: 'Perfect ICP Match', text: 'SICIT fits your Tier 1 ICP perfectly: global B2B manufacturer with circular economy positioning, strong R&D culture, and expansion plans in LATAM (Mexico plant). High probability of partnership or product integration.' },
-    leads: [
-      { name: 'Massimo Neresini', title: 'Chief Executive Officer (CEO)', score: 97, action: 'Send LinkedIn InMail — Decision maker since 2006', actionType: 'hot' },
-      { name: 'Rino Mastrotto', title: 'Chairman of the Board', score: 91, action: 'Executive introduction via mutual contact', actionType: 'hot' },
-      { name: 'Giovanni Trentin', title: 'Chief Financial Officer (CFO)', score: 84, action: 'Send LinkedIn Connection + Budget proposal', actionType: 'warm' },
-      { name: 'Marco Giordani', title: 'Head of R&D — Biostimulants', score: 78, action: 'Invite to webinar on AgTech innovation', actionType: 'warm' },
-      { name: 'Laura Bianchi', title: 'International Sales Director', score: 72, action: 'Wait for Biostimulant Congress event', actionType: 'sequence' },
-    ],
-  },
-
   // ─── COMPANY 2 ───────────────────────────────────────
   'valagro.com': {
     name: 'Valagro S.p.A. (Syngenta Group)',
@@ -880,6 +828,14 @@ function setScanLanguage(lang) {
     btn.style.color = active ? 'white' : 'var(--text-main)';
     btn.style.borderColor = active ? 'var(--ai-accent)' : 'var(--border)';
   });
+  // Re-render results in new language if a company is already displayed
+  if (lastScannedDomain) {
+    const cached = getCompanyCache(lastScannedDomain, lang);
+    if (cached) {
+      renderCompanyResults(cached, lastScannedDomain);
+      document.getElementById('company-bio-results').style.opacity = '1';
+    }
+  }
 }
 
 async function scanCompanyBio() {
@@ -934,6 +890,7 @@ async function scanCompanyBio() {
 }
 
 function renderCompanyResults(data, domain) {
+  lastScannedDomain = domain;
   let name = data.name || domain;
   document.getElementById('scanned-company-name').textContent = name;
   document.getElementById('scanned-company-url-link').textContent = domain;
@@ -1489,11 +1446,11 @@ function generateViewHTML(view) {
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
             <span style="font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;">Scan language</span>
             <div style="display:flex; gap:6px;" id="lang-selector">
-              <button onclick="setScanLanguage('en')" data-lang="en" style="padding:5px 12px;border-radius:6px;border:1px solid var(--ai-accent);background:var(--ai-accent);color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇬🇧 EN</button>
-              <button onclick="setScanLanguage('it')" data-lang="it" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇮🇹 IT</button>
-              <button onclick="setScanLanguage('es')" data-lang="es" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇪🇸 ES</button>
-              <button onclick="setScanLanguage('fr')" data-lang="fr" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇫🇷 FR</button>
-              <button onclick="setScanLanguage('de')" data-lang="de" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)">🇩🇪 DE</button>
+              <button onclick="setScanLanguage('en')" data-lang="en" style="padding:5px 12px;border-radius:6px;border:1px solid var(--ai-accent);background:var(--ai-accent);color:white;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)"><img src="https://flagcdn.com/16x12/gb.png" style="vertical-align:middle;margin-right:5px;border-radius:2px"> EN</button>
+              <button onclick="setScanLanguage('it')" data-lang="it" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)"><img src="https://flagcdn.com/16x12/it.png" style="vertical-align:middle;margin-right:5px;border-radius:2px"> IT</button>
+              <button onclick="setScanLanguage('es')" data-lang="es" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)"><img src="https://flagcdn.com/16x12/es.png" style="vertical-align:middle;margin-right:5px;border-radius:2px"> ES</button>
+              <button onclick="setScanLanguage('fr')" data-lang="fr" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)"><img src="https://flagcdn.com/16x12/fr.png" style="vertical-align:middle;margin-right:5px;border-radius:2px"> FR</button>
+              <button onclick="setScanLanguage('de')" data-lang="de" style="padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:white;color:var(--text-main);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-main)"><img src="https://flagcdn.com/16x12/de.png" style="vertical-align:middle;margin-right:5px;border-radius:2px"> DE</button>
             </div>
           </div>
           <div style="display:flex; gap:12px;">
@@ -3916,13 +3873,10 @@ function processCommand(text) {
   const lower = text.toLowerCase();
 
   // ─── SHOW COMPANYS / LEADS (FROM LOCAL CACHE) ───
-  if (lower.includes('empresa') || lower.includes('company') || lower.includes('companies') || lower.includes('leads') || lower.includes('contactos')) {
+  if (lower.includes('empresa') || lower.includes('company') || lower.includes('companies') || lower.includes('contactos')) {
     let companyHtml = '';
     let leadsCounter = 0;
-    
-    // Clear the existing leadsData array carefully
-    leadsData.length = 0;
-    
+
     // Loop through company cache DB
     for (const [domain, company] of Object.entries(companyCacheDB)) {
       companyHtml += `<div style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">`;
@@ -3952,33 +3906,14 @@ function processCommand(text) {
             </div>
           `;
           
-          // Populate leadsData array
-          leadsData.push({
-            name: lead.name,
-            org: company.name.split(' ')[0], // short name
-            title: lead.title,
-            dur: 'Scanned',
-            email: lead.name.split(' ')[0].toLowerCase() + '@' + domain.replace(/^www\./, ''),
-            city: company.location.split(',')[0],
-            mailSent: false,
-            liSent: false,
-            icpScore: lead.score,
-            closingProb: Math.round(lead.score * 0.8),
-            channel: 'LinkedIn',
-            signal: lead.actionType === 'hot' ? 'High intent match 🎯' : 'Matched ICP parameters 🔍',
-            status: lead.actionType
-          });
+          // leadsData is never modified from cache — only the original leads are used
         });
       }
       companyHtml += `</div>`;
     }
 
     addBotMessage(`📊 <strong>Found ${Object.keys(companyCacheDB).length} Companies and ${leadsCounter} Leads in your database.</strong>\n\nHere is your requested intelligence breakdown:\n\n${companyHtml}`);
-    
-    // Set leads revealed and switch view to update LeadMiner
-    leadsRevealed = true;
-    switchView('leadminer');
-    
+
     // Process lucid icons in the newly created message
     setTimeout(() => {
       if (window.lucide) window.lucide.createIcons();
@@ -4007,40 +3942,49 @@ function processCommand(text) {
 
   // ─── BRING / FIND / SEARCH LEADS ───
   if (lower.includes('bring') || lower.includes('find leads') || lower.includes('search leads') || lower.includes('get leads') || lower.includes('import leads') || lower.includes('fetch leads') || (lower.includes('leads') && lower.includes('for '))) {
-    if (leadsRevealed) {
-      addBotMessage(`Leads are already loaded! You have <strong>${leadsData.length} leads</strong> in your LeadMiner database. Navigate to <strong>LeadMiner™</strong> to view them.`);
-      return;
+
+    // Extract company name from message and try to match in cache
+    const searchContext = text.replace(/^.*?(for|about|in|related to)\s*/i, '').trim() || 'your specified criteria';
+    const searchLower = searchContext.toLowerCase();
+
+    // Find matching company in cache
+    let matchedDomain = null;
+    let matchedCompany = null;
+    for (const [domain, company] of Object.entries(companyCacheDB)) {
+      const companyNameLower = company.name.toLowerCase();
+      if (companyNameLower.includes(searchLower) || searchLower.includes(companyNameLower.split(' ')[0]) || domain.includes(searchLower)) {
+        matchedDomain = domain;
+        matchedCompany = company;
+        break;
+      }
     }
 
-    // Extract search context from the user message
-    const searchContext = text.replace(/^.*?(for|about|in|related to)\s*/i, '').trim() || 'your specified criteria';
+    // Restore original pre-loaded leads (ignore companyCacheDB contacts)
+    leadsData.length = 0;
+    _originalLeadsData.forEach(l => leadsData.push({ ...l }));
+
+    if (leadsRevealed) {
+      leadsRevealed = false;
+    }
 
     addBotMessage(`🔍 Searching for leads matching: <strong>"${searchContext}"</strong>\n\nScanning LinkedIn, company databases, and intent signals...`);
 
-    // Simulate progressive loading
-    setTimeout(() => {
-      showTyping();
-    }, 800);
+    setTimeout(() => { showTyping(); }, 800);
 
     setTimeout(() => {
       hideTyping();
-      addBotMessage(`📊 Found <strong>${leadsData.length} high-quality leads</strong> matching your criteria:\n\n• <strong>${leadsData.filter(l => l.icpScore >= 80).length}</strong> leads with ICP Score ≥ 80\n• <strong>${leadsData.filter(l => l.icpScore >= 60 && l.icpScore < 80).length}</strong> leads with ICP Score 60-79\n• Industries: Fixed Income, Portfolio Management, Trading\n• Organizations: ${[...new Set(leadsData.map(l => l.org))].slice(0, 4).join(', ')} and more\n\nLoading into LeadMiner™...`);
+      const companyLabel = matchedCompany ? matchedCompany.name : searchContext;
+      addBotMessage(`📊 Found <strong>${leadsData.length} high-quality leads</strong> for ${companyLabel}:\n\n• <strong>${leadsData.filter(l => l.icpScore >= 80).length}</strong> leads with ICP Score ≥ 80\n• <strong>${leadsData.filter(l => l.icpScore >= 60 && l.icpScore < 80).length}</strong> leads with ICP Score 60-79\n• Profiles: ${[...new Set(leadsData.map(l => l.title.split('·')[0].trim()))].slice(0, 3).join(', ')} and more\n\nLoading into LeadMiner™...`);
     }, 2500);
 
-    setTimeout(() => {
-      showTyping();
-    }, 3500);
+    setTimeout(() => { showTyping(); }, 3500);
 
     setTimeout(() => {
       hideTyping();
       leadsRevealed = true;
-      // Re-render the current view to show leads
       switchView(state.currentView);
-      // Navigate to LeadMiner if not already there
-      if (state.currentView !== 'leadminer') {
-        switchView('leadminer');
-      }
-      addBotMessage(`✅ <strong>${leadsData.length} leads imported successfully!</strong>\n\nAll leads are now visible in <strong>LeadMiner™</strong> and across all AI modules (ICP Scorer, MessageTailor, OutreachFlow, Smart Nurture).\n\nClick any lead name to open their profile, or ask me to <strong>"Draft an email for [Name]"</strong> to get started.`);
+      if (state.currentView !== 'leadminer') switchView('leadminer');
+      addBotMessage(`✅ <strong>${leadsData.length} leads imported successfully!</strong>\n\nAll leads are now visible in <strong>LeadMiner™</strong>. Click any lead to open their profile, or ask me to <strong>"Draft an email for [Name]"</strong> to get started.`);
     }, 5000);
 
     return;
