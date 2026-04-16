@@ -130,6 +130,86 @@ const leadsData = [
     signal: 'No activity for 58 days — lost to local supplier, re-engage at EMO 2026',
     status: 'dormant'
   },
+  {
+    name: 'Pierre Dubois',       org: 'Safran Aerospace',       title: 'Head of Strategic Sourcing — Engines',    dur: 'Since Feb 2026',
+    email: 'p.dubois@safran-group.com',          city: 'Paris, FR',
+    mailSent: true,  liSent: true,
+    icpScore: 89, closingProb: 68, channel: 'Email',
+    signal: 'Open RFI for CFM LEAP engine precision tooling — 3-year framework agreement',
+    status: 'hot'
+  },
+  {
+    name: 'Stefan Weber',        org: 'BMW Group',              title: 'Director of Manufacturing Technology',    dur: 'Since MECSPE 2026',
+    email: 's.weber@bmwgroup.com',               city: 'Munich, DE',
+    mailSent: true,  liSent: false,
+    icpScore: 86, closingProb: 61, channel: 'LinkedIn',
+    signal: 'New EV line in Debrecen (HU) — Kintek Hungary plant 350km away, logistics advantage',
+    status: 'hot'
+  },
+  {
+    name: 'Daniele Pasquali',    org: 'Marelli Holdings',       title: 'VP Global Procurement — Manufacturing',   dur: 'Since Jan 2026',
+    email: 'd.pasquali@marelli.com',             city: 'Corbetta (MI), IT',
+    mailSent: true,  liSent: true,
+    icpScore: 82, closingProb: 55, channel: 'Email',
+    signal: 'Consolidating tooling vendors post-merger — RFQ for 120 HSK shrink-fit chucks',
+    status: 'active'
+  },
+  {
+    name: 'Elia Fontana',        org: 'FPT Industrial',         title: 'CNC Production Engineer',                 dur: 'Since Feb 2026',
+    email: 'e.fontana@fptindustrial.com',        city: 'Turin, IT',
+    mailSent: true,  liSent: true,
+    icpScore: 79, closingProb: 50, channel: 'Email',
+    signal: 'Iveco engine plant upgrade — same-city customer, on-site demo scheduled',
+    status: 'active'
+  },
+  {
+    name: 'Karel van der Berg',  org: 'DAF Trucks',             title: 'Senior Manufacturing Engineer',           dur: 'Since Mar 2026',
+    email: 'k.vanderberg@daf.eu',                city: 'Eindhoven, NL',
+    mailSent: true,  liSent: false,
+    icpScore: 76, closingProb: 44, channel: 'Email',
+    signal: 'Evaluating EU tooling vendors after Brexit-driven supply chain review',
+    status: 'active'
+  },
+  {
+    name: 'Jan Novák',           org: 'Škoda Auto',             title: 'Head of Tooling & Fixtures',              dur: 'Since BI-MU 2025',
+    email: 'j.novak@skoda-auto.cz',              city: 'Mladá Boleslav, CZ',
+    mailSent: true,  liSent: false,
+    icpScore: 73, closingProb: 39, channel: 'Email',
+    signal: 'Volkswagen Group consolidation — cross-sell opportunity to VW/SEAT plants',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Isabella Russo',      org: 'Biesse Group',           title: 'Head of Machine Integration',             dur: 'Since MECSPE 2026',
+    email: 'i.russo@biesse.com',                 city: 'Pesaro, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 70, closingProb: 33, channel: 'Email',
+    signal: 'Wood machinery OEM — potential bundle partnership for integrated tooling',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Catarina Silva',      org: 'Volkswagen Autoeuropa',  title: 'Procurement Specialist — Precision',      dur: 'Since Feb 2026',
+    email: 'c.silva@vw-autoeuropa.pt',           city: 'Palmela, PT',
+    mailSent: false, liSent: true,
+    icpScore: 66, closingProb: 27, channel: 'LinkedIn',
+    signal: 'Iberian market expansion — Kintek looking for local distributor footprint',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Takeshi Ikeda',       org: 'Honda Italia Industriale', title: 'Plant Engineering Manager',             dur: 'Since Jan 2026',
+    email: 't.ikeda@honda-italia.com',           city: 'Rome, IT',
+    mailSent: true,  liSent: false,
+    icpScore: 63, closingProb: 22, channel: 'Email',
+    signal: 'APAC HQ decision-makers — long sales cycle, but strategic if won',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Elena Bogdanovic',    org: 'Dacia (Renault Group)',  title: 'Senior Buyer — MRO & Tooling',            dur: 'Since Nov 2025',
+    email: 'e.bogdanovic@dacia.ro',              city: 'Pitești, RO',
+    mailSent: false, liSent: true,
+    icpScore: 60, closingProb: 17, channel: 'LinkedIn',
+    signal: 'No activity for 48 days — budget freeze expected to lift Q2 2026',
+    status: 'dormant'
+  },
 ];
 
 // Save original leads so they can be restored after cache contamination
@@ -989,7 +1069,7 @@ async function scrapeCompanyData(url, domain, companyName, lang = 'en') {
       }
 
       // Industry
-      if (lowerHtml.includes('yacht') || lowerHtml.includes('yachts') || lowerHtml.includes('marine') || lowerHtml.includes('nautical') || lowerHtml.includes('boat') || lowerHtml.includes('vessel') || lowerHtml.includes('sailing')) data.industry = 'Luxury Marine / Yacht Manufacturing';
+      if (lowerHtml.includes('cnc') || lowerHtml.includes('machining') || lowerHtml.includes('tool holder') || lowerHtml.includes('precision') || lowerHtml.includes('milling') || lowerHtml.includes('turning')) data.industry = 'CNC Machining / Precision Manufacturing';
       else if (lowerHtml.includes('biostimulant') || lowerHtml.includes('fertilizer') || lowerHtml.includes('crop') || lowerHtml.includes('agriculture')) data.industry = 'Agrochemicals / Biostimulants';
       else if (lowerHtml.includes('software') || lowerHtml.includes('saas') || lowerHtml.includes('platform')) data.industry = 'B2B SaaS / Enterprise Software';
       else if (lowerHtml.includes('finance') || lowerHtml.includes('banking') || lowerHtml.includes('fintech')) data.industry = 'Financial Services / Fintech';
@@ -1053,7 +1133,7 @@ function generateViewHTML(view) {
               <div class="kpi-icon"><i data-lucide="users"></i></div>
             </div>
             <div class="kpi-val">${leadsData.length}</div>
-            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +6 since Cannes 2025</div>
+            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +6 since EMO 2025</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-h">
@@ -1488,7 +1568,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🔍</div>
           <div class="agent-header-text">
             <h2>LeadMiner™</h2>
-            <p>Your complete prospect database — identifies, enriches, and tracks high-net-worth buyers from boat shows, dealer networks, web inquiries, and owner referrals. Every lead with full context and outreach status.</p>
+            <p>Your complete prospect database — identifies, enriches, and tracks manufacturing decision-makers from trade shows, distributor networks, web inquiries, and customer referrals. Every lead with full context and outreach status.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -1616,7 +1696,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">✍️</div>
           <div class="agent-header-text">
             <h2>MessageTailor™</h2>
-            <p>Crafts personalized outreach for each prospect — adapted to their profile, preferred channel, buying stage, and the specific yacht model they showed interest in. Every message feels one-to-one.</p>
+            <p>Crafts personalized outreach for each prospect — adapted to their profile, preferred channel, buying stage, and the specific tool holder series they showed interest in. Every message feels one-to-one.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -1647,7 +1727,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="sparkles"></i> AI-generated message for ICP Scorer's #1 lead</h3>
           <div style="background:#F8F9FF;border-radius:10px;padding:20px;border:1px dashed rgba(142,84,233,0.3)">
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px"><strong>To:</strong> ${getTopLead().name} · <strong>Org:</strong> ${getTopLead().org} · <strong>Channel:</strong> ${getTopLead().channel} · <strong>Score:</strong> ${getTopLead().icpScore}</p>
-            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a private viewing of the vessel at our Piacenza shipyard, where you can experience the craftsmanship and interior options firsthand. We have select build slots available for late 2026 delivery. Would next week work for a brief call to discuss configuration preferences?"</p>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a facility tour at our Mappano plant, where you can see our precision grinding and shrink-fit testing firsthand. We have capacity available for Q3 2026 delivery. Would next week work for a brief call to discuss configuration preferences?"</p>
             <div style="display:flex;gap:10px;margin-top:14px">
               <button class="btn-sm btn-primary"><i data-lucide="send"></i> Send now</button>
               <button class="btn-sm btn-ai"><i data-lucide="refresh-cw"></i> Regenerate variant</button>
@@ -1660,7 +1740,7 @@ function generateViewHTML(view) {
           <div class="feature-card">
             <div class="feature-icon">🎭</div>
             <h4>Adaptive Tone</h4>
-            <p>Adjusts the message style based on the buyer profile — formal for family offices, warm for returning owners, concierge-level for UHNWI prospects.</p>
+            <p>Adjusts the message style based on the buyer profile — formal for procurement teams, warm for returning customers, consultative for strategic accounts.</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">📡</div>
@@ -1670,7 +1750,7 @@ function generateViewHTML(view) {
           <div class="feature-card">
             <div class="feature-icon">📈</div>
             <h4>Context-Aware</h4>
-            <p>References the specific model of interest, last interaction (sea trial, boat show visit, brochure download), and timing for maximum relevance.</p>
+            <p>References the specific model of interest, last interaction (facility demo, trade show visit, spec sheet download), and timing for maximum relevance.</p>
           </div>
         </div>
       </div>
@@ -1724,7 +1804,7 @@ function generateViewHTML(view) {
               <div class="seq-num">2</div>
               <div class="seq-body">
                 <h4>Brochure & Configuration Options</h4>
-                <p>If email opened: send digital brochure + interior configuration link. If not opened: resend with adjusted subject line. Day 4.</p>
+                <p>If email opened: send digital catalog + configurator link. If not opened: resend with adjusted subject line. Day 4.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--warning);margin-left:8px">48% click rate</span></div>
               </div>
             </div>
@@ -1740,7 +1820,7 @@ function generateViewHTML(view) {
               <div class="seq-num">4</div>
               <div class="seq-body">
                 <h4>Sea Trial Invitation (if engaged)</h4>
-                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive sea trial event. If no engagement: send lifestyle content instead. Day 14.</p>
+                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive factory demo event. If no engagement: send application case studies instead. Day 14.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="ch-badge">💬 WhatsApp</span></div>
               </div>
             </div>
@@ -1771,7 +1851,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">💬</div>
           <div class="agent-header-text">
             <h2>Smart Nurture™</h2>
-            <p>Keeps dormant prospects warm by detecting re-engagement signals — a brochure reopened, a boat show approaching, a competitor price change — and triggers the right message at the right moment to bring them back into the pipeline.</p>
+            <p>Keeps dormant prospects warm by detecting re-engagement signals — a spec sheet reopened, a trade show approaching, a competitor price change — and triggers the right message at the right moment to bring them back into the pipeline.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Monitoring</div><br>
@@ -2265,7 +2345,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">💰</div>
           <div class="agent-header-text">
             <h2>Price Intelligence Agent</h2>
-            <p>Consolidates competitor pricing across markets, dealer networks, and boat show catalogs — giving you a clear view of where you stand versus Ferretti, Azimut, Sunseeker, and Princess at any given moment.</p>
+            <p>Consolidates competitor pricing across markets, distributor networks, and trade show catalogs — giving you a clear view of where you stand versus Sandvik, Haimer, Kennametal, and Iscar at any given moment.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2299,11 +2379,11 @@ function generateViewHTML(view) {
 
         <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
           <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Avg Base Price by Brand (50-60 ft segment)</h3>
+            <h3 class="card-title">Avg Base Price by Brand (HSK-A63 segment)</h3>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceCompChart"></canvas></div>
           </div>
           <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Price Trend — Flybridge Segment (12 months)</h3>
+            <h3 class="card-title">Price Trend — Shrink-fit Segment (12 months)</h3>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceTrendChart"></canvas></div>
           </div>
         </div>
@@ -2313,11 +2393,11 @@ function generateViewHTML(view) {
             <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Price Intelligence Feed</h3>
             <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
               <option>All Competitors</option>
-              <option>Ferretti Group</option>
-              <option>Azimut-Benetti</option>
-              <option>Sunseeker</option>
-              <option>Princess Yachts</option>
-              <option>Prestige</option>
+              <option>Sandvik Coromant</option>
+              <option>Haimer Group</option>
+              <option>Kennametal</option>
+              <option>Iscar</option>
+              <option>Walter</option>
             </select>
           </div>
           <div style="overflow-x:auto;">
@@ -2328,10 +2408,10 @@ function generateViewHTML(view) {
               <tbody>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
                   <td><span style="font-size:12px;color:var(--text-muted)">Apr 2026</span></td>
-                  <td><strong>Ferretti Group</strong></td>
-                  <td>Ferretti 780</td>
+                  <td><strong>Sandvik Coromant</strong></td>
+                  <td>CoroTurn Prime A-type</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Listed at Cannes 2025 at EUR 2.1M — 8% above previous year pricing</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Listed at EMO 2025 at EUR 2.1M — 8% above previous year pricing</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
@@ -2340,12 +2420,12 @@ function generateViewHTML(view) {
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                       <div style="padding:12px; border-left:3px solid #F59E0B; background:white; border-radius:4px;">
                         <strong>Price Signal:</strong>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">Ferretti 780 listed at EUR 2.1M at Cannes Yachting Festival. This represents an 8% increase over the 2024 list price of EUR 1.94M. The increase is attributed to new interior package and upgraded Volvo IPS 950 engines.</p>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">CoroTurn Prime A-type listed at EUR 2.1M at EMO Hannover. This represents an 8% increase over the 2024 list price of EUR 1.94M. The increase is attributed to next-gen TPR-3 coating and improved concentricity (0.003mm).</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
                         <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Opportunity:</strong> Absolute Flybridge 60 sits 12% below Ferretti 780 in the same segment. Price gap is widening — positioning advantage.</li>
+                          <li><strong>Opportunity:</strong> Kintek Kintek Hydraulic H6 sits 12% below CoroTurn Prime A-type in the same segment. Price gap is widening — positioning advantage.</li>
                           <li><strong>Recommendation:</strong> Arm dealers with updated competitive pricing sheet highlighting value-per-foot advantage.</li>
                         </ul>
                       </div>
@@ -2354,8 +2434,8 @@ function generateViewHTML(view) {
                 </tr>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
                   <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
-                  <td><strong>Azimut</strong></td>
-                  <td>Azimut Magellano 66</td>
+                  <td><strong>Haimer</strong></td>
+                  <td>Power Collet Chuck HSK63</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">New Pricing</span></td>
                   <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Revised upward to EUR 1.85M following strong euro and Volvo engine cost pass-through</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Neutral</span></td>
@@ -2366,13 +2446,13 @@ function generateViewHTML(view) {
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                       <div style="padding:12px; border-left:3px solid #EF4444; background:white; border-radius:4px;">
                         <strong>Price Signal:</strong>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">Azimut Magellano 66 price adjusted to EUR 1.85M from EUR 1.72M. Increase reflects engine cost pass-through (Volvo IPS) and euro appreciation against GBP and USD, impacting export market competitiveness.</p>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">Power Collet Chuck HSK63 price adjusted to EUR 1.85M from EUR 1.72M. Increase reflects carbide raw material cost pass-through and euro appreciation, impacting export market competitiveness.</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
                         <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Impact:</strong> Magellano 66 now directly competes with Navetta 68 on price. Historically Azimut was 5-8% cheaper in this segment.</li>
-                          <li><strong>Recommendation:</strong> Highlight Navetta 68 livability advantage and fuel efficiency in dealer talking points for US and UK buyers.</li>
+                          <li><strong>Impact:</strong> Magellano 66 now directly competes with Kintek Shrink-Fit HSK63 on price. Historically Haimer was 5-8% cheaper in this segment.</li>
+                          <li><strong>Recommendation:</strong> Highlight Kintek Shrink-Fit HSK63 concentricity advantage and shorter lead times in distributor talking points for EU and North American buyers.</li>
                         </ul>
                       </div>
                     </div>
@@ -2380,8 +2460,8 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Sunseeker</strong></td>
-                  <td>Manhattan 55</td>
+                  <td><strong>Kennametal</strong></td>
+                  <td>Kenna Shrink-Fit HSK63</td>
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Promo</span></td>
                   <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">UK dealer offering 5% early-order discount on 2027 build slots — clearing inventory pressure</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Watch</span></td>
@@ -2389,8 +2469,8 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Princess</strong></td>
-                  <td>Princess F55</td>
+                  <td><strong>Iscar</strong></td>
+                  <td>Iscar MultiMaster</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
                   <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">GBP 1.2M base — 6% increase YoY. Attributed to carbon fiber hard-top option becoming standard</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
@@ -2409,7 +2489,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🚀</div>
           <div class="agent-header-text">
             <h2>Product Launch Tracker</h2>
-            <p>Tracks what your competitors are bringing to market — new models, boat show debuts, design partnerships, and segment expansions — so you always know what you are competing against before it hits the water.</p>
+            <p>Tracks what your competitors are bringing to market — new product releases, trade show debuts, technology partnerships, and catalog expansions — so you always know what you are competing against before it hits the market.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2459,24 +2539,24 @@ function generateViewHTML(view) {
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px; background:linear-gradient(135deg, rgba(109,40,217,0.04) 0%, transparent 60%);">
               <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
                 <div style="width:40px;height:40px;background:linear-gradient(135deg,#6D28D9,#A78BFA);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">SEP</div>
-                <div><strong style="font-size:14px;">Cannes Yachting Festival</strong><br><span style="font-size:12px;color:var(--text-muted)">Sep 9-14, 2026</span></div>
+                <div><strong style="font-size:14px;">EMO Hannover</strong><br><span style="font-size:12px;color:var(--text-muted)">Sep 9-14, 2026</span></div>
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti 860</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Azimut S7</span>
-                <span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Absolute Navetta 75</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">CoroMill 390</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Shrink-Fit HSK-A63</span>
+                <span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Kintek Weldon 500</span>
               </div>
             </div>
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
               <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
                 <div style="width:40px;height:40px;background:linear-gradient(135deg,#0369A1,#38BDF8);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">JAN</div>
-                <div><strong style="font-size:14px;">Boot Düsseldorf</strong><br><span style="font-size:12px;color:var(--text-muted)">Jan 18-26, 2027</span></div>
+                <div><strong style="font-size:14px;">BI-MU Milano</strong><br><span style="font-size:12px;color:var(--text-muted)">Jan 18-26, 2027</span></div>
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Sunseeker 65 Sport</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Princess Y72</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Kennametal 65 Sport</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Iscar Y72</span>
               </div>
             </div>
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
@@ -2486,8 +2566,8 @@ function generateViewHTML(view) {
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti Infynito 80</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Prestige M48</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">CoroBore 825 modular</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Walter M48</span>
               </div>
             </div>
           </div>
@@ -2502,43 +2582,43 @@ function generateViewHTML(view) {
               <tbody>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
-                  <td><strong>Ferretti</strong></td>
+                  <td><strong>Sandvik</strong></td>
                   <td>INFYNITO 80</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Navetta/Explorer</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Shrink-fit/Modular</span></td>
                   <td style="font-size:12px;">80 ft · Hybrid propulsion · Interior by Ideaworks</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Azimut</strong></td>
+                  <td><strong>Haimer</strong></td>
                   <td>Grande Trideck</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Superyacht</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Specialty Tooling</span></td>
                   <td style="font-size:12px;">90 ft · Triple-deck · Alberto Mancini design</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Jan 2026</span></td>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Kennametal</strong></td>
                   <td>Ocean 182</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
-                  <td style="font-size:12px;">60 ft · New hull platform · Volvo IPS 950</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Hydraulic</span></td>
+                  <td style="font-size:12px;">Modular · New HSK-A100 platform · hybrid clamping</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Dec 2025</span></td>
-                  <td><strong>Princess</strong></td>
+                  <td><strong>Iscar</strong></td>
                   <td>X80 Superfly</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Hydraulic</span></td>
                   <td style="font-size:12px;">80 ft · Carbon superstructure · MTU engines</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Nov 2025</span></td>
-                  <td><strong>Prestige</strong></td>
+                  <td><strong>Walter</strong></td>
                   <td>M-Line 48</td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Coupe/Sport</span></td>
                   <td style="font-size:12px;">48 ft · Catamaran hull · Electric option</td>
@@ -2558,7 +2638,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">📡</div>
           <div class="agent-header-text">
             <h2>Sentiment Analyzer</h2>
-            <p>Shows how owners, press, and the market perceive Absolute versus the competition — across forums, editorial coverage, social channels, and dealer networks. Turns fragmented opinions into a clear picture of brand positioning.</p>
+            <p>Shows how customers, trade media, and the market perceive Kintek versus competitors — across LinkedIn, industry publications, technical forums, and distributor networks. Turns fragmented signals into a clear picture of brand positioning.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2578,7 +2658,7 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-stat">
             <div class="agent-stat-val" style="color:#10B981">78%</div>
-            <div class="agent-stat-lbl">Absolute Positive Sentiment</div>
+            <div class="agent-stat-lbl">Kintek Positive Sentiment</div>
           </div>
           <div class="agent-stat">
             <div class="agent-stat-val">+42</div>
@@ -2610,11 +2690,11 @@ function generateViewHTML(view) {
             <h3 class="card-title" style="margin:0"><i data-lucide="message-circle"></i> Live Sentiment Feed</h3>
             <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
               <option>All Brands</option>
-              <option>Absolute Yachts</option>
-              <option>Ferretti Group</option>
-              <option>Azimut-Benetti</option>
-              <option>Sunseeker</option>
-              <option>Princess Yachts</option>
+              <option>Kintek</option>
+              <option>Sandvik Coromant</option>
+              <option>Haimer Group</option>
+              <option>Kennametal</option>
+              <option>Iscar</option>
             </select>
           </div>
           <div style="overflow-x:auto;">
@@ -2623,15 +2703,15 @@ function generateViewHTML(view) {
               <tbody>
                 <tr>
                   <td><span class="lm-tag" style="background:#0A66C2;color:white;font-weight:600">LinkedIn</span></td>
-                  <td><strong>Absolute</strong></td>
+                  <td><strong>Kintek</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Design</span></td>
-                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The Navetta 68 interior is the best livable space I have ever experienced on a yacht this size."</td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The Kintek Shrink-Fit HSK63 delivers 0.003mm runout — unmatched concentricity in its price range."</td>
                   <td>12.4K</td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">YachtForums</span></td>
-                  <td><strong>Ferretti</strong></td>
+                  <td><strong>Sandvik</strong></td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">After-Sales</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Waited 6 months for warranty parts on my 720. Dealer communication was almost nonexistent."</td>
@@ -2639,7 +2719,7 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#E4405F;color:white;font-weight:600">Instagram</span></td>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Kennametal</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Lifestyle</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Summer at its finest on the Predator 60. British craftsmanship at its peak."</td>
@@ -2647,15 +2727,15 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#3B82F6;color:white;font-weight:600">Press</span></td>
-                  <td><strong>Absolute</strong></td>
+                  <td><strong>Kintek</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Innovation</span></td>
-                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Absolute continues to push boundaries with the Navetta 75 — a serious contender in the superyacht entry segment."</td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Kintek continues to push boundaries with the Weldon 500 — a serious contender in the precision tooling space."</td>
                   <td>28.7K</td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">Dealer Net</span></td>
-                  <td><strong>Azimut</strong></td>
+                  <td><strong>Haimer</strong></td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Mixed</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Delivery</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Great product but build slot availability remains a challenge. Customers waiting 14+ months."</td>
@@ -2755,16 +2835,16 @@ function generateViewHTML(view) {
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
                   <td>Dealer Network</td>
                   <td>Dubai, UAE</td>
-                  <td>Navetta 68</td>
-                  <td style="font-size:12px;">5 qualified inquiries from HNWI clients in Q1 2026 — all first-time buyers</td>
+                  <td>Kintek Shrink-Fit HSK63</td>
+                  <td style="font-size:12px;">5 qualified inquiries from automotive Tier 1s in Q1 2026 — all expanding production capacity</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Event Signal</span></td>
                   <td>Boat Show Lead</td>
-                  <td>Fort Lauderdale, US</td>
-                  <td>Flybridge 52</td>
-                  <td style="font-size:12px;">12 sea trial requests post-FLIBS — highest conversion rate in US market</td>
+                  <td>Detroit, US</td>
+                  <td>Kintek Modular Turning</td>
+                  <td style="font-size:12px;">12 facility demo requests post-MECSPE — highest conversion rate in US market</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
                 <tr>
@@ -2772,15 +2852,15 @@ function generateViewHTML(view) {
                   <td>Industry Report</td>
                   <td>Southern Europe</td>
                   <td>All Segments</td>
-                  <td style="font-size:12px;">Italian yacht market up 22% in value (2025 vs 2024) — Confindustria Nautica report</td>
+                  <td style="font-size:12px;">Italian CNC machining tool market up 12% (2025 vs 2024) — UCIMU-SISTEMI industry report</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
                   <td>Website / CRM</td>
                   <td>Hong Kong</td>
-                  <td>Navetta 52</td>
-                  <td style="font-size:12px;">3 qualified leads from HK in 2 weeks — all referencing Cannes 2025 debut</td>
+                  <td>Kintek Power Collet 63</td>
+                  <td style="font-size:12px;">3 qualified leads from HK in 2 weeks — all referencing EMO 2025 booth visit</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
               </tbody>
@@ -3045,21 +3125,21 @@ function generateViewHTML(view) {
                 <div><strong>Marco R.</strong> <span style="font-size:12px; color:var(--text-muted);">· Google Reviews</span></div>
                 <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 days ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"The Navetta 68 is simply in another league. The interior space feels like a luxury apartment on water. The Absolute team made the entire buying experience seamless — from the Cannes sea trial to delivery in Sardinia."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"The Kintek Shrink-Fit HSK63 is simply in another league. Runout precision is exceptional, and the team made onboarding seamless — from the EMO demo to installation at our Bergamo plant."</p>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div><strong>James W.</strong> <span style="font-size:12px; color:var(--text-muted);">· Trustpilot</span></div>
                 <div><span style="color:#F59E0B;">★★★★☆</span> <span style="font-size:12px; color:var(--text-muted);">1 week ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Purchased a Flybridge 52 through the Fort Lauderdale dealer. Beautiful boat, great fuel efficiency. Only minor complaint is the wait time for custom interior options — took 3 weeks longer than quoted."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Purchased a Kintek Modular Turning through our local distributor. Great build quality and short lead times. Only minor complaint is the wait time for customization — took 3 weeks longer than quoted."</p>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div><strong>Abdullah K.</strong> <span style="font-size:12px; color:var(--text-muted);">· YachtForums</span></div>
                 <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 weeks ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from a Sunseeker 55, the Absolute Navetta 52 is a completely different experience. Quieter, more livable, better use of space. The Italian design philosophy shows in every detail. Best decision I made."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from a Kennametal 55, the Kintek Kintek Power Collet 63 is a completely different experience. Quieter, more livable, better use of space. The Italian design philosophy shows in every detail. Best decision I made."</p>
             </div>
           </div>
         </div>
@@ -3072,7 +3152,7 @@ function generateViewHTML(view) {
               <thead><tr><th>Content</th><th>Platform</th><th>Type</th><th>Reach</th><th>Engagement</th><th>Saves/Shares</th><th>Date</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><strong>Navetta 75 — First Sea Trial</strong></td>
+                  <td><strong>Kintek Weldon 500 — First Sea Trial</strong></td>
                   <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Video Reel</span></td>
                   <td style="font-weight:700;">248K</td>
@@ -3090,7 +3170,7 @@ function generateViewHTML(view) {
                   <td style="font-size:12px; color:var(--text-muted);">Apr 2</td>
                 </tr>
                 <tr>
-                  <td><strong>Full Walkthrough — Flybridge 60</strong></td>
+                  <td><strong>Full Walkthrough — Kintek Hydraulic H6</strong></td>
                   <td><span class="lm-tag" style="background:#FF0000;color:white">YouTube</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Long Video</span></td>
                   <td style="font-weight:700;">142K</td>
@@ -3108,7 +3188,7 @@ function generateViewHTML(view) {
                   <td style="font-size:12px; color:var(--text-muted);">Mar 22</td>
                 </tr>
                 <tr>
-                  <td><strong>Cannes 2025 — Behind the Scenes</strong></td>
+                  <td><strong>EMO 2025 — Behind the Scenes</strong></td>
                   <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Stories</span></td>
                   <td style="font-weight:700;">72K</td>
@@ -3129,7 +3209,7 @@ function generateViewHTML(view) {
               <thead><tr><th>Brand</th><th>Instagram</th><th>LinkedIn</th><th>YouTube</th><th>Avg Engagement</th><th>Review Score</th><th>Trend</th></tr></thead>
               <tbody>
                 <tr style="background:rgba(124,58,237,0.04);">
-                  <td><strong style="color:#7C3AED;">Absolute Yachts</strong></td>
+                  <td><strong style="color:#7C3AED;">Kintek</strong></td>
                   <td style="font-weight:700;">145K</td>
                   <td style="font-weight:700;">48K</td>
                   <td style="font-weight:700;">67K</td>
@@ -3138,7 +3218,7 @@ function generateViewHTML(view) {
                   <td><span style="color:#10B981; font-weight:600;">↑ Growing</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Ferretti Group</strong></td>
+                  <td><strong>Sandvik Coromant</strong></td>
                   <td>312K</td>
                   <td>85K</td>
                   <td>120K</td>
@@ -3147,7 +3227,7 @@ function generateViewHTML(view) {
                   <td><span style="color:var(--text-muted);">→ Stable</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Azimut-Benetti</strong></td>
+                  <td><strong>Haimer Group</strong></td>
                   <td>280K</td>
                   <td>72K</td>
                   <td>95K</td>
@@ -3156,7 +3236,7 @@ function generateViewHTML(view) {
                   <td><span style="color:var(--text-muted);">→ Stable</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Kennametal</strong></td>
                   <td>420K</td>
                   <td>38K</td>
                   <td>52K</td>
@@ -3165,7 +3245,7 @@ function generateViewHTML(view) {
                   <td><span style="color:#EF4444; font-weight:600;">↓ Declining</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Princess Yachts</strong></td>
+                  <td><strong>Iscar</strong></td>
                   <td>198K</td>
                   <td>45K</td>
                   <td>78K</td>
@@ -3178,7 +3258,7 @@ function generateViewHTML(view) {
           </div>
           <div style="margin-top:16px; padding:16px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px;">
             <strong style="color:#166534; font-size:13px;">Key Insight:</strong>
-            <span style="color:#15803D; font-size:13px;"> Absolute has the highest engagement rate (4.2%) and review score (4.7) among all competitors despite having fewer followers. Growth trajectory is positive across all platforms except Facebook. Sunseeker leads in Instagram reach but shows declining engagement — quantity over quality.</span>
+            <span style="color:#15803D; font-size:13px;"> Kintek has the highest engagement rate (4.2%) and review score (4.7) among all competitors despite having fewer followers. Growth trajectory is positive across all platforms except Facebook. Kennametal leads in Instagram reach but shows declining engagement — quantity over quality.</span>
           </div>
         </div>
       </div>
@@ -3229,7 +3309,7 @@ function renderDashboardCharts() {
     chartInstances['dashEventChart'] = new Chart(evtCtx, {
       type: 'bar',
       data: {
-        labels: ['Cannes 2025', 'FLIBS 2025', 'Boot 2026', 'Dubai 2025', 'Dealer Refs', 'Web / Direct'],
+        labels: ['EMO 2025', 'MECSPE 2025', 'Boot 2026', 'Dubai 2025', 'Dealer Refs', 'Web / Direct'],
         datasets: [{
           label: 'Leads Generated',
           data: [5, 3, 2, 1, 2, 1],
@@ -3284,7 +3364,7 @@ function renderCICharts(viewId) {
       chartInstances['ciPriceCompChart'] = new Chart(comp, {
         type: 'bar',
         data: {
-          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige'],
+          labels: ['Kintek', 'Sandvik', 'Haimer', 'Kennametal', 'Iscar', 'Walter'],
           datasets: [
             { label: 'Base Price (EUR K)', data: [1420, 1680, 1580, 1520, 1610, 1180], backgroundColor: ['#7C3AED','#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981'], borderRadius: 4 }
           ]
@@ -3298,10 +3378,10 @@ function renderCICharts(viewId) {
         data: {
           labels: ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
           datasets: [
-            { label: 'Absolute', data: [1380,1380,1390,1400,1400,1410,1410,1420,1420,1420,1420,1420], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Ferretti', data: [1550,1560,1580,1590,1600,1620,1640,1650,1660,1670,1680,1680], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Azimut',   data: [1480,1490,1500,1510,1520,1530,1540,1550,1560,1570,1580,1580], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Sunseeker',data: [1460,1470,1470,1480,1490,1490,1500,1500,1510,1510,1520,1520], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Kintek', data: [1380,1380,1390,1400,1400,1410,1410,1420,1420,1420,1420,1420], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Sandvik', data: [1550,1560,1580,1590,1600,1620,1640,1650,1660,1670,1680,1680], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Haimer',   data: [1480,1490,1500,1510,1520,1530,1540,1550,1560,1570,1580,1580], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Kennametal',data: [1460,1470,1470,1480,1490,1490,1500,1500,1510,1510,1520,1520], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2, pointRadius: 2 },
           ]
         },
         options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => v + 'K' } } } }
@@ -3316,7 +3396,7 @@ function renderCICharts(viewId) {
       chartInstances['ciLaunchBarChart'] = new Chart(bar, {
         type: 'bar',
         data: {
-          labels: ['Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige', 'Absolute'],
+          labels: ['Sandvik', 'Haimer', 'Kennametal', 'Iscar', 'Walter', 'Kintek'],
           datasets: [{ label: 'Launches (24m)', data: [4, 3, 3, 2, 1, 1], backgroundColor: ['#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981','#7C3AED'], borderRadius: 4 }]
         },
         options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -3326,7 +3406,7 @@ function renderCICharts(viewId) {
       chartInstances['ciLaunchSegmentChart'] = new Chart(seg, {
         type: 'doughnut',
         data: {
-          labels: ['Flybridge', 'Navetta/Explorer', 'Coupe/Sport', 'Superyacht'],
+          labels: ['Shrink-Fit', 'Hydraulic', 'Weldon', 'Modular'],
           datasets: [{ data: [5, 4, 3, 2], backgroundColor: ['#3B82F6','#7C3AED','#F59E0B','#EF4444'] }]
         },
         options: { ...chartOpts, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
@@ -3342,7 +3422,7 @@ function renderCICharts(viewId) {
       chartInstances['ciSentimentBarChart'] = new Chart(bar, {
         type: 'bar',
         data: {
-          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess'],
+          labels: ['Kintek', 'Sandvik', 'Haimer', 'Kennametal', 'Iscar'],
           datasets: [
             { label: 'Positive', data: [78, 65, 70, 72, 68], backgroundColor: '#10B981', borderRadius: 4 },
             { label: 'Neutral',  data: [16, 20, 18, 17, 22], backgroundColor: '#F59E0B', borderRadius: 4 },
@@ -3368,9 +3448,9 @@ function renderCICharts(viewId) {
         data: {
           labels: ['Nov','Dec','Jan','Feb','Mar','Apr'],
           datasets: [
-            { label: 'Absolute',  data: [74,75,76,77,77,78], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
-            { label: 'Ferretti',  data: [68,67,66,65,65,65], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 3 },
-            { label: 'Azimut',    data: [71,70,71,70,70,70], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Kintek',  data: [74,75,76,77,77,78], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Sandvik',  data: [68,67,66,65,65,65], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Haimer',    data: [71,70,71,70,70,70], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 3 },
           ]
         },
         options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 50, max: 100, ticks: { callback: v => v + '%' } } } }
