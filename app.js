@@ -601,7 +601,7 @@ function switchView(viewId) {
 
   if(viewId === 'dashboard') {
     setTimeout(() => renderDashboardCharts(), 50);
-  } else if (['price-intelligence','launch-tracker','sentiment-analyzer','demand-intelligence','supply-chain-ci'].includes(viewId)) {
+  } else if (['price-intelligence','launch-tracker','sentiment-analyzer','demand-intelligence','supply-chain-ci','content-engine','hook-miner','content-builder','creative-brain','auto-publisher'].includes(viewId)) {
     setTimeout(() => renderCICharts(viewId), 50);
   } else if (viewId === 'analytics') {
     setTimeout(() => renderAnalyticsCharts(), 50);
@@ -3503,6 +3503,40 @@ function generateViewHTML(view) {
             </tbody>
           </table>
         </div>
+
+        <!-- Before / After comparison -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="git-compare"></i> Voice Rules in Action — Before vs After</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
+            <div style="padding:16px; border:1px solid #FCA5A5; background:#FEF2F2; border-radius:8px;">
+              <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;"><span style="font-size:18px;">❌</span><strong style="font-size:13px;">Before — off-brand draft</strong></div>
+              <p style="font-size:13px; line-height:1.6; color:#7F1D1D;">"In today's fast-paced digital landscape, engineering teams face unprecedented challenges. Our revolutionary platform leverages cutting-edge AI to transform how you debug and seamlessly integrate with your existing workflow, empowering your team to achieve next-level productivity."</p>
+              <div style="margin-top:10px; font-size:11px; color:#991B1B;"><strong>Flagged:</strong> jargon (leverage, transform, seamless, empower) · generic opener · no specifics · passive voice · 4 adjective strings</div>
+            </div>
+            <div style="padding:16px; border:1px solid #86EFAC; background:#F0FDF4; border-radius:8px;">
+              <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;"><span style="font-size:18px;">✅</span><strong style="font-size:13px;">After — rewritten with voice rules</strong></div>
+              <p style="font-size:13px; line-height:1.6; color:#14532D;">"Your engineers spend 12 hours a week debugging in five different tools. Acme replaces them with one. Setup takes 5 minutes. First alert fires within the hour. VP Engineering at Linear cut their on-call pages by 73% in six weeks. Ship faster. Debug less."</p>
+              <div style="margin-top:10px; font-size:11px; color:#166534;"><strong>Voice-fit: 96%</strong> · specific numbers · named customer outcome · short sentences · imperative CTA · zero jargon</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Voice Consistency Trend -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="line-chart"></i> Voice Consistency Trend — last 12 weeks</h3>
+          <div style="margin-top:14px;">
+            <div style="display:flex; justify-content:space-between; font-size:11px; color:var(--text-muted); margin-bottom:8px;"><span>Week 1</span><span>Week 12</span></div>
+            <div style="display:flex; align-items:flex-end; gap:4px; height:120px;">
+              ${[58,62,69,74,78,82,85,88,91,93,95,96].map((v, i) => `
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+                  <div style="width:100%; height:${v}%; background:linear-gradient(180deg, #EC4899, #BE185D); border-radius:4px 4px 0 0;"></div>
+                  <div style="font-size:9px; color:var(--text-muted);">${v}%</div>
+                </div>
+              `).join('')}
+            </div>
+            <p style="margin-top:12px; padding:10px 12px; background:#FDF2F8; border-radius:6px; font-size:12px; color:#831843;"><strong>📈 +38 points in 12 weeks.</strong> Brand voice rules now catch 96% of off-tone content at generation time, eliminating most review cycles. The remaining 4% are edge cases flagged for human review.</p>
+          </div>
+        </div>
       </div>
     `,
 
@@ -3566,6 +3600,45 @@ function generateViewHTML(view) {
             <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Engineering post-mortems</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">18 top pieces in the last 30d. You've published 0. High affinity with your VP Engineering persona.</p></div>
             <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Hiring & team-scaling</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">14 top pieces. 2x avg engagement. Natural fit for your "Craft" value.</p></div>
             <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Cost-to-debug narratives</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">11 top pieces. Direct overlap with your product outcome ("Ship faster. Debug less.").</p></div>
+          </div>
+        </div>
+
+        <!-- Share of voice -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="radar"></i> Share of Voice — Top brands in your space (last 30 days)</h3>
+          <div style="margin-top:14px;">
+            ${[
+              {brand:'Datadog',     posts:42, share:22, engagement:4.1, color:'#632CA6'},
+              {brand:'Vercel',      posts:38, share:20, engagement:5.6, color:'#000000'},
+              {brand:'Linear',      posts:31, share:16, engagement:7.2, color:'#5E6AD2'},
+              {brand:'Acme Corp',   posts:12, share:6,  engagement:4.8, color:'#6366F1', self:true},
+              {brand:'Honeycomb',   posts:18, share:10, engagement:3.4, color:'#F97316'},
+              {brand:'New Relic',   posts:16, share:8,  engagement:2.1, color:'#00AC69'},
+              {brand:'Grafana',     posts:14, share:7,  engagement:2.8, color:'#F46800'},
+              {brand:'Others',      posts:22, share:11, engagement:3.2, color:'#94A3B8'},
+            ].map(b => `
+              <div style="display:grid; grid-template-columns:120px 1fr 60px 80px 80px; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
+                <div style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:${b.self?'700':'500'};"><span style="width:8px;height:8px;border-radius:50%;background:${b.color};"></span>${b.brand}${b.self?' <span style="font-size:10px; color:var(--ai-accent);">(you)</span>':''}</div>
+                <div style="height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden;"><div style="height:100%; width:${b.share*4}%; background:${b.color};"></div></div>
+                <div style="font-size:12px; text-align:right; color:var(--text-muted);">${b.posts} posts</div>
+                <div style="font-size:12px; text-align:right; color:var(--text-muted);">${b.share}% voice</div>
+                <div style="font-size:12px; text-align:right; color:${b.engagement >= 5 ? '#10B981' : '#374151'}; font-weight:600;">${b.engagement}x eng</div>
+              </div>
+            `).join('')}
+          </div>
+          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;"><strong>💡 Insight:</strong> Linear publishes less than Datadog but gets 1.8x the engagement — their post-mortem + contrarian-hook format is the one to study.</p>
+        </div>
+
+        <!-- Sources -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="database"></i> Research Sources Monitored</h3>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:14px;">
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">LinkedIn — B2B SaaS</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">312 accounts tracked · refreshed daily</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Substack — Engineering</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">48 newsletters · weekly sync</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">YouTube — Tech channels</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">26 channels · weekly sync</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Hacker News</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Front page + /show · daily</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">X / Twitter — Eng leaders</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">184 profiles · real-time</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Dev.to · Medium</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Top 500 eng tags · weekly</div></div>
           </div>
         </div>
       </div>
@@ -3641,6 +3714,48 @@ function generateViewHTML(view) {
             <div style="padding:12px; border-left:3px solid #1D4ED8; background:#DBEAFE; border-radius:4px;"><strong style="font-size:13px;">Persona-Aware (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Names the reader directly. Pattern: "Every [persona] I talk to…" / "If you're a [role]…"</p></div>
             <div style="padding:12px; border-left:3px solid #374151; background:#F3F4F6; border-radius:4px;"><strong style="font-size:13px;">Imperative (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Strong action verb opener. Pattern: "Stop [X]" / "Start [Y]" / "Ship [Z]"</p></div>
           </div>
+        </div>
+
+        <!-- Recommended hooks for this week -->
+        <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.3); background:linear-gradient(180deg, white, #FFF7ED);">
+          <h3 class="card-title"><i data-lucide="target"></i> Recommended Hooks This Week — auto-queued for ContentBuilder</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 94</span></div>
+              <strong style="font-size:14px;">"We stopped doing daily standups. Here's what replaced them."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">3.2x baseline</strong> · trending theme in your industry</p>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 92</span></div>
+              <strong style="font-size:14px;">"I cut our on-call burden by 73% in 6 weeks — here's exactly how."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.9x baseline</strong> · aligns with "Reliability" brand value</p>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona-Aware</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 88</span></div>
+              <strong style="font-size:14px;">"Every VP of Engineering I've talked to this quarter asked the same question."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.5x baseline</strong> · targets your P1 persona directly</p>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 86</span></div>
+              <strong style="font-size:14px;">"The one question I ask every engineering hire before we extend an offer."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.3x baseline</strong> · fits newsletter format</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hook performance trend -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="trending-up"></i> Hook Performance — Your 10 Most-Used Hooks (last 90d)</h3>
+          <table class="lm-table" style="margin-top:14px;">
+            <thead><tr><th>Hook</th><th>Used in</th><th>Avg engagement</th><th>Trend</th><th>Verdict</th></tr></thead>
+            <tbody>
+              <tr><td><strong>"We killed X% of [thing]…"</strong></td><td>4 posts</td><td><strong style="color:#10B981;">4.8x</strong></td><td style="color:#10B981;">↑ +22% vs 30d ago</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"I cut X from Y to Z"</strong></td><td>6 posts</td><td><strong style="color:#10B981;">4.2x</strong></td><td style="color:#10B981;">↑ +15%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"Stop [common practice]…"</strong></td><td>5 posts</td><td><strong style="color:#10B981;">3.7x</strong></td><td style="color:#F59E0B;">→ steady</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Rotate variants</span></td></tr>
+              <tr><td><strong>"Here's the question I ask…"</strong></td><td>3 posts</td><td><strong style="color:#10B981;">3.1x</strong></td><td style="color:#10B981;">↑ +8%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"In today's fast-paced world…"</strong></td><td>2 posts</td><td style="color:#EF4444;">0.4x</td><td style="color:#EF4444;">↓ -62%</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Retire — violates voice</span></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     `,
@@ -3731,6 +3846,61 @@ Ship faster. Debug less.</p>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpChannelSplitChart"></canvas></div>
           </div>
         </div>
+
+        <!-- Voice QA -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="shield-check"></i> Voice QA Report — every piece scored against your brand rules</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px; text-align:center;">
+              <div style="font-size:24px; font-weight:800; color:#10B981;">94%</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Tone alignment</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">vs BrandVoice rules</div>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px; text-align:center;">
+              <div style="font-size:24px; font-weight:800; color:#10B981;">96%</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Jargon-free</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">2 flagged uses of "leverage"</div>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px; text-align:center;">
+              <div style="font-size:24px; font-weight:800; color:#10B981;">91%</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">Persona match</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">Addressed VP Eng directly</div>
+            </div>
+            <div style="padding:14px; border:1px solid var(--border); border-radius:8px; text-align:center;">
+              <div style="font-size:24px; font-weight:800; color:#F59E0B;">82%</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">CTA specificity</div>
+              <div style="font-size:10px; color:var(--text-muted); margin-top:4px;">3 pieces need CTA rewrite</div>
+            </div>
+          </div>
+          <div style="margin-top:16px; padding:12px 14px; background:#FEF3C7; border-left:3px solid #F59E0B; border-radius:4px;">
+            <strong style="font-size:12px;">⚠ 3 drafts flagged for review</strong>
+            <p style="font-size:12px; color:#78350F; margin-top:6px;">"Transform your workflow with our seamless solution" → violates "never use jargon" rule (seamless, transform). Regenerate suggested.</p>
+          </div>
+        </div>
+
+        <!-- Weekly production plan -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="calendar-days"></i> This Week's Production Plan</h3>
+          <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-top:14px;">
+            ${[
+              {day:'Mon', title:'LinkedIn post',    topic:'Contrarian: dashboards',   hookScore:96, status:'approved'},
+              {day:'Tue', title:'Blog article',      topic:'CI optimization story',   hookScore:87, status:'approved'},
+              {day:'Wed', title:'LinkedIn post',    topic:'Slack standup swap',       hookScore:89, status:'draft'},
+              {day:'Thu', title:'Email newsletter', topic:'Weekly brief #42',         hookScore:84, status:'approved'},
+              {day:'Fri', title:'LinkedIn post',    topic:'3 VP Eng complaints',      hookScore:85, status:'draft'},
+            ].map(d => `
+              <div style="padding:12px; border:1px solid var(--border); border-radius:8px; background:${d.status==='approved'?'#F0FDF4':'#FEF3C7'}">
+                <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">${d.day}</div>
+                <div style="font-size:13px; font-weight:700; margin-top:4px;">${d.title}</div>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${d.topic}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                  <span style="font-size:10px; color:#10B981; font-weight:700;">Score ${d.hookScore}</span>
+                  <span class="lm-tag" style="background:${d.status==='approved'?'#D1FAE5':'#FEF3C7'};color:${d.status==='approved'?'#065F46':'#B45309'};">${d.status}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
       </div>
     `,
 
@@ -3811,6 +3981,67 @@ Ship faster. Debug less.</p>
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Template Library -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="layout-template"></i> Template Library — pre-configured and brand-locked</h3>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:14px;">
+            ${[
+              {name:'LinkedIn Single Post',    size:'1200×627', variants:12, color:'#0A66C2'},
+              {name:'LinkedIn Carousel (10)',  size:'1080×1080', variants:8, color:'#0A66C2'},
+              {name:'Email Hero Banner',       size:'600×200',  variants:6, color:'#F59E0B'},
+              {name:'YouTube Thumbnail',       size:'1280×720', variants:14, color:'#EF4444'},
+              {name:'Blog Hero Image',         size:'1600×900', variants:9, color:'#374151'},
+              {name:'X/Twitter Card',          size:'1200×675', variants:7, color:'#0F172A'},
+              {name:'Instagram Story',         size:'1080×1920', variants:5, color:'#EC4899'},
+              {name:'Google Ad · Display',     size:'336×280',  variants:11, color:'#22C55E'},
+            ].map(t => `
+              <div style="padding:12px; border:1px solid var(--border); border-radius:8px; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="width:100%; aspect-ratio:${t.size.replace('×','/')}; background:linear-gradient(135deg, ${t.color}22, ${t.color}55); border-radius:4px; margin-bottom:8px; max-height:90px;"></div>
+                <div style="font-size:12px; font-weight:700;">${t.name}</div>
+                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${t.size} · ${t.variants} variants</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- A/B Test results -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="git-branch"></i> A/B Test Results — last 30 days</h3>
+          <table class="lm-table" style="margin-top:14px;">
+            <thead><tr><th>Asset pair</th><th>Variant A</th><th>Variant B</th><th>Winner</th><th>Lift</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong style="font-size:13px;">LinkedIn — dashboards post</strong><br><span style="font-size:11px;color:var(--text-muted)">Image vs text-only</span></td>
+                <td>Static banner · dark<br><span style="font-size:11px;color:var(--text-muted)">2.1% CTR</span></td>
+                <td>Text-only + emoji<br><span style="font-size:11px;color:var(--text-muted)">4.8% CTR</span></td>
+                <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
+                <td style="color:#10B981;font-weight:700;">+128%</td>
+              </tr>
+              <tr>
+                <td><strong style="font-size:13px;">Email — weekly brief header</strong><br><span style="font-size:11px;color:var(--text-muted)">Colorful vs minimal</span></td>
+                <td>Gradient hero<br><span style="font-size:11px;color:var(--text-muted)">48% open</span></td>
+                <td>Minimal · logo only<br><span style="font-size:11px;color:var(--text-muted)">52% open</span></td>
+                <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
+                <td style="color:#10B981;font-weight:700;">+8%</td>
+              </tr>
+              <tr>
+                <td><strong style="font-size:13px;">YouTube thumbnail</strong><br><span style="font-size:11px;color:var(--text-muted)">Face vs screenshot</span></td>
+                <td>Dev face close-up<br><span style="font-size:11px;color:var(--text-muted)">7.2% CTR</span></td>
+                <td>Code screenshot<br><span style="font-size:11px;color:var(--text-muted)">5.1% CTR</span></td>
+                <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">A wins</span></td>
+                <td style="color:#10B981;font-weight:700;">+41%</td>
+              </tr>
+              <tr>
+                <td><strong style="font-size:13px;">Google Ad · Display 336×280</strong><br><span style="font-size:11px;color:var(--text-muted)">CTA variant</span></td>
+                <td>"Start free trial"<br><span style="font-size:11px;color:var(--text-muted)">1.8% CTR</span></td>
+                <td>"See it live"<br><span style="font-size:11px;color:var(--text-muted)">2.4% CTR</span></td>
+                <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
+                <td style="color:#10B981;font-weight:700;">+33%</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     `,
@@ -3915,6 +4146,49 @@ Ship faster. Debug less.</p>
               <tr><td style="font-size:12px;">Thu · 07:00</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="font-size:13px;">Weekly Eng Brief #41</strong></td><td><strong>4.1K sent</strong></td><td style="color:#10B981;font-weight:600;">52% open</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Delivered</span></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- Channel health -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="activity"></i> Channel Health — connection status</h3>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:14px;">
+            ${[
+              {name:'LinkedIn',  icon:'linkedin', iconColor:'#0A66C2', status:'Connected', statusColor:'#10B981', api:'OAuth · refreshed 2d ago', posts:'22 this month', rate:'within limits'},
+              {name:'X / Twitter', icon:'at-sign', iconColor:'#0F172A', status:'Connected', statusColor:'#10B981', api:'OAuth · refreshed 1d ago', posts:'18 this month', rate:'within limits'},
+              {name:'YouTube',   icon:'youtube', iconColor:'#EF4444', status:'Connected', statusColor:'#10B981', api:'OAuth · refreshed 5d ago', posts:'4 this month', rate:'within limits'},
+              {name:'Email (SMTP)', icon:'mail', iconColor:'#F59E0B', status:'Connected', statusColor:'#10B981', api:'API key · validated', posts:'4 campaigns this month', rate:'within limits'},
+              {name:'Blog (CMS)', icon:'file-text', iconColor:'#374151', status:'Connected', statusColor:'#10B981', api:'Webhook active', posts:'3 posts this month', rate:'within limits'},
+              {name:'Instagram', icon:'image', iconColor:'#EC4899', status:'Reauth needed', statusColor:'#F59E0B', api:'Token expires in 3 days', posts:'0 this month', rate:'—'},
+            ].map(c => `
+              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;"><div style="display:flex; gap:8px; align-items:center;"><i data-lucide="${c.icon}" style="color:${c.iconColor}"></i><strong style="font-size:13px;">${c.name}</strong></div><span class="lm-tag" style="background:${c.statusColor}22;color:${c.statusColor}">${c.status}</span></div>
+                <div style="font-size:11px; color:var(--text-muted); line-height:1.6;">${c.api}<br>${c.posts}<br>Rate: <strong style="color:${c.statusColor};">${c.rate}</strong></div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Cadence optimization insights -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="gauge"></i> Cadence Optimization — AI recommendations</h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
+            <div style="padding:14px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:6px;">
+              <strong style="font-size:13px;">✓ LinkedIn cadence is optimal</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Current: 5 posts/week. Engagement plateaus above 6/week for your audience. Keep current cadence.</p>
+            </div>
+            <div style="padding:14px; border-left:3px solid #F59E0B; background:#FFFBEB; border-radius:6px;">
+              <strong style="font-size:13px;">⚠ Blog is under-posting</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">3 posts/month vs industry benchmark of 6-8. Long-form content has a 16-month discovery tail — compounding effect.</p>
+            </div>
+            <div style="padding:14px; border-left:3px solid #6366F1; background:#EEF2FF; border-radius:6px;">
+              <strong style="font-size:13px;">💡 Consider Tuesday + Thursday YouTube uploads</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Your VP Eng persona watches 2x more YouTube Tue/Thu than Mon/Wed/Fri. Current drops are all on Friday.</p>
+            </div>
+            <div style="padding:14px; border-left:3px solid #EC4899; background:#FDF2F8; border-radius:6px;">
+              <strong style="font-size:13px;">🔥 Re-publish top post on X</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">"We killed 40% of dashboards" got 18.4K on LinkedIn but never went to X. Recommended: thread it Wednesday 2pm.</p>
+            </div>
+          </div>
         </div>
       </div>
     `,
