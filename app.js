@@ -17,7 +17,120 @@ let _originalLeadsData = null; // backup of the original leads
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
 // ══════════════════════════════════════════════════
-const leadsData = [];
+const leadsData = [
+  {
+    name: 'Alessandro Ferrara',  org: 'Ferrara Holdings',     title: 'Real Estate Developer · HNWI',    dur: 'Since Cannes 2025',
+    email: 'a.ferrara@ferraraholdings.mc',       city: 'Monaco',
+    mailSent: true,  liSent: true,
+    icpScore: 97, closingProb: 91, channel: 'WhatsApp',
+    signal: 'Requested private sea trial for Navetta 75 — confirmed for May 3',
+    status: 'hot'
+  },
+  {
+    name: 'Sophia Al-Rashid',    org: 'Al-Rashid Family Office', title: 'Director of Acquisitions · UHNWI', dur: 'Since Mar 2026',
+    email: 'sophia@alrashidfo.ae',               city: 'Dubai',
+    mailSent: true,  liSent: true,
+    icpScore: 95, closingProb: 84, channel: 'Email',
+    signal: 'Opened Navetta 68 brochure 6 times — requested interior customization options',
+    status: 'hot'
+  },
+  {
+    name: 'Isabella von Hohenlohe', org: 'Hohenlohe Vermögen', title: 'Family Office Principal · UHNWI', dur: 'Since Boot 2026',
+    email: 'isabella@hohenlohe-vermoegen.de',    city: 'Munich',
+    mailSent: true,  liSent: true,
+    icpScore: 93, closingProb: 78, channel: 'Email',
+    signal: 'Visited Boot Düsseldorf stand twice — asked about Navetta 75 delivery timeline',
+    status: 'hot'
+  },
+  {
+    name: 'James Whitfield III',  org: 'Whitfield Capital Partners', title: 'Managing Partner · PE · HNWI', dur: 'Since FLIBS 2025',
+    email: 'jwhitfield@whitfieldcp.com',         city: 'Palm Beach, FL',
+    mailSent: true,  liSent: false,
+    icpScore: 91, closingProb: 72, channel: 'Email',
+    signal: 'Completed sea trial at FLIBS — comparing Flybridge 60 vs Ferretti 580',
+    status: 'active'
+  },
+  {
+    name: 'Laurent Dubois',      org: 'Groupe Dubois Hospitality', title: 'CEO · Hospitality Group · HNWI', dur: 'Since Cannes 2025',
+    email: 'l.dubois@groupedubois.fr',           city: 'Saint-Tropez',
+    mailSent: true,  liSent: true,
+    icpScore: 89, closingProb: 68, channel: 'LinkedIn',
+    signal: 'Second sea trial completed — negotiating interior package for Navetta 68',
+    status: 'active'
+  },
+  {
+    name: 'Robert Ashworth',     org: 'Ashworth Capital',    title: 'Hedge Fund Manager · HNWI',       dur: 'Since Feb 2026',
+    email: 'r.ashworth@ashworthcapital.co.uk',   city: 'London',
+    mailSent: true,  liSent: false,
+    icpScore: 88, closingProb: 62, channel: 'Email',
+    signal: 'Dealer referral from Ancasta — interested in Flybridge 60 for Solent',
+    status: 'active'
+  },
+  {
+    name: 'Omar Al-Fayed',       org: 'Gulf Investment Fund', title: 'Fund Director · UHNWI',          dur: 'Since Dubai BS 2025',
+    email: 'omar.alfayed@gif.qa',                city: 'Doha',
+    mailSent: false, liSent: true,
+    icpScore: 86, closingProb: 55, channel: 'WhatsApp',
+    signal: 'Requested Navetta 75 pricing and build slot availability for Q4 delivery',
+    status: 'active'
+  },
+  {
+    name: 'Victoria Chen',       org: 'Meridian Tech',       title: 'Founder & CEO · Tech · HNWI',    dur: 'Since Jan 2026',
+    email: 'v.chen@meridiantech.hk',             city: 'Hong Kong',
+    mailSent: true,  liSent: false,
+    icpScore: 84, closingProb: 48, channel: 'Email',
+    signal: 'Web inquiry on Navetta 52 — mentioned Cannes debut as trigger',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Nikolaos Papadopoulos', org: 'Papadopoulos Shipping', title: 'Shipping Family · HNWI',     dur: 'Since Cannes 2025',
+    email: 'n.papadopoulos@papship.gr',          city: 'Athens',
+    mailSent: true,  liSent: true,
+    icpScore: 82, closingProb: 44, channel: 'LinkedIn',
+    signal: 'Upgrading from current 48ft — considering Flybridge 52 or Coupe 48',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Priya Kapoor',        org: 'Kapoor Pharma Group', title: 'Vice Chairwoman · Pharma · UHNWI', dur: 'Since Cannes 2025',
+    email: 'priya@kapoorpharma.in',              city: 'Mumbai',
+    mailSent: true,  liSent: false,
+    icpScore: 80, closingProb: 41, channel: 'Email',
+    signal: 'Attended Cannes VIP dinner — first-time yacht buyer, interested in Navetta 68',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Ricardo Mendes',      org: 'Mendes Agrobusiness', title: 'CEO · Agribusiness · HNWI',       dur: 'Since Miami 2026',
+    email: 'r.mendes@mendesagro.com.br',         city: 'São Paulo',
+    mailSent: false, liSent: false,
+    icpScore: 76, closingProb: 35, channel: 'WhatsApp',
+    signal: 'Miami dealer introduced — comparing Flybridge 60 with Azimut 60',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Catherine Beaumont',  org: 'Private Collector',   title: 'Art Collector & Socialite',       dur: 'Since Dec 2025',
+    email: 'c.beaumont@beaumont-collection.fr',  city: 'Antibes',
+    mailSent: true,  liSent: false,
+    icpScore: 72, closingProb: 30, channel: 'Email',
+    signal: 'No activity for 35 days — last opened Navetta 68 brochure in Feb',
+    status: 'dormant'
+  },
+  {
+    name: 'Dimitri Volkov',      org: 'Volkov Fintech',     title: 'Founder · Fintech · HNWI',        dur: 'Since Nov 2025',
+    email: 'd.volkov@volkovfintech.cy',          city: 'Limassol',
+    mailSent: false, liSent: true,
+    icpScore: 68, closingProb: 25, channel: 'LinkedIn',
+    signal: 'No activity for 48 days — was interested in Flybridge 52 for Cyprus',
+    status: 'dormant'
+  },
+  {
+    name: 'Marcus Svensson',     org: 'Svensson Industrigrupp', title: 'Industrial Family · HNWI',    dur: 'Since Boot 2025',
+    email: 'm.svensson@svenssonindustri.se',     city: 'Gothenburg',
+    mailSent: true,  liSent: false,
+    icpScore: 64, closingProb: 19, channel: 'Email',
+    signal: 'No activity for 60 days — attended Boot 2025 but went cold after pricing discussion',
+    status: 'dormant'
+  },
+];
 
 // Save original leads so they can be restored after cache contamination
 _originalLeadsData = leadsData.map(l => ({ ...l }));
@@ -376,7 +489,326 @@ function switchView(viewId) {
 //  COMPANY BIO SCANNER — CACHED DB + LIVE SCRAPING FALLBACK
 // ═══════════════════════════════════════════════════════════
 
-const companyCacheDB = {};
+const companyCacheDB = {
+  // ─── COMPANY 2 ───────────────────────────────────────
+  'valagro.com': {
+    name: 'Valagro S.p.A. (Syngenta Group)',
+    tagline: 'Leading Innovation in Biostimulants & Specialty Nutrients',
+    description: 'Valagro is a world leader in the production and commercialization of biostimulants and specialty nutrients for agriculture. Founded in 1980 in Atessa (Chieti), Italy, the company was acquired by Syngenta Group in 2020. Valagro operates in 80+ countries through subsidiaries and distributors, with R&D centers in Italy, India, and Brazil. The company is pioneer of the GeaPower technology platform.',
+    industry: 'Biostimulants / Specialty Agriculture',
+    headcount: '800 – 1,500 employees',
+    location: 'Atessa (Chieti), Italy',
+    founded: 1980,
+    services: [
+      'Biostimulants',
+      'Specialty Nutrients',
+      'Micronutrients',
+      'Adjuvants & Surfactants',
+      'Organic Solutions',
+      'Seed Treatment',
+    ],
+    techStack: ['SAP', 'Salesforce', 'GeaPower Platform'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/valagro/',
+      twitter: 'https://twitter.com/valagro',
+      instagram: 'https://www.instagram.com/valagro_official/',
+      facebook: 'https://www.facebook.com/Valagro/',
+      youtube: 'https://www.youtube.com/user/ValagroSpA',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'flask-conical', title: 'Biostimulant R&D (GeaPower)', desc: 'Proprietary platform combining genomics, chemistry, and field testing to develop new biostimulant molecules and formulations.' },
+      { icon: 'sprout', title: 'Crop Nutrition & Protection', desc: 'Development and commercialization of specialty nutrient products for high-value crops including grapes, fruits, and vegetables.' },
+      { icon: 'globe', title: 'Global Distribution Network', desc: 'Commercial presence in 80+ countries with direct subsidiaries in 18 markets and partnerships with major ag distributors worldwide.' },
+      { icon: 'microscope', title: 'Research Excellence', desc: 'Three R&D centers in Italy, India, and Brazil with 100+ scientists focused on plant physiology and crop stress management.' },
+    ],
+    differentiators: [
+      'GeaPower technology platform — unique in the industry',
+      'Part of Syngenta Group since 2020 — access to global resources',
+      'Pioneer in seaweed-based biostimulants (Ascophyllum nodosum)',
+      'R&D centers in Italy, India, and Brazil',
+      'Focus on high-value specialty crops (grapes, citrus, vegetables)',
+      'Strong regulatory expertise across EU, LATAM, and Asia',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched next-gen biostimulant line under Syngenta Biologicals division' },
+      { date: '2023', event: 'Expanded production capacity at Atessa plant by 40%' },
+      { date: '2022', event: 'Integration into Syngenta Crop Protection\'s commercial structure' },
+      { date: '2020', event: 'Acquired by Syngenta Group for €930 million' },
+    ],
+    icpMatch: { score: 91, label: 'Strong ICP Match', text: 'Valagro is a Tier 1 ICP match: global biostimulant company with extensive R&D capabilities, now part of Syngenta. Decision-making speed may be slower due to corporate structure, but budget and scale are significant.' },
+    leads: [
+      { name: 'Giuseppe Natale', title: 'CEO — Valagro', score: 95, action: 'Executive introduction via Syngenta LATAM contacts', actionType: 'hot' },
+      { name: 'Piero Linguiti', title: 'Chief Innovation Officer', score: 92, action: 'Send R&D partnership proposal via LinkedIn', actionType: 'hot' },
+      { name: 'Andrea Ferretti', title: 'Global Head of Marketing', score: 81, action: 'Invite to AgriTech conference panel', actionType: 'warm' },
+      { name: 'María Soledad Ruiz', title: 'LATAM Regional Director', score: 88, action: 'Priority contact — LATAM expansion focus', actionType: 'hot' },
+      { name: 'Roberto Colombo', title: 'VP Supply Chain & Operations', score: 68, action: 'Sequence: send case study on circular supply chains', actionType: 'sequence' },
+    ],
+  },
+
+  // ─── COMPANY 3 ───────────────────────────────────────
+  'biolchim.it': {
+    name: 'Biolchim S.p.A.',
+    tagline: 'Science-driven Biostimulants for Global Agriculture',
+    description: 'Biolchim is a pioneer in the biostimulant industry, founded in 1972 in Bologna, Italy. The company specializes in plant biostimulants derived from natural substances, particularly vegetal-origin amino acids and seaweed extracts. Biolchim exports to over 60 countries and is recognized as a founding member of EBIC (European Biostimulant Industry Council). The company maintains a strong focus on scientific validation and regulatory compliance.',
+    industry: 'Agrochemicals / Biostimulants',
+    headcount: '150 – 300 employees',
+    location: 'Medicina (Bologna), Italy',
+    founded: 1972,
+    services: [
+      'Vegetal Amino Acid Biostimulants',
+      'Seaweed Extracts',
+      'Specialty Fertilizers',
+      'Anti-Stress Products',
+      'Rooting Enhancers',
+      'Private Label Manufacturing',
+    ],
+    techStack: ['Custom ERP', 'Zoho CRM', 'Google Analytics'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/biolchim/',
+      twitter: '',
+      instagram: '',
+      facebook: 'https://www.facebook.com/biolchim/',
+      youtube: 'https://www.youtube.com/channel/UCBiolchim',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'leaf', title: 'Vegetal Amino Acid Production', desc: 'Manufacturing of amino acid-based biostimulants exclusively from vegetal sources, ensuring halal and organic certification compatibility.' },
+      { icon: 'award', title: 'Scientific Validation', desc: 'Industry-leading investment in university research partnerships and field trials to substantiate product efficacy claims.' },
+      { icon: 'factory', title: 'Private Label & Co-Manufacturing', desc: 'B2B manufacturing services for major agrochemical companies who want to enter the biostimulant market under their own brand.' },
+      { icon: 'shield', title: 'Regulatory Expertise', desc: 'Deep expertise in EU Fertilizing Products Regulation (2019/1009) and global biostimulant registration processes.' },
+    ],
+    differentiators: [
+      'Founding member of EBIC — helped shape EU biostimulant regulation',
+      '50+ years of expertise exclusively in biostimulants',
+      '100% vegetal-origin amino acids (no animal by-products)',
+      'Strong private label B2B business model',
+      'Active in 60+ countries with established distribution',
+      'University research partnerships across EU',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched new seaweed-based product line for Mediterranean climate crops' },
+      { date: '2023', event: 'Expanded private label manufacturing capacity at Bologna facility' },
+      { date: '2022', event: 'Strategic partnership with Brazilian distributor for Mercosur market entry' },
+    ],
+    icpMatch: { score: 86, label: 'Strong ICP Match', text: 'Biolchim is a solid Tier 2 ICP match: niche biostimulant leader with strong B2B focus and private label capabilities. Smaller scale than SICIT but deeply connected to the European regulatory ecosystem. Great partnership potential.' },
+    leads: [
+      { name: 'Michele Carraro', title: 'General Manager', score: 91, action: 'Send LinkedIn InMail — key decision maker', actionType: 'hot' },
+      { name: 'Paolo Bragagni', title: 'R&D Director', score: 85, action: 'Invite to biostimulant innovation workshop', actionType: 'hot' },
+      { name: 'Claudia Ferri', title: 'International Sales Manager', score: 76, action: 'Send LinkedIn Connection + product catalog', actionType: 'warm' },
+      { name: 'Alessandro Rossi', title: 'Regulatory Affairs Manager', score: 69, action: 'Invite to EU regulation webinar', actionType: 'sequence' },
+    ],
+  },
+
+  // ─── COMPANY 4 ───────────────────────────────────────
+  'icl-group.com': {
+    name: 'ICL Group Ltd.',
+    tagline: 'Global Specialty Minerals & Chemicals Leader',
+    description: 'ICL is a leading global specialty minerals company that operates in two segments: Industrial Products and Potash. Headquartered in Tel Aviv, Israel, with major operations in the Dead Sea region, ICL produces bromine, potash, phosphate, and specialty fertilizers. Revenue exceeds $7 billion annually with 12,500+ employees worldwide. ICL is publicly traded on NYSE and TASE.',
+    industry: 'Specialty Minerals / Fertilizers',
+    headcount: '12,500+ employees',
+    location: 'Tel Aviv, Israel',
+    founded: 1968,
+    services: [
+      'Potash & Phosphate Fertilizers',
+      'Specialty Solutions (Bromine)',
+      'Specialty Phosphates',
+      'Growing Solutions (Polysulphate)',
+      'Industrial Minerals',
+      'Water Treatment Chemicals',
+      'Food Additives',
+    ],
+    techStack: ['SAP S/4HANA', 'Salesforce', 'Power BI', 'Azure'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/icl-group/',
+      twitter: 'https://twitter.com/ICL_Group',
+      instagram: '',
+      facebook: 'https://www.facebook.com/ICLGroup/',
+      youtube: 'https://www.youtube.com/user/ICLFertilizers',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'mountain', title: 'Mineral Extraction & Processing', desc: 'Mining and processing of potash, bromine, and phosphate from the Dead Sea and other global locations into specialty industrial and agricultural products.' },
+      { icon: 'sprout', title: 'Specialty Fertilizer Production', desc: 'Manufacturing of controlled-release fertilizers, water-soluble fertilizers, and micronutrient blends through the Growing Solutions division.' },
+      { icon: 'flame', title: 'Industrial Solutions', desc: 'Production of flame retardants, bromine compounds, and specialty chemicals for electronics, construction, automotive, and oil & gas industries.' },
+      { icon: 'droplets', title: 'Water & Food Tech', desc: 'Development of phosphate-based solutions for water treatment, food preservation, and industrial applications.' },
+    ],
+    differentiators: [
+      'NYSE-listed: $7B+ revenue, global enterprise scale',
+      'Unique access to Dead Sea minerals — irreplaceable raw material source',
+      'Diversified across agriculture, industry, food, and water tech',
+      'Polysulphate™ — patented multi-nutrient natural mineral fertilizer',
+      'Sustainability-focused: 2025 targets for carbon neutrality',
+      'R&D investment of $120M+ annually',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Announced $400M investment in new specialty phosphate plant in Morocco' },
+      { date: '2024', event: 'Acquired Compass Minerals\' specialty plant nutrition division' },
+      { date: '2023', event: 'Launched ICL Planet Startup Hub for agri-food innovation' },
+      { date: '2022', event: 'Record revenue of $9.5B driven by potash price surge' },
+    ],
+    icpMatch: { score: 72, label: 'Moderate ICP Match', text: 'ICL is a Tier 2 ICP match: massive enterprise with strong fertilizer division but complex procurement processes. Long sales cycles expected. Best approach via the Growing Solutions division rather than corporate headquarters.' },
+    leads: [
+      { name: 'Raviv Zoller', title: 'President & CEO', score: 65, action: 'Executive introduction via industry conference', actionType: 'sequence' },
+      { name: 'Elad Aharonson', title: 'EVP Growing Solutions', score: 89, action: 'Priority contact — division decision maker', actionType: 'hot' },
+      { name: 'Danna Shapira', title: 'VP Innovation & Sustainability', score: 82, action: 'Send sustainability partnership proposal', actionType: 'hot' },
+      { name: 'Anat Tal', title: 'Head of Specialty Fertilizers R&D', score: 78, action: 'Invite to AgTech R&D roundtable', actionType: 'warm' },
+      { name: 'Carlos Méndez', title: 'LATAM Regional VP', score: 84, action: 'Direct outreach — LATAM expansion partner', actionType: 'hot' },
+    ],
+  },
+
+  // ─── ABSOLUTE YACHTS (demo client) ───────────────────
+  'absoluteyachts.com': {
+    name: 'Absolute Yachts',
+    tagline: 'Experience Absolute Freedom at Sea',
+    description: 'Absolute Yachts is an Italian manufacturer of premium motor yachts, founded in 2002 and headquartered in Podenzano (Piacenza), Italy. The company designs and produces yachts ranging from 47 to 73 feet across three iconic collections: Navetta, Coupe, and Flybridge. With an international dealer network spanning 40+ countries, Absolute Yachts combines Italian craftsmanship with cutting-edge naval architecture and design to deliver exceptional on-water experiences for high-net-worth individuals worldwide.',
+    industry: 'Luxury Marine / Yacht Manufacturing',
+    headcount: '300 – 500 employees',
+    location: 'Podenzano (Piacenza), Italy',
+    founded: 2002,
+    services: [
+      'Navetta Collection (47–75 ft)',
+      'Flybridge Collection (40–70 ft)',
+      'Coupe Collection (48–52 ft)',
+      'Custom Configuration',
+      'After-Sales Service',
+      'Global Dealer Network',
+      'Boat Show Activations',
+      'Charter & Events',
+    ],
+    techStack: ['WordPress', 'Google Analytics', 'HubSpot'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/absolute-yachts/',
+      twitter: '',
+      instagram: 'https://www.instagram.com/absoluteyachts/',
+      facebook: 'https://www.facebook.com/absoluteyachts/',
+      youtube: 'https://www.youtube.com/absoluteyachts',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'anchor', title: 'Premium Yacht Manufacturing', desc: 'Design and production of motor yachts from 47 to 73 feet across Navetta, Flybridge, and Coupe collections, built in Piacenza with Italian craftsmanship.' },
+      { icon: 'globe', title: 'International Dealer Distribution', desc: 'Commercial expansion through a curated network of 40+ authorized dealers across Europe, Americas, Middle East, and Asia-Pacific.' },
+      { icon: 'star', title: 'Boat Show Presence', desc: 'Active presence at major international boat shows including Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show, and METS.' },
+      { icon: 'settings', title: 'After-Sales & Customization', desc: 'Full after-sales support with bespoke interior customization options, technical assistance, and owner onboarding services.' },
+    ],
+    differentiators: [
+      'Italian luxury craftsmanship — designed and built entirely in Piacenza, Italy',
+      'Three distinct collections for different boating lifestyles: Navetta, Flybridge, Coupe',
+      'Award-winning naval architecture and interior design partnerships',
+      '40+ country dealer network with strong presence in Mediterranean and US markets',
+      'Growing superyacht ambitions — Navetta 75 pushes into the 75-foot segment',
+      'Strong brand identity built around freedom, design, and Italian lifestyle',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Launch of Navetta 75 — flagship model entering the superyacht segment' },
+      { date: '2024', event: 'Expanded US dealer network with new partnerships in Florida and California' },
+      { date: '2023', event: 'Introduced Flybridge 70 at Cannes Yachting Festival to international acclaim' },
+      { date: '2022', event: 'Partnership with leading naval architecture studio for next-generation hull design' },
+    ],
+    icpMatch: { score: 96, label: 'Perfect Commercial Profile', text: 'Absolute Yachts is a textbook case for AI-driven commercial intelligence: high-value product cycles, a global dealer network requiring relationship management, HNWI buyer journeys, and competitive market dynamics across 40+ countries.' },
+    leads: [
+      { name: 'Valeria Arzenton', title: 'Commercial Director', score: 97, action: 'Priority contact — oversees global dealer strategy', actionType: 'hot' },
+      { name: 'Massimo Perotti', title: 'CEO & President', score: 94, action: 'Executive engagement via boat show introduction', actionType: 'hot' },
+      { name: 'Marco Testa', title: 'Head of International Sales', score: 88, action: 'Send partnership proposal for dealer CRM integration', actionType: 'hot' },
+      { name: 'Giulia Rossi', title: 'Marketing & Brand Manager', score: 79, action: 'Invite to luxury maritime marketing roundtable', actionType: 'warm' },
+      { name: 'Andrea Molinari', title: 'After-Sales Service Director', score: 72, action: 'Send case study on owner retention programs', actionType: 'sequence' },
+    ],
+    translations: {
+      it: {
+        tagline: 'Vivi la Libertà Assoluta in Mare',
+        description: 'Absolute Yachts è un produttore italiano di yacht a motore premium, fondato nel 2002 e con sede a Podenzano (Piacenza). L\'azienda progetta e produce yacht dai 47 ai 73 piedi nelle tre collezioni iconiche: Navetta, Coupe e Flybridge. Con una solida rete di dealer internazionali in oltre 40 paesi, Absolute Yachts unisce l\'artigianalità italiana al design d\'avanguardia e all\'architettura navale per offrire esperienze di navigazione straordinarie agli appassionati di alto profilo in tutto il mondo.',
+        whatTheyDo: [
+          { icon: 'anchor', title: 'Produzione di Yacht Premium', desc: 'Progettazione e produzione di yacht a motore dai 47 ai 73 piedi nelle collezioni Navetta, Flybridge e Coupe, realizzati a Piacenza con l\'artigianalità tipica del Made in Italy.' },
+          { icon: 'globe', title: 'Distribuzione Internazionale via Dealer', desc: 'Espansione commerciale attraverso una rete selezionata di oltre 40 dealer autorizzati in Europa, Americhe, Medio Oriente e Asia-Pacifico.' },
+          { icon: 'star', title: 'Presenza ai Salone Nautici', desc: 'Partecipazione attiva ai principali saloni nautici internazionali: Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show e METS Amsterdam.' },
+          { icon: 'settings', title: 'Post-Vendita e Personalizzazione', desc: 'Programma completo di assistenza post-vendita con personalizzazione degli interni su misura, assistenza tecnica dedicata e servizi di onboarding per i proprietari.' },
+        ],
+        differentiators: [
+          'Artigianalità italiana di lusso — progettato e costruito interamente a Piacenza',
+          'Tre collezioni distinte per diversi stili di navigazione: Navetta, Flybridge, Coupe',
+          'Architettura navale e design degli interni premiati a livello internazionale',
+          'Rete dealer in oltre 40 paesi con forte presenza nel Mediterraneo e negli USA',
+          'Ambizioni nel segmento superyacht: la Navetta 75 entra nel segmento 75 piedi',
+          'Identità di marca costruita attorno a libertà, design e lifestyle italiano',
+        ],
+      },
+      es: {
+        tagline: 'Vive la Libertad Absoluta en el Mar',
+        description: 'Absolute Yachts es un fabricante italiano de yates a motor de lujo, fundado en 2002 y con sede en Podenzano (Piacenza), Italia. La empresa diseña y produce yates de 47 a 73 pies en tres colecciones icónicas: Navetta, Coupe y Flybridge. Con una red de distribuidores internacionales en más de 40 países, Absolute Yachts combina la artesanía italiana con el diseño vanguardista y la arquitectura naval para ofrecer experiencias náuticas excepcionales a clientes de alto patrimonio en todo el mundo.',
+        whatTheyDo: [
+          { icon: 'anchor', title: 'Fabricación de Yates Premium', desc: 'Diseño y producción de yates a motor de 47 a 73 pies en las colecciones Navetta, Flybridge y Coupe, fabricados en Piacenza con artesanía italiana.' },
+          { icon: 'globe', title: 'Distribución Internacional por Dealers', desc: 'Expansión comercial a través de una red de más de 40 dealers autorizados en Europa, América, Oriente Medio y Asia-Pacífico.' },
+          { icon: 'star', title: 'Presencia en Salones Náuticos', desc: 'Participación activa en los principales salones náuticos: Cannes Yachting Festival, Boot Düsseldorf, Miami Boat Show y METS.' },
+          { icon: 'settings', title: 'Postventa y Personalización', desc: 'Programa completo de servicio postventa con personalización de interiores, asistencia técnica y servicios de onboarding para propietarios.' },
+        ],
+        differentiators: [
+          'Artesanía italiana de lujo — diseñado y fabricado íntegramente en Piacenza, Italia',
+          'Tres colecciones distintas para diferentes estilos de navegación: Navetta, Flybridge, Coupe',
+          'Arquitectura naval y diseño de interiores galardonados internacionalmente',
+          'Red de dealers en más de 40 países con fuerte presencia en el Mediterráneo y EE.UU.',
+          'Ambiciones en el segmento superyate: la Navetta 75 supera los 75 pies',
+          'Sólida identidad de marca construida en torno a libertad, diseño y estilo de vida italiano',
+        ],
+      },
+    },
+  },
+
+  // ─── COMPANY 5 ───────────────────────────────────────
+  'compo-expert.com': {
+    name: 'COMPO EXPERT GmbH',
+    tagline: 'Innovative Plant Nutrition for Professional Growers',
+    description: 'COMPO EXPERT is a leading global company specializing in innovative plant nutrition and specialty fertilizer solutions for professional agriculture, horticulture, and public green spaces. Founded in Germany and headquartered in Münster, the company is part of the Grupa Azoty Group (Poland) since 2020. COMPO EXPERT operates in 100+ countries with production facilities in Germany, France, Spain, and Turkey.',
+    industry: 'Specialty Fertilizers / Precision Agriculture',
+    headcount: '1,000 – 2,000 employees',
+    location: 'Münster, Germany',
+    founded: 2012,
+    services: [
+      'Controlled-Release Fertilizers (CRF)',
+      'Stabilized Nitrogen Fertilizers',
+      'Water-Soluble Fertilizers',
+      'Biostimulants & Micronutrients',
+      'Turf & Landscape Solutions',
+      'Precision Agriculture Advisory',
+    ],
+    techStack: ['SAP', 'Microsoft Dynamics', 'Power BI', 'Custom IoT'],
+    socials: {
+      linkedin: 'https://www.linkedin.com/company/compo-expert/',
+      twitter: '',
+      instagram: 'https://www.instagram.com/compo_expert/',
+      facebook: 'https://www.facebook.com/COMPOEXPERTInternational/',
+      youtube: 'https://www.youtube.com/c/COMPOEXPERTInternational',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'test-tube', title: 'Controlled-Release Technology (CRF)', desc: 'Production of polymer-coated fertilizers that release nutrients in sync with plant demand, reducing waste and environmental impact.' },
+      { icon: 'zap', title: 'Nitrogen Stabilization', desc: 'Proprietary nitrification and urease inhibitor technologies (DMPP/NBPT) that improve nitrogen use efficiency and reduce N₂O emissions.' },
+      { icon: 'trees', title: 'Turf & Public Green Solutions', desc: 'Complete nutrition programs for sports turf, golf courses, and municipal green spaces used by UEFA and major sports venues.' },
+      { icon: 'satellite', title: 'Precision Nutrition Advisory', desc: 'Data-driven agronomic advisory services combining soil analysis, satellite imagery, and proprietary algorithms for optimized fertilization.' },
+    ],
+    differentiators: [
+      'Part of Grupa Azoty — one of the largest chemical groups in the EU',
+      'Innovator in CRF technology — used by top sports venues worldwide',
+      'DMPP technology — proven nitrification inhibitor with 25+ years of field data',
+      'Production in 5 countries across Europe and Turkey',
+      'Strong turf & landscaping vertical — unique in the industry',
+      'Digital agriculture tools for precision fertilization',
+    ],
+    recentMoves: [
+      { date: '2024', event: 'Launched NovaTec® 2.0 with next-gen DMPP stabilization technology' },
+      { date: '2023', event: 'Expanded CRF production line at Krefeld (Germany) plant' },
+      { date: '2022', event: 'Opened new subsidiary in Brazil for South American market expansion' },
+      { date: '2020', event: 'Acquired by Grupa Azoty Group (Poland) for €207 million' },
+    ],
+    icpMatch: { score: 79, label: 'Good ICP Match', text: 'COMPO EXPERT is a Tier 2 ICP match: strong technical capabilities and growing biostimulant line. European HQ with LATAM expansion interest. The turf/landscaping division is less relevant but the agriculture division aligns well with our ICP.' },
+    leads: [
+      { name: 'Frank Herold', title: 'Managing Director — COMPO EXPERT', score: 88, action: 'Send LinkedIn InMail with partnership proposal', actionType: 'hot' },
+      { name: 'Dr. Matthias Giese', title: 'Head of R&D', score: 83, action: 'Invite to joint R&D workshop on biostimulants', actionType: 'hot' },
+      { name: 'Silvia Martínez', title: 'Director Iberia & LATAM', score: 79, action: 'Priority contact — oversees Latin America expansion', actionType: 'warm' },
+      { name: 'Thomas Berger', title: 'VP Sales — Agriculture Division', score: 74, action: 'Meet at Agritechnica trade show', actionType: 'warm' },
+      { name: 'Laura Krüger', title: 'Digital Agriculture Lead', score: 70, action: 'Sequence: send precision ag case study', actionType: 'sequence' },
+    ],
+  },
+};
 
 function getCompanyCache(domain, lang = 'en') {
   let cleanDomain = domain.replace(/^www\./, '').split('/')[0];
