@@ -11,7 +11,7 @@ let scanLanguage = 'en';
 let lastScannedDomain = null;
 
 // LeadMiner pre-loaded for demo
-let leadsRevealed = false;
+let leadsRevealed = true;
 let _originalLeadsData = null; // backup of the original leads
 
 // ══════════════════════════════════════════════════
@@ -1811,32 +1811,32 @@ function generateViewHTML(view) {
             <div class="seq-step">
               <div class="seq-num">3</div>
               <div class="seq-body">
-                <h4>LinkedIn Connection + Shipyard Invitation</h4>
-                <p>Connect on LinkedIn with a note referencing the show meeting. Include an invitation to visit the Piacenza shipyard. Day 7.</p>
+                <h4>LinkedIn Connection + Factory Invitation</h4>
+                <p>Connect on LinkedIn with a note referencing the trade show meeting. Include an invitation to tour the Mappano (Turin) plant. Day 7.</p>
                 <div class="seq-channels"><span class="ch-badge">💼 LinkedIn</span><span class="act-score" style="color:var(--success);margin-left:8px">55% acceptance</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">4</div>
               <div class="seq-body">
-                <h4>Sea Trial Invitation (if engaged)</h4>
-                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive factory demo event. If no engagement: send application case studies instead. Day 14.</p>
+                <h4>Factory Demo Invitation (if engaged)</h4>
+                <p>If prospect opened spec sheet or accepted LinkedIn: invite to exclusive factory demo + shrink-fit testing session. If no engagement: send application case studies instead. Day 14.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="ch-badge">💬 WhatsApp</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">5</div>
               <div class="seq-body">
-                <h4>Build Slot Availability Update</h4>
-                <p>Notify about remaining delivery slots for their model of interest. Creates urgency without pressure. Day 21.</p>
+                <h4>Stock Availability & Lead Time Update</h4>
+                <p>Notify about stock availability for the tool holder series they asked about. 24h shipping from Mappano or 8-week custom lead time. Day 21.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">6</div>
               <div class="seq-body">
-                <h4>Dealer Handoff or Direct Call</h4>
-                <p>If high engagement: schedule a direct call with commercial team. If moderate: warm handoff to nearest authorized dealer. Day 30.</p>
+                <h4>Distributor Handoff or Direct Call</h4>
+                <p>If high engagement: schedule a direct call with technical sales. If moderate: warm handoff to nearest authorized distributor. Day 30.</p>
                 <div class="seq-channels"><span class="ch-badge">💬 WhatsApp</span><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--success);margin-left:8px">28% conversion to meeting</span></div>
               </div>
             </div>
@@ -2426,7 +2426,7 @@ function generateViewHTML(view) {
                         <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
                           <li><strong>Opportunity:</strong> Kintek Kintek Hydraulic H6 sits 12% below CoroTurn Prime A-type in the same segment. Price gap is widening — positioning advantage.</li>
-                          <li><strong>Recommendation:</strong> Arm dealers with updated competitive pricing sheet highlighting value-per-foot advantage.</li>
+                          <li><strong>Recommendation:</strong> Arm distributors with updated competitive pricing sheet highlighting cost-per-unit advantage and Kintek 24h shipping.</li>
                         </ul>
                       </div>
                     </div>
@@ -2463,7 +2463,7 @@ function generateViewHTML(view) {
                   <td><strong>Kennametal</strong></td>
                   <td>Kenna Shrink-Fit HSK63</td>
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Promo</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">UK dealer offering 5% early-order discount on 2027 build slots — clearing inventory pressure</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">UK distributor offering 5% early-order discount on 2027 stocking plans — clearing carbide inventory pressure</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Watch</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
@@ -2738,7 +2738,7 @@ function generateViewHTML(view) {
                   <td><strong>Haimer</strong></td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Mixed</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Delivery</span></td>
-                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Great product but build slot availability remains a challenge. Customers waiting 14+ months."</td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Great catalog but 8-week custom lead times stretch into 12+ weeks during peak demand periods."</td>
                   <td>3.1K</td>
                 </tr>
               </tbody>
@@ -2802,7 +2802,7 @@ function generateViewHTML(view) {
           <h3 class="card-title" style="margin-bottom:20px;"><i data-lucide="map-pin"></i> Regional Demand Signals</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;">
             <div style="padding:16px; border-radius:10px; border:1px solid #BBF7D0; background:#F0FDF4;">
-              <strong style="font-size:14px; color:#166534;">Mediterranean</strong>
+              <strong style="font-size:14px; color:#166534;">Italy</strong>
               <p style="font-size:24px; font-weight:700; color:#166534; margin:8px 0 4px 0;">312</p>
               <span style="font-size:12px; color:#15803D;">+18% YoY · Peak Season</span>
             </div>
@@ -2876,7 +2876,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🔗</div>
           <div class="agent-header-text">
             <h2>Supply Chain CI</h2>
-            <p>Tracks your critical suppliers — engines, electronics, composites, interiors — identifying cost shifts, delivery risks, and component bottlenecks before they impact your production schedule.</p>
+            <p>Tracks your critical suppliers — carbide blanks, alloy steel, coatings, precision grinding, packaging — identifying cost shifts, delivery risks, and material bottlenecks before they impact your production schedule.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2927,57 +2927,57 @@ function generateViewHTML(view) {
               <thead><tr><th>Supplier</th><th>Category</th><th>Risk Level</th><th>Lead Time</th><th>Cost Trend</th><th>Alert</th><th></th></tr></thead>
               <tbody>
                 <tr>
-                  <td><strong>Volvo Penta</strong></td>
-                  <td>Engines / IPS</td>
+                  <td><strong>Ceratizit</strong></td>
+                  <td>Tungsten Carbide Blanks</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
-                  <td>22 weeks <span style="font-size:11px;color:#EF4444">(+4w)</span></td>
-                  <td style="color:#EF4444; font-weight:600;">+6.2%</td>
-                  <td style="font-size:12px;">IPS 950 allocation reduced for Q3. Production backlog in Gothenburg.</td>
+                  <td>16 weeks <span style="font-size:11px;color:#EF4444">(+4w)</span></td>
+                  <td style="color:#EF4444; font-weight:600;">+7.8%</td>
+                  <td style="font-size:12px;">Tungsten price spike post-China export controls. Consider dual-sourcing with Element Six.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Besenzoni</strong></td>
-                  <td>Marine Accessories</td>
+                  <td><strong>Böhler-Uddeholm (voestalpine)</strong></td>
+                  <td>Alloy Steel Rods</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
                   <td>6 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
-                  <td style="color:#10B981; font-weight:600;">+1.1%</td>
-                  <td style="font-size:12px;">On schedule. New gangway model available for 2027 build slots.</td>
+                  <td style="color:#10B981; font-weight:600;">+1.4%</td>
+                  <td style="font-size:12px;">On schedule. H11 and ASP2060 grades fully available for Q2.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Webasto Marine</strong></td>
-                  <td>AC / Climate</td>
+                  <td><strong>Oerlikon Balzers</strong></td>
+                  <td>PVD Coating Services</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
-                  <td>14 weeks <span style="font-size:11px;color:#F59E0B">(+2w)</span></td>
-                  <td style="color:#F59E0B; font-weight:600;">+3.4%</td>
-                  <td style="font-size:12px;">Semiconductor constraint affecting control units. Alternative sourcing under review.</td>
+                  <td>10 weeks <span style="font-size:11px;color:#F59E0B">(+2w)</span></td>
+                  <td style="color:#F59E0B; font-weight:600;">+3.2%</td>
+                  <td style="font-size:12px;">Milano facility running at 92% capacity. BALINIT ALDURA delayed by 10-14 days.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Poltrona Frau</strong></td>
-                  <td>Leather / Interior</td>
+                  <td><strong>Studer (United Grinding)</strong></td>
+                  <td>Precision Grinding Machines</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
-                  <td>8 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
-                  <td style="color:#10B981; font-weight:600;">+0.8%</td>
-                  <td style="font-size:12px;">Full capacity. Premium leather grades available for custom orders.</td>
+                  <td>Service · 4 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
+                  <td style="color:#10B981; font-weight:600;">+0.9%</td>
+                  <td style="font-size:12px;">Preventive maintenance on schedule. Mappano + Bologna machines fully operational.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Garmin Marine</strong></td>
-                  <td>Navigation / Electronics</td>
+                  <td><strong>Thyssenkrupp Materials</strong></td>
+                  <td>Tool Steel Round Bars</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
-                  <td>18 weeks <span style="font-size:11px;color:#EF4444">(+6w)</span></td>
-                  <td style="color:#EF4444; font-weight:600;">+8.1%</td>
-                  <td style="font-size:12px;">GPSMAP 9000 series backordered globally. Recommend securing allocations for H2 builds.</td>
+                  <td>14 weeks <span style="font-size:11px;color:#EF4444">(+5w)</span></td>
+                  <td style="color:#EF4444; font-weight:600;">+9.4%</td>
+                  <td style="font-size:12px;">Nickel shortage extending lead times globally. Secure Q3 allocation by May 30.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Fiberglass Italia</strong></td>
-                  <td>Hull / Composite</td>
+                  <td><strong>Iscar Tooling Systems</strong></td>
+                  <td>Interchangeable Insert Stock</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
-                  <td>10 weeks <span style="font-size:11px;color:#F59E0B">(+1w)</span></td>
-                  <td style="color:#F59E0B; font-weight:600;">+5.3%</td>
-                  <td style="font-size:12px;">Resin prices elevated due to EU chemical regulation (REACH). Stable supply volume.</td>
+                  <td>8 weeks <span style="font-size:11px;color:#F59E0B">(+1w)</span></td>
+                  <td style="color:#F59E0B; font-weight:600;">+4.7%</td>
+                  <td style="font-size:12px;">Price increase announced for IC907 grade. Consider forward buy through Q3.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
               </tbody>
@@ -3136,7 +3136,7 @@ function generateViewHTML(view) {
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <div><strong>Abdullah K.</strong> <span style="font-size:12px; color:var(--text-muted);">· YachtForums</span></div>
+                <div><strong>Abdullah K.</strong> <span style="font-size:12px; color:var(--text-muted);">· CNCZone Forum</span></div>
                 <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 weeks ago</span></div>
               </div>
               <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from a Kennametal 55, the Kintek Kintek Power Collet 63 is a completely different experience. Quieter, more livable, better use of space. The Italian design philosophy shows in every detail. Best decision I made."</p>
@@ -3341,7 +3341,7 @@ function renderDashboardCharts() {
     chartInstances['dashRegionChart'] = new Chart(regCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+        labels: ['Italy', 'Germany & DACH', 'North America', 'Eastern Europe', 'Asia-Pacific'],
         datasets: [{ data: [5, 3, 2, 2, 2], backgroundColor: ['#7C3AED','#3B82F6','#F59E0B','#10B981','#94A3B8'] }]
       },
       options: {
@@ -3478,7 +3478,7 @@ function renderCICharts(viewId) {
       chartInstances['ciDemandRegionChart'] = new Chart(region, {
         type: 'bar',
         data: {
-          labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+          labels: ['Italy', 'Germany & DACH', 'North America', 'Eastern Europe', 'Asia-Pacific'],
           datasets: [{ label: 'Demand Signals', data: [312, 224, 178, 133, 67], backgroundColor: ['#059669','#3B82F6','#F59E0B','#8B5CF6','#94A3B8'], borderRadius: 4 }]
         },
         options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { display: false } } }
