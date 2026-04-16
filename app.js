@@ -217,6 +217,19 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 
 // ── Helpers shared across all modules ──
 
+// Reset LeadMiner to empty state — used by the "Clear leads" button
+function clearAllLeads() {
+  if (!confirm('Clear all leads and reset LeadMiner to empty state?')) return;
+  leadsData.length = 0;
+  leadsRevealed = false;
+  // Re-render the current view
+  switchView(state.currentView);
+  // Light feedback in the chatbot if open
+  if (typeof addBotMessage === 'function') {
+    addBotMessage('🧹 <strong>LeadMiner cleared.</strong> Type <em>"bring me leads"</em> to reload prospects, or <em>"bring me leads for [company]"</em> to search by target.');
+  }
+}
+
 function getLeadStats() {
   if (!leadsRevealed) return { total: 0, mailSent: 0, liSent: 0, icpPct: 0 };
   const total    = leadsData.length;
@@ -1604,6 +1617,7 @@ function generateViewHTML(view) {
               <button class="lm-btn-outline"><i data-lucide="layout-list" style="width:14px"></i> Group</button>
               <button class="lm-btn-outline"><i data-lucide="sliders-horizontal" style="width:14px"></i> Filter</button>
               <button class="lm-btn-outline"><i data-lucide="download" style="width:14px"></i> Export</button>
+              <button class="lm-btn-outline" style="color:#DC2626;border-color:#FCA5A5" onclick="clearAllLeads()"><i data-lucide="trash-2" style="width:14px"></i> Clear leads</button>
               <button class="lm-btn-add"><i data-lucide="plus" style="width:14px"></i> Add Lead</button>
             </div>
           </div>
