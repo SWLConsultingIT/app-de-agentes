@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Sales Growth Engine</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Lightweight Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <!-- App Container -->
+  <div class="app-layout">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="brand-text">
+          <h1>GrowthAI</h1>
+          <span>Sales Booster Engine</span>
+        </div>
+      </div>
+
+      <nav class="nav-menu">
+        <div class="nav-label">Main</div>
+        <button class="nav-item active" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </button>
+
+        <!-- ── PRODUCT 3: Deep Insights ── -->
+        <div class="nav-label mt-4">
+          <span class="nav-product-tag" style="background:#F4F4F5;color:#18181B;border:1px solid #E4E4E7">Company Scanner</span>
+        </div>
+        <button class="nav-item" data-view="company-bio">
+          <i data-lucide="globe"></i>
+          <span>Company Bio</span>
+          <span class="agent-badge" style="background:#18181B;color:#FFF">AI</span>
+        </button>
+
+        <!-- ── PRODUCT 1: Sales Growth Engine ── -->
+        <div class="nav-label mt-4">
+          <span class="nav-product-tag" style="background:#FFF7ED;color:#EA580C">Sales Growth Engine</span>
+        </div>
+        <div class="collapsible open" id="salesEngineMenu">
+          <button class="nav-item has-chevron" onclick="toggleNavMenu('salesEngineMenu')">
+            <i data-lucide="rocket"></i>
+            <span>AI Sales Agents</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </button>
+          <div class="sub-menu">
+            <button class="nav-item sub-item" data-view="leadminer">
+              <span class="dot dot-orange"></span> LeadMiner™
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="icp-scorer">
+              <span class="dot dot-purple"></span> ICP Scorer™
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="message-tailor">
+              <span class="dot dot-blue"></span> MessageTailor™
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="outreach-flow">
+              <span class="dot dot-green"></span> OutreachFlow™
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="smart-nurture">
+              <span class="dot dot-pink"></span> Smart Nurture™
+              <span class="agent-badge">AI</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── PRODUCT 2: Competitive Intelligence ── -->
+        <div class="nav-label mt-4">
+          <span class="nav-product-tag" style="background:#EFF6FF;color:#1D4ED8">Competitive Intelligence</span>
+        </div>
+        <div class="collapsible open" id="ciMenu">
+          <button class="nav-item has-chevron" onclick="toggleNavMenu('ciMenu')">
+            <i data-lucide="microscope"></i>
+            <span>AI Market Agents</span>
+            <i data-lucide="chevron-down" class="chevron"></i>
+          </button>
+          <div class="sub-menu">
+            <button class="nav-item sub-item" data-view="price-intelligence">
+              <span class="dot" style="background:#F59E0B"></span> Price Intelligence
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="launch-tracker">
+              <span class="dot" style="background:#8B5CF6"></span> Launch Tracker
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="sentiment-analyzer">
+              <span class="dot" style="background:#10B981"></span> Sentiment AI
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="demand-intelligence">
+              <span class="dot" style="background:#3B82F6"></span> Demand Signals
+              <span class="agent-badge">AI</span>
+            </button>
+            <button class="nav-item sub-item" data-view="supply-chain-ci">
+              <span class="dot" style="background:#EF4444"></span> Supply Chain CI
+              <span class="agent-badge">AI</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="nav-label mt-4">Reporting</div>
+        <button class="nav-item" data-view="analytics">
+          <i data-lucide="bar-chart-2"></i>
+          <span>Analytics & Metrics</span>
+        </button>
+
+      </nav>
+
+
+      <div class="sidebar-footer">
+        <div class="ai-status">
+          <div class="status-dot pulsing"></div>
+          <span>All Agents Active</span>
+        </div>
+        <div class="user-profile">
+          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Valeria&backgroundColor=ffdfbf" alt="User" />
+          <div class="user-info">
+            <strong>Valeria A.</strong>
+            <span>Commercial Director</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Header -->
+      <header class="top-header">
+
+        <!-- Left: Page Identity -->
+        <div class="topbar-left">
+          <div class="topbar-breadcrumb">
+            <span class="tb-crumb">GrowthAI</span>
+            <i data-lucide="chevron-right" class="tb-sep"></i>
+            <span class="tb-crumb active" id="topbar-view-name">Dashboard</span>
+          </div>
+          <div class="topbar-subtitle" id="topbar-subtitle">Overview of your sales pipeline and AI recommendations</div>
+        </div>
+
+        <!-- Center: AI Command Search -->
+        <div class="topbar-center">
+          <div class="cmd-bar">
+            <i data-lucide="sparkles" class="cmd-ai-icon"></i>
+            <input type="text" class="cmd-input" placeholder="Ask anything — &quot;Which leads should I contact today?&quot;" />
+            <kbd class="cmd-kbd">⌘K</kbd>
+          </div>
+        </div>
+
+        <!-- Right: Actions + User -->
+        <div class="topbar-right">
+          <button class="tb-icon-btn" title="Notifications">
+            <i data-lucide="bell"></i>
+            <span class="tb-badge">3</span>
+          </button>
+          <button class="tb-icon-btn" title="Help">
+            <i data-lucide="circle-help"></i>
+          </button>
+          <div class="tb-divider"></div>
+          <div class="tb-user">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Valeria&backgroundColor=b6e3f4" alt="User" class="tb-avatar" />
+            <div class="tb-user-info">
+              <span class="tb-user-name">Valeria Arzenton</span>
+              <span class="tb-user-role">Commercial Director</span>
+            </div>
+            <i data-lucide="chevron-down" style="width:14px;color:#94A3B8"></i>
+          </div>
+        </div>
+
+      </header>
+
+      <!-- Dynamic View Container -->
+      <div id="view-container" class="view-container">
+        <!-- Rendered by JS -->
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Lead Profile Slide-out Panel -->
+  <div class="lead-panel-overlay" id="lead-panel-overlay"></div>
+  <div class="lead-panel" id="lead-panel">
+    <div id="lead-panel-content"><!-- Rendered by JS --></div>
+  </div>
+
+  <!-- HTBA Brand Profile Slide-out Panel -->
+  <div class="lead-panel-overlay" id="htba-brand-overlay"></div>
+  <div class="lead-panel" id="htba-brand-panel" style="width: 600px; max-width: 90vw;">
+    <div id="htba-brand-content"><!-- Rendered by JS --></div>
+  </div>
+
+  <!-- AI Chatbot FAB -->
+  <button class="chatbot-fab" id="chatbot-fab" title="AI Assistant">
+    <i data-lucide="bot"></i>
+  </button>
+
+  <!-- AI Chatbot Window -->
+  <div class="chatbot-window" id="chatbot-window">
+    <div class="cb-header">
+      <div class="cb-header-left">
+        <div class="cb-header-icon"><i data-lucide="sparkles" style="width:16px;height:16px"></i></div>
+        <div class="cb-header-text">
+          <h4>GrowthAI Assistant</h4>
+          <span>AI-powered message drafting</span>
+        </div>
+      </div>
+      <button class="cb-close" id="chatbot-close"><i data-lucide="x" style="width:14px;height:14px"></i></button>
+    </div>
+    <div class="cb-messages" id="chatbot-messages">
+      <!-- Messages rendered by JS -->
+    </div>
+    <div class="cb-input-area">
+      <input type="text" class="cb-input" id="chatbot-input" placeholder="e.g. &quot;Draft an email for Ed Toombs&quot;" />
+      <button class="cb-send" id="chatbot-send"><i data-lucide="send"></i></button>
+    </div>
+  </div>
+
+  <script src="app.js?v=3"></script>
+</body>
+</html>
