@@ -17,7 +17,143 @@ let _originalLeadsData = null; // backup of the original leads
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
 // ══════════════════════════════════════════════════
-const leadsData = [];
+const leadsData = [
+  {
+    name: 'Giacomo Cera',         org: 'Rigoni di Asiago',         title: 'CFO',                                     dur: 'Since KEY 2025',
+    email: 'giacomo.cera@rigonidiasiago.com',       city: 'Vicenza, Veneto',
+    linkedin: 'https://www.linkedin.com/in/giacomo-cera-7106b820',
+    mailSent: true,  liSent: true,
+    icpScore: 94, closingProb: 82, channel: 'Email',
+    signal: 'Autorità di bilancio confermata — apertura concreta a investimento FV 2 MWp per stabilimento Asiago',
+    status: 'hot'
+  },
+  {
+    name: 'Andrea Bonfante',      org: 'Rigoni di Asiago',         title: 'Procurement Director',                    dur: 'Since KEY 2025',
+    email: 'andrea.bonfante@rigonidiasiago.com',    city: 'Vicenza, Veneto',
+    linkedin: 'https://www.linkedin.com/in/andrea-bonfante-70065148',
+    mailSent: true,  liSent: true,
+    icpScore: 91, closingProb: 78, channel: 'Email',
+    signal: 'Gestisce acquisti energetici — richiesta preventivo FV rooftop 2 MWp post-KEY Rimini 2025',
+    status: 'hot'
+  },
+  {
+    name: 'Umberto Verga',        org: 'Rovagnati S.p.A.',          title: 'Maintenance Manager',                     dur: 'Since Mar 2026',
+    email: 'umberto.verga@rovagnati.it',             city: 'Cesano Maderno, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/umberto-verga-0252b0213',
+    mailSent: true,  liSent: true,
+    icpScore: 88, closingProb: 71, channel: 'LinkedIn',
+    signal: 'Audit energetico completato Q1 2026 — ricerca installatori FV certificati per stabilimento 470 dipendenti',
+    status: 'hot'
+  },
+  {
+    name: 'Andrea Sartirana',     org: 'Cameo S.p.A.',              title: 'Executive Manager Supply Chain',          dur: 'Since Feb 2026',
+    email: 'andrea.sartirana@cameo.it',              city: 'Desenzano del Garda, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/andrea-sartirana-36486a22',
+    mailSent: true,  liSent: true,
+    icpScore: 85, closingProb: 65, channel: 'Email',
+    signal: 'Piano ESG 2030 Cameo — in valutazione FV rooftop 3 MWp per stabilimento principale',
+    status: 'hot'
+  },
+  {
+    name: 'Marco Agrioli',        org: 'Margherita S.p.A.',         title: 'Production Manager',                      dur: 'Since KEY 2025',
+    email: 'marco.agrioli@margheritarepomodoro.it',  city: 'Treviso, Veneto',
+    linkedin: 'https://www.linkedin.com/in/marco-agrioli-67016a35',
+    mailSent: true,  liSent: false,
+    icpScore: 82, closingProb: 58, channel: 'Email',
+    signal: 'Bollette energetiche +38% YoY — apertura concreta a FV rooftop 1.5 MWp per stabilimento Treviso',
+    status: 'active'
+  },
+  {
+    name: 'Marco Comolatti',      org: 'GIMOKA GROUP',              title: 'Project Manager Area Industriale',        dur: 'Since Feb 2026',
+    email: 'marco.comolatti@gruppogimoka.com',       city: 'Sondrio, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/marco-comolatti-3ba214186',
+    mailSent: true,  liSent: true,
+    icpScore: 80, closingProb: 54, channel: 'LinkedIn',
+    signal: 'Gestisce progetti infrastrutturali — valutazione FV 2 MWp per roasting plant Sondrio',
+    status: 'active'
+  },
+  {
+    name: 'Alessia Arnosti',      org: 'Margherita S.p.A.',         title: 'Project Manager',                         dur: 'Since Mar 2026',
+    email: 'alessia.arnosti@margheritagroup.com',    city: 'Conegliano, Veneto',
+    linkedin: 'https://www.linkedin.com/in/alessia-arnosti-3b0649251',
+    mailSent: true,  liSent: false,
+    icpScore: 72, closingProb: 37, channel: 'Email',
+    signal: 'Referral da Marco Agrioli — interesse FV per stabilimento Conegliano, budget Q3 2026',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Marta Banni',          org: 'Cameo S.p.A.',              title: 'Process Manager Innovation',              dur: 'Since Feb 2026',
+    email: 'marta.banni@cameo.it',                   city: 'Desenzano del Garda, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/marta-banni-51b68620',
+    mailSent: true,  liSent: false,
+    icpScore: 76, closingProb: 45, channel: 'Email',
+    signal: 'Pilota progetti innovazione processo — FV incluso nel budget innovation 2026 Cameo',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Daniel Marchiorello',  org: 'Lago Group S.p.A.',         title: 'R&D Manager',                             dur: 'Since KEY 2025',
+    email: 'daniel.marchiorello@lagogroup.it',       city: 'Padua, Veneto',
+    linkedin: 'https://www.linkedin.com/in/daniel-marchiorello-9402b32a',
+    mailSent: true,  liSent: false,
+    icpScore: 73, closingProb: 40, channel: 'LinkedIn',
+    signal: 'Contattato post-KEY Rimini · scheda tecnica FV aperta 3 volte — in attesa di risposta',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Paolo Pionna',         org: 'Rovagnati S.p.A.',          title: 'Logistics Manager',                       dur: 'Since Mar 2026',
+    email: 'paolo.pionna@eurovo.com',                city: 'Milan, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/paolo-pionna-820727130',
+    mailSent: true,  liSent: true,
+    icpScore: 71, closingProb: 36, channel: 'Email',
+    signal: 'Referral da Umberto Verga — valutazione FV per polo logistico Milano Rovagnati',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Eleonora Quargentan',  org: 'Quargentan S.p.A.',         title: 'Branch Manager',                          dur: 'Since Jan 2026',
+    email: 'eleonora@quargentan.com',                city: 'Verona, Veneto',
+    linkedin: 'https://www.linkedin.com/in/eleonora-quargentan-6a3735198',
+    mailSent: true,  liSent: false,
+    icpScore: 68, closingProb: 30, channel: 'LinkedIn',
+    signal: 'PMI Veneto · accesso Conto Energia 5.0 — interesse FV 500 kWp per sede Verona',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Matteo Scordo',        org: 'Rigoni di Asiago',          title: 'Export Area Manager',                     dur: 'Since Oct 2025',
+    email: 'matteo.scordo@rigonidiasiago.com',       city: 'Vicenza, Veneto',
+    linkedin: 'https://www.linkedin.com/in/matteoscordo',
+    mailSent: true,  liSent: false,
+    icpScore: 62, closingProb: 20, channel: 'Email',
+    signal: 'Nessuna attività da 35 giorni — ricontattare post-MCE Milano con proposta aggiornata',
+    status: 'dormant'
+  },
+  {
+    name: 'Francesca Cisbani',    org: 'Cameo S.p.A.',              title: 'Senior Consultant Quality Management',    dur: 'Since Nov 2025',
+    email: 'francesca.cisbani@cameo.it',             city: 'Desenzano del Garda, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/francesca-cisbani-8189358',
+    mailSent: false, liSent: true,
+    icpScore: 65, closingProb: 24, channel: 'LinkedIn',
+    signal: 'Certificazione ISO 50001 Cameo — referral interno per progetto FV, nessun follow-up da 42 giorni',
+    status: 'dormant'
+  },
+  {
+    name: 'Elisa Brescianini',    org: 'Cameo S.p.A.',              title: 'Product Manager',                         dur: 'Since Oct 2025',
+    email: 'elisa.brescianini@cameo.it',             city: 'Brescia, Lombardy',
+    linkedin: 'https://www.linkedin.com/in/elisa-brescianini-2a055882',
+    mailSent: true,  liSent: false,
+    icpScore: 60, closingProb: 18, channel: 'Email',
+    signal: 'Scheda tecnica aperta ma nessun click su CTA — dormante da 28 giorni, trigger atteso',
+    status: 'dormant'
+  },
+  {
+    name: 'Alessia Finetto',      org: 'Fabbrica Boschetti',        title: 'Product Manager',                         dur: 'Since KEY 2025',
+    email: 'alessia@boschetti.biz',                  city: 'Verona, Veneto',
+    linkedin: 'https://www.linkedin.com/in/alessia-finetto-39751b254',
+    mailSent: false, liSent: true,
+    icpScore: 59, closingProb: 16, channel: 'LinkedIn',
+    signal: 'PMI · interesse espresso in fiera ma budget non ancora definito — ricontattare Q3',
+    status: 'dormant'
+  },
+];
 
 // Save original leads so they can be restored after cache contamination
 _originalLeadsData = leadsData.map(l => ({ ...l }));
@@ -1106,7 +1242,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">🔥</span>
               <strong style="font-size:13px; color:var(--text-main);">Priority Prospect</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Barilla (Energy Manager) — Score 96. RFQ fotovoltaico 4 MWp · risposta entro fine settimana.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Giacomo Cera (CFO · Rigoni di Asiago) — Score 94. RFQ FV 2 MWp in corso · risposta attesa fine settimana.</p>
             <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
@@ -1114,7 +1250,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">⚠️</span>
               <strong style="font-size:13px; color:var(--text-main);">Reactivation Alert</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Prysmian dormant 42 giorni. Piano espansione Livorno annunciato — trigger di reattivazione ideale.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Francesca Cisbani (Cameo) dormant 42 giorni. ISO 50001 in agenda — trigger ideale di reattivazione FV.</p>
             <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send reactivation</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
