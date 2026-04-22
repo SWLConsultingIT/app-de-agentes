@@ -19,115 +19,138 @@ let _originalLeadsData = null; // backup of the original leads
 // ══════════════════════════════════════════════════
 const leadsData = [
   {
-    name: 'John Mitchell',       org: 'Acme Corp',              title: 'VP of Sales · Enterprise Tech',   dur: 'Since Feb 2026',
-    email: 'j.mitchell@acmecorp.com',            city: 'San Francisco, CA',
+    name: 'Nadia Vasen',           org: 'Metagenics',               title: 'VP Marketing · North America & Global',   dur: 'Since SupplySide West 2025',
+    email: 'nadiavasen@metagenics.com',                 city: 'Aliso Viejo, CA',
+    linkedin: 'https://www.linkedin.com/in/nadia-vasen/',
     mailSent: true,  liSent: true,
-    icpScore: 95, closingProb: 88, channel: 'Email',
-    signal: 'Requested pricing for 500-seat deployment — meeting booked Apr 22',
+    icpScore: 96, closingProb: 88, channel: 'Email',
+    signal: 'Metagenics declares all B-vitamins metilate (Methylcobalamin) across SKUs — MecobalActive® direct swap for Wellness Essentials + Clear Change Plus',
     status: 'hot'
   },
   {
-    name: 'Sarah Chen',          org: 'Globex Industries',      title: 'Chief Revenue Officer',           dur: 'Since Jan 2026',
-    email: 's.chen@globex.io',                   city: 'New York, NY',
+    name: 'Mieke Van Den Driessche', org: 'Metagenics',              title: 'VP Global Science / R&D',                 dur: 'Since Vitafoods 2025',
+    email: 'mieke.vandendriessche@metagenics.com',      city: 'Bruges, BE',
+    linkedin: 'https://www.linkedin.com/in/mieke-van-den-driessche-196baa',
     mailSent: true,  liSent: true,
-    icpScore: 92, closingProb: 81, channel: 'LinkedIn',
-    signal: 'Downloaded ROI whitepaper + attended last 2 product webinars',
+    icpScore: 94, closingProb: 82, channel: 'LinkedIn',
+    signal: 'Drives global R&D · multi-stakeholder deal path with Nadia Vasen — clinical-grade B12 narrative fits HTBA evidence dossier',
     status: 'hot'
   },
   {
-    name: 'Michael Rodriguez',   org: 'Initech Solutions',      title: 'Head of Operations',              dur: 'Since Mar 2026',
-    email: 'm.rodriguez@initech.com',            city: 'Austin, TX',
-    mailSent: true,  liSent: true,
-    icpScore: 90, closingProb: 76, channel: 'Email',
-    signal: 'Replied to first outreach — scheduling discovery call this week',
-    status: 'hot'
-  },
-  {
-    name: 'Emma Thompson',       org: 'Stark Enterprises',      title: 'Director of Procurement',         dur: 'Since Feb 2026',
-    email: 'e.thompson@stark.co',                city: 'London, UK',
+    name: 'Lauren Opachich',        org: 'Thorne',                   title: 'R&D Project Manager',                     dur: 'Since SupplySide West 2025',
+    email: 'lopachich@thorne.com',                      city: 'Summerville, SC',
+    linkedin: 'https://www.linkedin.com/in/lauren-opachich-30949299',
     mailSent: true,  liSent: false,
-    icpScore: 87, closingProb: 69, channel: 'Email',
-    signal: 'Comparing 3 vendors — requested case studies for similar-size orgs',
-    status: 'active'
+    icpScore: 93, closingProb: 79, channel: 'Email',
+    signal: 'Thorne lists B12 as methylcobalamin · tissue-ready claim — perfect MecobalActive® qualification pitch, RFQ for Basic Prenatal reformulation',
+    status: 'hot'
   },
   {
-    name: 'David Kumar',         org: 'Wayne Holdings',         title: 'VP Strategic Partnerships',       dur: 'Since Feb 2026',
-    email: 'd.kumar@wayneholdings.com',          city: 'Chicago, IL',
+    name: 'Laura Folts Dopkins',    org: 'Nestlé Health Science',    title: 'Director R&D Innovation & Strategy',      dur: 'Since Vitafoods 2025',
+    email: 'laura@nestle.com',                          city: 'Bridgewater, NJ',
+    linkedin: 'https://www.linkedin.com/in/lauradopkins/',
     mailSent: true,  liSent: true,
-    icpScore: 85, closingProb: 64, channel: 'LinkedIn',
-    signal: 'Referred by existing customer — warm intro made via CEO',
-    status: 'active'
+    icpScore: 91, closingProb: 76, channel: 'Email',
+    signal: 'BOOST Advanced lists Vitamin B12 on label · GLP-1 support platform launched — Bioflavex® fits antioxidant claim for clinical ONS line',
+    status: 'hot'
   },
   {
-    name: 'Laura Fernandez',     org: 'Umbrella Inc',           title: 'Head of Growth',                  dur: 'Since Mar 2026',
-    email: 'l.fernandez@umbrella-inc.com',       city: 'Madrid, ES',
+    name: 'Brent Petersen',         org: 'Glanbia Nutritionals',     title: 'Senior VP of R&D',                        dur: 'Since FiE 2025',
+    email: 'bpetersen@glanbia.com',                     city: 'Chicago, IL',
+    linkedin: 'https://www.linkedin.com/in/brent-petersen-03535991',
+    mailSent: true,  liSent: true,
+    icpScore: 90, closingProb: 71, channel: 'Email',
+    signal: 'FerriUp™ formula includes lactoferrin + Vitamin B12 for iron modulation — MecobalActive® stability pitch for whey-based female nutrition line',
+    status: 'hot'
+  },
+  {
+    name: 'Upasana Abbott',         org: 'Now Foods',                title: 'R&D Supervisor',                          dur: 'Since IFT 2025',
+    email: 'upasana.abbott@nowfoods.com',               city: 'Bloomingdale, IL',
+    linkedin: 'https://www.linkedin.com/in/upasana-abbott-55863574',
     mailSent: true,  liSent: false,
-    icpScore: 83, closingProb: 58, channel: 'Email',
-    signal: 'High engagement on product pages — visited pricing 4 times',
+    icpScore: 86, closingProb: 64, channel: 'Email',
+    signal: 'Published internal Methyl B-12 benchmarking on Amazon listings — technical angle: Bioflavex® as natural antioxidant for clean-label portfolio',
     status: 'active'
   },
   {
-    name: 'Robert Klein',        org: 'Hooli Technologies',     title: 'SVP Business Development',        dur: 'Since Jan 2026',
-    email: 'r.klein@hooli.tech',                 city: 'Seattle, WA',
+    name: 'Kevin Soiseth',          org: 'Swanson Health',           title: 'VP Quality / Reg Affairs / R&D',          dur: 'Since SupplySide West 2025',
+    email: 'kevin.soiseth@swansonvitamins.com',         city: 'Fargo, ND',
+    linkedin: 'https://www.linkedin.com/in/kevin-soiseth-944b018/',
+    mailSent: true,  liSent: true,
+    icpScore: 84, closingProb: 58, channel: 'LinkedIn',
+    signal: 'Swanson Ultra Methylcobalamin 5mg + Sublingual B-12 in portfolio · GMP + 3rd-party testing priority — HTBA traceability dossier aligns',
+    status: 'active'
+  },
+  {
+    name: 'Adrienne Polk',          org: 'ByHeart',                  title: 'Director of Marketing Operations',        dur: 'Since Feb 2026',
+    email: 'adrienne@byheart.com',                      city: 'New York, NY',
+    linkedin: 'https://www.linkedin.com/in/adrienne-polk-46b8ab8/',
+    mailSent: true,  liSent: false,
+    icpScore: 82, closingProb: 54, channel: 'Email',
+    signal: 'ByHeart Whole Nutrition Formula lists Vitamin B12 · Clean Label Project Purity Award — MecobalActive® stability claim for infant formula narrative',
+    status: 'active'
+  },
+  {
+    name: 'Yollie Nasca',           org: 'Arbonne',                  title: 'R&D Manager — Nutrition',                 dur: 'Since Mar 2026',
+    email: 'yollienasca@arbonne.com',                   city: 'Irvine, CA',
+    linkedin: 'https://www.linkedin.com/in/yollienasca',
+    mailSent: true,  liSent: false,
+    icpScore: 80, closingProb: 50, channel: 'Email',
+    signal: 'Arbonne EnergyFizz Ginseng Fizz Sticks + BeWell Multivitamin both carry B12 — 45-year Arbonne anniversary reformulation window Q3 2026',
+    status: 'active'
+  },
+  {
+    name: 'Matt Szap, Ph.D.',       org: 'Spectrum Chemical',        title: 'Sr. Technical Marketing Manager',         dur: 'Since CPhI 2025',
+    email: 'mszap@spectrumchemical.com',                city: 'New Brunswick, NJ',
+    linkedin: 'https://www.linkedin.com/in/szapme/',
+    mailSent: true,  liSent: true,
+    icpScore: 77, closingProb: 44, channel: 'LinkedIn',
+    signal: 'Distributes Cyanocobalamin USP (SKU CY105) · batch traceability + EcoVadis Committed — distributor partnership opportunity for MecobalActive®',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Jim Sarti',              org: 'Arizona Nutritional Supplements', title: 'VP Research & Development',         dur: 'Since SupplySide West 2025',
+    email: 'jsarti@aznutritional.com',                  city: 'Chandler, AZ',
+    linkedin: 'https://www.linkedin.com/in/jimsarti/',
+    mailSent: true,  liSent: false,
+    icpScore: 73, closingProb: 38, channel: 'Email',
+    signal: 'Private-label contract manufacturer post re-acquisition by founders — pitch HTBA as exclusive B12 + Bioflavex® supplier for custom blends',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Tharan Joseph',          org: 'Pharmachem Innovations',   title: 'Sr. Custom Formulation Scientist · Nutraceuticals', dur: 'Since Jan 2026',
+    email: 'tharan.joseph@pharmachem.com',              city: 'Kearny, NJ',
+    linkedin: 'https://www.linkedin.com/in/tharan-joseph-26a84387/',
+    mailSent: true,  liSent: false,
+    icpScore: 70, closingProb: 32, channel: 'Email',
+    signal: 'Independent post-Ashland spin-off · lines for hydration + women\'s health + cardio — Citrosa+® + MecobalActive® fit electrolyte sticks',
+    status: 'in-sequence'
+  },
+  {
+    name: 'Concha De La Torre',     org: 'COVAP',                    title: 'Marketing Director',                      dur: 'Since Vitafoods 2024',
+    email: 'cmoyanot@covap.es',                         city: 'Pozoblanco, Spain',
+    linkedin: 'https://www.linkedin.com/in/conchamoyanodelatorre',
     mailSent: false, liSent: true,
-    icpScore: 80, closingProb: 52, channel: 'WhatsApp',
-    signal: 'Inbound lead from SDR outreach — requested technical deep-dive',
-    status: 'active'
-  },
-  {
-    name: 'Akira Tanaka',        org: 'Massive Dynamic',        title: 'Director of Innovation',          dur: 'Since Feb 2026',
-    email: 'a.tanaka@massivedynamic.jp',         city: 'Tokyo, JP',
-    mailSent: true,  liSent: false,
-    icpScore: 78, closingProb: 46, channel: 'Email',
-    signal: 'APAC expansion project — evaluating vendors for Q3 rollout',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Isabella Moretti',    org: 'Pied Piper Software',    title: 'Head of Customer Success',        dur: 'Since Mar 2026',
-    email: 'i.moretti@piedpiper.io',             city: 'Milan, IT',
-    mailSent: true,  liSent: false,
-    icpScore: 75, closingProb: 42, channel: 'Email',
-    signal: 'Signed up for free trial — used product 12 times in 7 days',
-    status: 'in-sequence'
-  },
-  {
-    name: 'James O\'Brien',       org: 'Oscorp Industries',      title: 'VP of Finance',                   dur: 'Since Feb 2026',
-    email: 'j.obrien@oscorp.com',                city: 'Dublin, IE',
-    mailSent: true,  liSent: true,
-    icpScore: 73, closingProb: 38, channel: 'LinkedIn',
-    signal: 'Budget approval pending Q2 board review — champion identified',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Sofia Petrov',        org: 'Cyberdyne Systems',      title: 'CTO',                             dur: 'Since Mar 2026',
-    email: 's.petrov@cyberdyne.tech',            city: 'Berlin, DE',
-    mailSent: false, liSent: false,
-    icpScore: 70, closingProb: 33, channel: 'Email',
-    signal: 'Technical evaluation in progress — needs integration docs',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Marcus Webb',         org: 'Vandelay Industries',    title: 'Head of Procurement',             dur: 'Since Dec 2025',
-    email: 'm.webb@vandelay.com',                city: 'Toronto, CA',
-    mailSent: true,  liSent: false,
-    icpScore: 68, closingProb: 28, channel: 'Email',
-    signal: 'No activity for 38 days — was in final vendor selection',
+    icpScore: 66, closingProb: 26, channel: 'LinkedIn',
+    signal: 'COVAP Leche Calcio Protect fortified with B12 · Spanish dairy coop with sustainability focus — dormant 48 days, re-engage via case study',
     status: 'dormant'
   },
   {
-    name: 'Priya Nair',          org: 'Dunder Mifflin Corp',    title: 'Regional Director',               dur: 'Since Nov 2025',
-    email: 'p.nair@dundermifflin.com',           city: 'Mumbai, IN',
-    mailSent: false, liSent: true,
-    icpScore: 64, closingProb: 22, channel: 'LinkedIn',
-    signal: 'No activity for 52 days — pilot paused after budget cut',
+    name: 'Marion Shirley',         org: 'Sisel',                    title: 'R&D Director',                            dur: 'Since Oct 2025',
+    email: 'mshirley@sisel.net',                        city: 'Springville, UT',
+    linkedin: 'https://www.linkedin.com/in/marion-shirley-522758b',
+    mailSent: true,  liSent: false,
+    icpScore: 62, closingProb: 20, channel: 'Email',
+    signal: 'Boost + Flö Electrolytes + Brain VITALITY all list B12 · SiselRIPT sugar-free launched — dormant 55 days after initial outreach',
     status: 'dormant'
   },
   {
-    name: 'Thomas Anderson',     org: 'Nakatomi Trading',       title: 'Director of Sales Ops',           dur: 'Since Oct 2025',
-    email: 't.anderson@nakatomi.co',             city: 'Los Angeles, CA',
-    mailSent: true,  liSent: false,
-    icpScore: 60, closingProb: 17, channel: 'Email',
-    signal: 'No activity for 65 days — interest paused after reorg',
+    name: 'Macarena Lacasa Belsué', org: 'Grupo Lacasa',             title: 'Marketing Director',                      dur: 'Since Vitafoods 2024',
+    email: 'mclacasa@lacasa.es',                        city: 'Zaragoza, Spain',
+    linkedin: 'https://www.linkedin.com/in/macarena-lacasa-belsu%c3%a9-69b18269',
+    mailSent: false, liSent: true,
+    icpScore: 59, closingProb: 16, channel: 'LinkedIn',
+    signal: 'Lacasa Nature cereal bars launched with B6 + B12 · family-owned 4th gen · UN Global Compact — quiet since Q4, Bioflavex® nuts angle for turrón',
     status: 'dormant'
   },
 ];
@@ -140,17 +163,17 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 //  Editable at runtime; every Marketing Pilot agent reads from here
 // ══════════════════════════════════════════════════
 const brandKitData = {
-  name: 'Acme Corp',
-  industry: 'Enterprise SaaS · B2B',
-  tagline: 'Ship faster. Debug less.',
-  mission: 'We help engineering teams ship reliable software faster by replacing fragile in-house tooling with a single observability + incident platform — opinionated defaults, zero config, 5-minute setup.',
+  name: 'HTBA · HealthTech Bio Actives',
+  industry: 'Ingredients · B12 Active Forms & Flavonoids',
+  tagline: 'Nature-led science. Globally trusted.',
+  mission: 'We co-create naturally sourced ingredients for the pharma, functional food, beverage and animal nutrition industries — green-extraction processes, 45 years of know-how, and a fully validated supply chain from raw material to finished product.',
   palette: [
-    { hex: '#6366F1', name: 'Indigo 500',  role: 'Primary' },
-    { hex: '#0F172A', name: 'Slate 900',   role: 'Text / Dark' },
-    { hex: '#F59E0B', name: 'Amber 500',   role: 'Accent' },
-    { hex: '#10B981', name: 'Emerald 500', role: 'Success' },
-    { hex: '#EF4444', name: 'Red 500',     role: 'Warning' },
-    { hex: '#F8FAFC', name: 'Slate 50',    role: 'Background' },
+    { hex: '#0EA5A4', name: 'Teal 600',    role: 'Primary' },
+    { hex: '#134E4A', name: 'Teal 900',    role: 'Text / Dark' },
+    { hex: '#F59E0B', name: 'Amber 500',   role: 'Accent · Flavonoids' },
+    { hex: '#22C55E', name: 'Green 500',   role: 'Nature / Sustain' },
+    { hex: '#DC2626', name: 'Red 600',     role: 'Alert' },
+    { hex: '#F0FDFA', name: 'Teal 50',     role: 'Background' },
   ],
   typography: {
     heading: 'Outfit',
@@ -158,39 +181,40 @@ const brandKitData = {
     mono: 'JetBrains Mono',
   },
   values: [
-    { title: 'Craft',           desc: 'We sweat the small stuff because engineers notice it. Typography, latency, error messages.', color: '#6366F1' },
-    { title: 'Reliability',     desc: 'The thing we sell is trust. If our dashboard goes down, we\'ve lost — no excuses.',       color: '#10B981' },
-    { title: 'Developer-first', desc: 'We write docs before code. We expose APIs before UIs. We respect engineering time.',      color: '#F59E0B' },
+    { title: 'Nature-led science', desc: 'Every molecule comes from a natural source and is refined with green-chemistry processes — no shortcuts, no solvents we would not drink.', color: '#0EA5A4' },
+    { title: 'Clinically validated', desc: 'MecobalActive® is backed by clinical trials on physical performance and cognition. Bioflavex® and Citrosa+® ship with full technical dossiers.', color: '#22C55E' },
+    { title: 'Supply chain trust', desc: 'Owned B12 plant in Murcia · dual application labs (Barcelona + Cincinnati) · strategic stock reserves · traceability to the batch.', color: '#F59E0B' },
   ],
   personas: [
-    { code: 'P1', role: 'VP of Engineering', label: 'Primary buyer',      size: '100–2,000 engineers', pains: 'Fragile tooling stack, on-call burnout, post-mortem quality', triggers: 'Recent outage, new funding round, scale inflection' },
-    { code: 'P2', role: 'Staff Engineer / Tech Lead', label: 'Technical champion', size: 'Platform or SRE', pains: 'Debugging time, cross-team visibility, alert fatigue', triggers: 'Self-serve trial, peer reference, technical deep-dive' },
+    { code: 'P1', role: 'VP R&D / Head of Innovation', label: 'Technical buyer',  size: 'Nutraceutical · Food & Beverage · Pharma', pains: 'B12 stability in shelf-life, clean-label pressure, regulatory dossiers, supply chain risk on Chinese APIs', triggers: 'New product launch, reformulation window, competitor SKU leak, trade-show booth visit' },
+    { code: 'P2', role: 'Procurement / Strategic Sourcing', label: 'Economic buyer', size: '$50M–$5B revenue', pains: 'Single-sourcing B12, freight volatility from China, backup-supplier qualification, specification variance between lots', triggers: 'Lot rejection, price hike on cyanocobalamin, audit finding, annual contract renewal' },
   ],
   competitors: [
-    { name: 'Datadog',        positioning: 'All-in-one observability',   tier: 'Premium', diff: 'Breadth of integrations · enterprise mindshare' },
-    { name: 'New Relic',      positioning: 'APM + infra',                 tier: 'Mid',     diff: 'APM depth · long-standing brand' },
-    { name: 'Honeycomb',      positioning: 'Observability for SREs',      tier: 'Mid',     diff: 'Event-driven model · technical credibility' },
-    { name: 'Grafana Cloud',  positioning: 'Open-source stack, hosted',   tier: 'Low',     diff: 'OSS story · low entry cost' },
+    { name: 'Zhejiang Medicine',   positioning: 'Chinese B12 bulk leader',     tier: 'Mass',    diff: 'Price · global volume · cyanocobalamin focus' },
+    { name: 'CSPC Pharmaceutical', positioning: 'Chinese API giant',           tier: 'Mass',    diff: 'Vertical integration in China' },
+    { name: 'DSM-Firmenich',       positioning: 'Full-range premix supplier',  tier: 'Premium', diff: 'Scale · bundled premix offering · brand recognition' },
+    { name: 'Kalsec',              positioning: 'Natural flavors & antiox',    tier: 'Mid',     diff: 'Hop extracts · rosemary antioxidants · U.S. HQ' },
+    { name: 'Naturex (Givaudan)',  positioning: 'Botanical extracts',          tier: 'Premium', diff: 'Wide botanical library · F&B penetration' },
   ],
   channels: [
-    { name: 'LinkedIn',         icon: 'linkedin', color: '#0A66C2', handle: '@acme-corp',          audience: '18.4K followers · primary channel' },
-    { name: 'X / Twitter',      icon: 'at-sign',  color: '#0F172A', handle: '@acmehq',             audience: '6.2K followers · thought-leadership' },
-    { name: 'YouTube',          icon: 'youtube',  color: '#EF4444', handle: '@acmecorp',           audience: '1.8K subs · tutorials + post-mortems' },
-    { name: 'Email / Newsletter', icon: 'mail',  color: '#F59E0B', handle: 'newsletter@acme.dev', audience: '4.1K subscribers · weekly eng brief' },
+    { name: 'LinkedIn',           icon: 'linkedin', color: '#0A66C2', handle: '@htba',                 audience: '12.4K followers · primary B2B channel' },
+    { name: 'Trade Press',        icon: 'newspaper', color: '#0F172A', handle: 'NutraIngredients · Nutritional Outlook · NutritionInsight', audience: 'Industry R&D + procurement readers' },
+    { name: 'Technical Webinars', icon: 'video',    color: '#0EA5A4', handle: 'htba.com/webinars',     audience: '~600 registrants per session' },
+    { name: 'Email / Newsletter', icon: 'mail',     color: '#F59E0B', handle: 'newsletter@htba.com',   audience: '3.8K R&D + procurement subscribers' },
   ],
   toneByChannel: [
-    { channel: 'LinkedIn',     tone: 'Contrarian · confident',            formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"We killed 40% of our dashboards…" — short sentences, line breaks, founder POV' },
-    { channel: 'X / Twitter',  tone: 'Dry · technical · witty',           formality: 'Casual',     formalityColor: '#D1FAE5,#065F46', pattern: 'Threads on debugging stories. One-liners with a code snippet. Self-deprecating on failures.' },
-    { channel: 'YouTube',      tone: 'Calm · explanatory · no hype',      formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: 'Screen recordings, real dashboards, voice-over. No intro music. No "like and subscribe" CTAs.' },
-    { channel: 'Email',        tone: 'Newsletter-style · crisp',          formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"Hi [first name] —" opener. 3 sections max. One actionable takeaway per email.' },
+    { channel: 'LinkedIn',        tone: 'Scientific · confident · European',   formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"Why methylcobalamin outperforms cyanocobalamin in shelf-stable beverages…" — data points, clinical refs, concrete SKU examples' },
+    { channel: 'Trade Press',     tone: 'Authoritative · evidence-first',      formality: 'Formal',     formalityColor: '#FEE2E2,#991B1B', pattern: 'Press releases with trial data. Quotes from Chief Science Officer. Plant-tour announcements.' },
+    { channel: 'Technical Webinars', tone: 'Teach-first · no sales pitch',     formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: 'Live R&D walkthrough · Q&A driven · slides with mechanism-of-action diagrams · no product plugs until Q&A.' },
+    { channel: 'Email',           tone: 'Consultative · dossier-style',        formality: 'Formal',     formalityColor: '#FEE2E2,#991B1B', pattern: '"Dear [first name] —" opener · 1 insight + 1 case-study reference · CTA to technical call, not to a demo.' },
   ],
   samples: [
-    { title: '"Why we killed our roadmap" — Founder post',   channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: '18.4K reactions',  voiceFit: 98 },
-    { title: '"How we cut CI time by 60%" — Blog',            channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: '12.1K views',      voiceFit: 95 },
-    { title: '"Debugging a 2ms latency spike" — Post-mortem', channel: 'YouTube',   channelColor: '#FEE2E2,#991B1B', perf: '9.2K views',       voiceFit: 92 },
-    { title: '"A new way to handle incidents" — Launch email', channel: 'Email',    channelColor: '#FEF3C7,#B45309', perf: '48% open rate',    voiceFit: 81 },
-    { title: '"Hiring our first SRE" — Thread',               channel: 'X/Twitter', channelColor: '#F3F4F6,#374151', perf: '4.3K likes',       voiceFit: 94 },
-    { title: '"Old blog draft — Transform your workflow"',    channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Archived',         voiceFit: 42 },
+    { title: '"Why methylated B12 is the premium claim of 2026" — LinkedIn',        channel: 'LinkedIn',    channelColor: '#EFF6FF,#1D4ED8', perf: '3.1K reactions',    voiceFit: 96 },
+    { title: '"Case study: reformulating prenatal with MecobalActive®" — Blog',      channel: 'Blog',        channelColor: '#F3F4F6,#374151', perf: '9.8K views',         voiceFit: 94 },
+    { title: '"Clinical trial results — cognition + performance" — Trade press',    channel: 'Trade Press', channelColor: '#FEE2E2,#991B1B', perf: 'Nutritional Outlook', voiceFit: 92 },
+    { title: '"HTBA quarterly dossier · Q1 2026" — Email newsletter',               channel: 'Email',       channelColor: '#FEF3C7,#B45309', perf: '41% open rate',      voiceFit: 88 },
+    { title: '"Live R&D walkthrough · Bioflavex® in beverages" — Webinar',          channel: 'Webinar',     channelColor: '#D1FAE5,#065F46', perf: '620 registrants',    voiceFit: 91 },
+    { title: '"Old sales-deck slide · Total nutrition partner"',                     channel: 'Blog',        channelColor: '#F3F4F6,#374151', perf: 'Archived',           voiceFit: 38 },
   ],
 };
 
@@ -614,209 +638,257 @@ function switchView(viewId) {
 // ═══════════════════════════════════════════════════════════
 
 const companyCacheDB = {
-  'acmecorp.com': {
-    name: 'Acme Corp',
-    tagline: 'Enterprise Technology Solutions',
-    description: 'Acme Corp is a leading enterprise technology provider delivering scalable SaaS solutions for Fortune 500 companies. Founded in 1998 and headquartered in San Francisco, the company serves over 2,000 customers worldwide with a focus on cloud infrastructure, data analytics, and workflow automation.',
-    industry: 'Enterprise SaaS / Technology',
-    headcount: '1,000 – 5,000 employees',
-    location: 'San Francisco, CA, USA',
-    founded: 1998,
+  'metagenics.com': {
+    name: 'Metagenics',
+    tagline: 'Practitioner-grade supplements · founded on integrity · powered by science',
+    description: 'Metagenics is a practitioner-led nutraceutical brand (founded 1983) that develops clinically validated supplements and medical foods. The company publicly commits to methylated B-vitamins — including Vitamin B12 as methylcobalamin — across virtually every SKU. Global presence across US, EU, APAC with ~1,100 employees.',
+    industry: 'Nutraceuticals · Medical Foods',
+    headcount: '1,064+ employees',
+    location: 'Aliso Viejo, CA (HQ) · Brisbane · Bruges · Ghent',
+    founded: 1983,
     services: [
-      'Cloud Infrastructure Platform',
-      'Data Analytics Suite',
-      'Workflow Automation',
-      'Enterprise Integrations',
-      'Professional Services',
-      'Custom Development',
+      'Practitioner-grade multivitamins (Basic Nutrients 2/Day)',
+      'Metabolic detox (Clear Change Plus)',
+      'Cardio medical foods (UltraMeal Cardio 360)',
+      'UltraFlora probiotics · HerWellness women\'s health',
+      'Amino Complex (NSF Certified for Sport)',
+      'Custom practitioner dispensary programs',
     ],
-    techStack: ['AWS', 'Kubernetes', 'Salesforce', 'Snowflake'],
+    techStack: ['SAP', 'Veeva Vault', 'Salesforce Health Cloud', 'LabWare LIMS'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/acme-corp/',
-      twitter: 'https://twitter.com/acmecorp',
-      instagram: '',
-      facebook: '',
+      linkedin: 'https://www.linkedin.com/company/metagenics',
+      twitter: 'https://x.com/metagenics',
+      instagram: 'https://www.instagram.com/metagenicsinc/',
+      facebook: 'https://www.facebook.com/MetagenicsInc/',
       youtube: '',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'cloud', title: 'Cloud Platform', desc: 'Enterprise-grade cloud infrastructure serving 2,000+ customers across regulated industries.' },
-      { icon: 'bar-chart', title: 'Analytics Suite', desc: 'Real-time data analytics and BI tools powering data-driven decisions.' },
-      { icon: 'zap', title: 'Workflow Automation', desc: 'Low-code automation platform reducing manual operations by 60%.' },
-      { icon: 'link', title: 'Integrations', desc: '500+ pre-built integrations with popular enterprise software.' },
+      { icon: 'flask-conical', title: 'Methylated B-complex', desc: 'FAQ states almost all Metagenics SKUs now use methylated B-vitamins including B12 as methylcobalamin.' },
+      { icon: 'microscope',    title: 'Clinical research',    desc: 'In-house clinical team + university partnerships — evidence dossier for every launched formulation.' },
+      { icon: 'stethoscope',   title: 'Practitioner channel', desc: 'Sold exclusively via licensed practitioners · strict quality protocols rival medical-device companies.' },
+      { icon: 'leaf',          title: 'Clean formulation',    desc: '2025 brand refresh emphasises transparency and clean-label ingredients across the portfolio.' },
     ],
     differentiators: [
-      '25+ years of enterprise SaaS experience',
-      'Fortune 500 customer base with 98% retention rate',
-      'Global presence across 40+ countries',
-      'SOC 2 Type II and ISO 27001 certified',
-      'Industry-leading 99.99% uptime SLA',
+      'Global practitioner network — rare B2B2C moat',
+      'Publicly commits to methylcobalamin (not cyanocobalamin) across SKUs',
+      'Clinical-grade manufacturing · multiple NSF certifications',
+      'Vertically integrated R&D with dedicated clinical affairs team',
+      'Acquired by Amway in 1996 — financial backing + supply-chain muscle',
     ],
     recentMoves: [
-      { date: '2026', event: 'Series F funding round — $150M at $2.5B valuation' },
-      { date: '2025', event: 'Acquired DataStream Analytics for real-time BI capabilities' },
-      { date: '2024', event: 'Launched AI-powered workflow engine with GPT integration' },
+      { date: '2025', event: 'Brand refresh + launch of HerWellness™ line for women\'s health' },
+      { date: '2025', event: 'Launched UltraFlora® 2-in-1 probiotic + multivitamin (PR Newswire Jul 2025)' },
+      { date: '2024', event: 'Expanded digital dispensary + practitioner e-commerce platform' },
     ],
-    icpMatch: { score: 95, label: 'Perfect ICP Match', text: 'Acme Corp fits your ICP perfectly: large enterprise SaaS with complex sales cycles, strong technology adoption, and recent expansion into AI/ML. High probability of strategic partnership.' },
+    icpMatch: { score: 96, label: 'Perfect ICP', text: 'Metagenics is the textbook Tier-1 HTBA target: public methylcobalamin commitment, clinical-grade messaging, multiple SKUs to be re-qualified, and a practitioner channel that amplifies premium-ingredient claims. MecobalActive® and Bioflavex® both map 1:1 to their portfolio.' },
     leads: [
-      { name: 'John Mitchell', title: 'VP of Sales — Enterprise Tech', score: 95, action: 'Send personalized LinkedIn InMail — Decision maker', actionType: 'hot' },
-      { name: 'Jennifer Park', title: 'Chief Marketing Officer', score: 88, action: 'Invite to executive briefing', actionType: 'hot' },
-      { name: 'Ryan Foster', title: 'Director of Partnerships', score: 82, action: 'Request warm intro via mutual contact', actionType: 'warm' },
-      { name: 'Diana Chen', title: 'Head of Product Strategy', score: 76, action: 'Share relevant case study', actionType: 'warm' },
+      { name: 'Nadia Vasen',            title: 'VP Marketing NA & Global', score: 96, action: 'Send reformulation brief + MecobalActive® clinical dossier', actionType: 'hot' },
+      { name: 'Mieke Van Den Driessche', title: 'VP Global Science/R&D',    score: 94, action: 'Book technical call · Brussels R&D center',                 actionType: 'hot' },
+      { name: 'Barbara Vanhoecke',      title: 'Sr. Global R&I Manager',    score: 88, action: 'Share Bioflavex® cardio dossier (UltraMeal Cardio 360)',    actionType: 'hot' },
+      { name: 'Kevin Vanthournout',     title: 'Head of Marketing & Digital', score: 79, action: 'Propose joint whitepaper · methylated-B-complex story',  actionType: 'warm' },
     ],
   },
 
-  'globex.io': {
-    name: 'Globex Industries',
-    tagline: 'Industrial Innovation at Scale',
-    description: 'Globex Industries is a diversified industrial conglomerate operating in manufacturing, logistics, and supply chain technology. Founded in 1985 and headquartered in New York, Globex serves B2B clients across 62 countries with a focus on operational excellence and sustainable industrial practices.',
-    industry: 'Industrial / Manufacturing',
-    headcount: '10,000+ employees',
-    location: 'New York, NY, USA',
-    founded: 1985,
+  'thorne.com': {
+    name: 'Thorne',
+    tagline: 'Personalized health · science-first supplements',
+    description: 'Thorne designs practitioner- and athlete-grade supplements with a strong scientific narrative. Product pages explicitly call out Vitamin B12 as methylcobalamin with "tissue-ready" language. ~550 employees, HQ in Summerville, SC; NSF Certified for Sport portfolio.',
+    industry: 'Nutraceuticals · Dietary Supplements',
+    headcount: '511–550 employees',
+    location: 'Summerville, SC (HQ)',
+    founded: 1984,
     services: [
-      'Industrial Manufacturing',
-      'Supply Chain Solutions',
-      'Logistics & Distribution',
-      'IoT & Industry 4.0',
-      'Sustainability Consulting',
-      'Custom Engineering',
+      'Methylcobalamin SKU (standalone)',
+      'Basic Prenatal (contains methylcobalamin 200 mcg)',
+      'Basic Nutrients 2/Day (methylated B-vitamins + chelated minerals)',
+      'Amino Complex (NSF Certified for Sport)',
+      'FloraPro-LP Probiotic',
+      'Biomarker testing kits + digital health platform',
     ],
-    techStack: ['SAP', 'Microsoft Dynamics', 'AWS IoT', 'PowerBI'],
+    techStack: ['SAP', 'LabVantage LIMS', 'Salesforce', 'Shopify Plus'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/globex-industries/',
-      twitter: '',
-      instagram: '',
-      facebook: '',
-      youtube: 'https://www.youtube.com/@globex',
-      tiktok: '',
-    },
-    whatTheyDo: [
-      { icon: 'factory', title: 'Manufacturing', desc: 'Large-scale industrial production across 45 facilities globally.' },
-      { icon: 'truck', title: 'Supply Chain', desc: 'End-to-end supply chain management with 99.2% on-time delivery.' },
-      { icon: 'cpu', title: 'Industry 4.0', desc: 'IoT-enabled smart factories with real-time production monitoring.' },
-      { icon: 'leaf', title: 'Sustainability', desc: 'Net-zero roadmap by 2035 with circular economy initiatives.' },
-    ],
-    differentiators: [
-      '40+ years of industrial operational experience',
-      '45 manufacturing facilities across 6 continents',
-      'Vertically integrated supply chain control',
-      'Industry-leading sustainability practices (CDP A-list)',
-      'Strategic partnerships with top-tier OEMs',
-    ],
-    recentMoves: [
-      { date: '2026', event: 'Announced $500M investment in Mexico manufacturing hub' },
-      { date: '2025', event: 'Launched AI-driven predictive maintenance platform' },
-      { date: '2024', event: 'Completed acquisition of European logistics leader TransGlobal' },
-    ],
-    icpMatch: { score: 89, label: 'Strong ICP Match', text: 'Globex matches your ICP: global industrial player with complex B2B sales, strong digital transformation agenda, and active M&A strategy. Ideal for enterprise-scale partnerships.' },
-    leads: [
-      { name: 'Sarah Chen', title: 'Chief Revenue Officer', score: 92, action: 'Executive outreach via LinkedIn', actionType: 'hot' },
-      { name: 'Martin Reyes', title: 'VP of Operations', score: 85, action: 'Send industry benchmark report', actionType: 'hot' },
-      { name: 'Angela Brooks', title: 'Director of Procurement', score: 79, action: 'Schedule budget-aligned proposal meeting', actionType: 'warm' },
-      { name: 'Hiroshi Yamamoto', title: 'Head of APAC Strategy', score: 74, action: 'Connect via regional event', actionType: 'warm' },
-    ],
-  },
-
-  'initech.com': {
-    name: 'Initech Solutions',
-    tagline: 'Consulting for the Modern Enterprise',
-    description: 'Initech Solutions is a management consulting firm specializing in digital transformation, operational efficiency, and technology strategy. Founded in 2005 and headquartered in Austin, Initech advises mid-market and enterprise clients on high-impact change initiatives.',
-    industry: 'Management Consulting',
-    headcount: '500 – 1,000 employees',
-    location: 'Austin, TX, USA',
-    founded: 2005,
-    services: [
-      'Digital Transformation',
-      'Operational Excellence',
-      'Technology Strategy',
-      'Change Management',
-      'M&A Advisory',
-      'Data & AI Consulting',
-    ],
-    techStack: ['Salesforce', 'Tableau', 'Microsoft Teams', 'Jira'],
-    socials: {
-      linkedin: 'https://www.linkedin.com/company/initech-solutions/',
-      twitter: 'https://twitter.com/initechsol',
-      instagram: '',
-      facebook: '',
+      linkedin: 'https://www.linkedin.com/company/thorne-health',
+      twitter: 'https://twitter.com/thornehealth',
+      instagram: 'https://www.instagram.com/thornehealth/',
+      facebook: 'https://www.facebook.com/thornehealth',
       youtube: '',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'trending-up', title: 'Digital Transformation', desc: 'End-to-end DX programs for enterprises navigating legacy modernization.' },
-      { icon: 'settings', title: 'Operations', desc: 'Lean/Six Sigma methodology combined with tech enablement.' },
-      { icon: 'layers', title: 'Tech Strategy', desc: 'Technology roadmaps aligned with business outcomes and KPIs.' },
-      { icon: 'users', title: 'Change Mgmt', desc: 'Organizational change programs with 85%+ adoption rates.' },
+      { icon: 'flask-conical', title: 'Methylated B12',       desc: 'Product pages label B12 as methylcobalamin + "active, tissue-ready form" — directly validates premium MecobalActive® positioning.' },
+      { icon: 'award',         title: 'NSF Certified Sport', desc: 'Full athletic nutrition line · partnership with Unrivaled women\'s basketball (Dec 2025).' },
+      { icon: 'activity',      title: 'Biomarker testing',   desc: 'At-home diagnostic kits paired with personalized supplement recommendations.' },
+      { icon: 'users',         title: 'Practitioner channel', desc: '50K+ registered healthcare practitioners · direct dispensary via Thorne app.' },
     ],
     differentiators: [
-      'Top 20 boutique consulting firm in North America',
-      'Industry-leading 4.8 Glassdoor rating',
-      'Deep bench of ex-Big 4 and ex-FAANG talent',
-      'Outcome-based pricing models',
-      'Published proprietary research on Industry 4.0',
+      'Public methylcobalamin labeling across core SKUs',
+      'NSF Certified for Sport — relevant for pro-athlete partnerships',
+      'Biomarker testing · supplement pairing flywheel',
+      'Listed on Nasdaq (THRN) — public-company rigor',
+      'Clinical research division (Thorne Research)',
     ],
     recentMoves: [
-      { date: '2026', event: 'Opened new EMEA office in London' },
-      { date: '2025', event: 'Launched AI Advisory practice with 40+ practitioners' },
-      { date: '2024', event: 'Recognized as "Best Consulting Firm to Work For" — Forbes' },
+      { date: '2025', event: 'Partnership with Unrivaled women\'s basketball league · sports-nutrition deal' },
+      { date: '2025', event: 'Campaign highlighting creatine for non-athletes (broader market push)' },
+      { date: '2024', event: 'Launched biomarker testing bundles tied to supplement subscriptions' },
     ],
-    icpMatch: { score: 87, label: 'Strong ICP Match', text: 'Initech aligns well: consulting firm with strong advisor network, active digital practice, and propensity to recommend solutions to clients. High leverage for multi-deal partnerships.' },
+    icpMatch: { score: 93, label: 'Strong ICP', text: 'Thorne is ideal for HTBA — they already lead with methylcobalamin claims, invest heavily in clinical validation, and have a growing sports line where Bioflavex® antioxidants add a differentiated angle. Prenatal reformulation is a concrete near-term wedge.' },
     leads: [
-      { name: 'Michael Rodriguez', title: 'Head of Operations', score: 90, action: 'Executive discovery call scheduled', actionType: 'hot' },
-      { name: 'Laura Pierce', title: 'Managing Partner — Tech Practice', score: 84, action: 'Invite to partner advisory board', actionType: 'warm' },
-      { name: 'Dan Wexler', title: 'Principal — Digital Strategy', score: 78, action: 'Share sector benchmarks', actionType: 'warm' },
+      { name: 'Lauren Opachich',      title: 'R&D Project Manager',                 score: 93, action: 'RFQ for Basic Prenatal reformulation with MecobalActive®', actionType: 'hot' },
+      { name: 'Hemali Gunt, PhD',     title: 'Director · Clinical Affairs',         score: 88, action: 'Share clinical trial data · cognition + performance',     actionType: 'hot' },
+      { name: 'Eryn Palmer',          title: 'Sr. Director · Product Innovation',   score: 84, action: 'Joint innovation roadmap call',                           actionType: 'hot' },
+      { name: 'Scott Sensenbrenner',  title: 'VP Sales & Marketing',                score: 76, action: 'Propose case study co-publication',                       actionType: 'warm' },
     ],
   },
 
-  'stark.co': {
-    name: 'Stark Enterprises',
-    tagline: 'Advanced Manufacturing & Clean Energy',
-    description: 'Stark Enterprises is a diversified industrial and technology conglomerate focused on advanced manufacturing, clean energy, and defense innovation. Founded in 1940 and headquartered in London, Stark operates in 30+ countries with strong R&D investment in sustainable technologies.',
-    industry: 'Industrial / Clean Energy',
-    headcount: '5,000 – 10,000 employees',
-    location: 'London, UK',
-    founded: 1940,
+  'nestlehealthscience.com': {
+    name: 'Nestlé Health Science',
+    tagline: 'Empowering healthier lives through nutrition · global clinical leader',
+    description: 'Nestlé\'s medical nutrition arm — covers oral nutritional supplements (BOOST, Carnation Breakfast Essentials), enteral nutrition, dysphagia management, and consumer health. BOOST Advanced Nutritional Shake explicitly lists Vitamin B12 in its nutrient panel. Scientific-innovation messaging is front and center.',
+    industry: 'Medical Nutrition · Consumer Health',
+    headcount: '6,430+ employees',
+    location: 'Bridgewater, NJ (Americas HQ) · Vevey, CH (global)',
+    founded: 2011,
     services: [
-      'Advanced Manufacturing',
-      'Clean Energy Systems',
-      'Defense Technology',
-      'R&D Services',
-      'Engineering Consulting',
-      'Specialty Materials',
+      'BOOST® Advanced / Max Nutritional Shakes',
+      'Oral Nutritional Supplements (ONS) for clinical + consumer',
+      'Enteral Nutrition (tube feeding formulas)',
+      'Thickeners & dysphagia management',
+      'Vitamin & mineral supplements (with B12 in key SKUs)',
+      'GLP-1 patient nutritional support platform (launched 2025)',
     ],
-    techStack: ['SAP', 'Oracle', 'Autodesk', 'Ansys'],
+    techStack: ['SAP', 'Veeva Vault', 'Microsoft Dynamics', 'ServiceNow'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/stark-enterprises/',
-      twitter: '',
-      instagram: '',
-      facebook: '',
+      linkedin: 'https://ch.linkedin.com/company/nestle-health-science',
+      twitter: 'https://x.com/NestleHealthUS',
+      instagram: 'https://www.instagram.com/nestlehealthscience/',
+      facebook: 'https://www.facebook.com/NestleHealthScienceMx/',
       youtube: '',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'cpu', title: 'Advanced Mfg', desc: 'Precision engineering for aerospace, automotive, and defense.' },
-      { icon: 'zap', title: 'Clean Energy', desc: 'Solar, wind, and battery storage solutions at utility scale.' },
-      { icon: 'shield', title: 'Defense Tech', desc: 'Mission-critical systems for defense and security markets.' },
-      { icon: 'flask-conical', title: 'R&D', desc: '$800M annual R&D spend across 12 research centers.' },
+      { icon: 'hospital',   title: 'Medical nutrition',     desc: 'Clinical ONS and enteral formulas sold into hospital and LTC channels · B12 standard in the nutrient panel.' },
+      { icon: 'shopping-bag', title: 'Consumer health',     desc: 'BOOST® retail line · growing presence in pharmacy + grocery with clinical positioning.' },
+      { icon: 'user-plus',  title: 'GLP-1 nutrition',       desc: '2025 launch of a comprehensive nutrition platform for patients on GLP-1 agonists — muscle-preservation angle.' },
+      { icon: 'microscope', title: 'Global R&D',            desc: 'Academic partnerships (e.g. UC Davis) · multi-country clinical trial capability.' },
     ],
     differentiators: [
-      '80+ years of industrial heritage',
-      'Top-tier defense contractor with NATO clearance',
-      '12 R&D centers across UK, US, and APAC',
-      'ESG leadership — CDP A-list 5 years running',
-      'Extensive IP portfolio (3,200+ active patents)',
+      'Nestlé parent · unmatched scale + distribution',
+      'Clinical-grade messaging unusual for a CPG-owned brand',
+      'B12 already in mass-volume SKUs (BOOST) — premium swap opportunity',
+      'Direct access to hospital and LTC procurement',
+      'GLP-1 tailwind creates net-new reformulation cycle',
     ],
     recentMoves: [
-      { date: '2026', event: 'Announced $2B clean energy megaproject in North Sea' },
-      { date: '2025', event: 'Strategic partnership with leading aerospace OEM' },
-      { date: '2024', event: 'Launched venture arm with $300M deployment target' },
+      { date: '2025', event: 'Launched comprehensive nutrition platform for GLP-1 patients in the U.S.' },
+      { date: '2025', event: 'Announced academic partnership with UC Davis for clinical nutrition research' },
+      { date: '2024', event: 'Expanded BOOST retail distribution in mass pharmacy channels' },
     ],
-    icpMatch: { score: 82, label: 'Good ICP Match', text: 'Stark is a strong fit: established industrial player with heavy R&D investment and active corporate venture arm. Multiple entry points across divisions.' },
+    icpMatch: { score: 91, label: 'Strategic Tier-1', text: 'Nestlé Health Science is a Tier-1 strategic account: mass-volume SKUs with B12 already in the panel, scientific-innovation messaging that aligns with HTBA\'s clinical dossiers, and a new GLP-1 product cycle that creates a natural reformulation window. MecobalActive® stability + Bioflavex® antioxidant claims both apply.' },
     leads: [
-      { name: 'Emma Thompson', title: 'Director of Procurement', score: 87, action: 'Request RFP/vendor onboarding', actionType: 'hot' },
-      { name: 'Harold Sterling', title: 'Chief Innovation Officer', score: 81, action: 'Position as strategic innovation partner', actionType: 'warm' },
-      { name: 'Nina Kowalski', title: 'Head of Corporate Venture', score: 75, action: 'Explore partnership or investment fit', actionType: 'warm' },
+      { name: 'Laura Folts Dopkins',  title: 'Director R&D Innovation & Strategy', score: 91, action: 'Share MecobalActive® stability data for BOOST shelf-life', actionType: 'hot' },
+    ],
+  },
+
+  'nowfoods.com': {
+    name: 'Now Foods',
+    tagline: '1,500+ natural products · Since 1968 · Independent family-owned',
+    description: 'NOW Foods is one of the largest independent natural-products manufacturers in the U.S. They sell a Methyl B-12 SKU and have publicly published a quality benchmark of competitor Methyl B-12 products on Amazon — an overt signal that methylcobalamin quality is a differentiator they invest in.',
+    industry: 'Dietary Supplements · Natural Products',
+    headcount: '794–1,300 employees',
+    location: 'Bloomingdale, IL (HQ)',
+    founded: 1968,
+    services: [
+      'Methyl B-12 (methylcobalamin lozenges)',
+      'Full multivitamin + minerals portfolio',
+      'Sports nutrition + protein powders',
+      'Essential oils + personal care',
+      'Private-label + contract manufacturing',
+      'Global export (100+ countries)',
+    ],
+    techStack: ['SAP', 'Microsoft D365', 'LabWare LIMS'],
+    socials: {
+      linkedin: 'http://www.linkedin.com/company/now-foods',
+      twitter: 'https://twitter.com/nowfoods',
+      instagram: 'https://www.instagram.com/nowfoodsofficial/',
+      facebook: 'https://facebook.com/nowfoodsofficial',
+      youtube: '',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'pill',        title: 'Methyl B-12 SKU',      desc: 'Dedicated Methyl B-12 5000 mcg lozenge · merchandised as a quality-validated premium SKU.' },
+      { icon: 'search-check', title: 'Quality benchmarking', desc: '2025 published testing of competitor Methyl B-12 products on Amazon — 55% failed label claim.' },
+      { icon: 'award',       title: 'NutraIngredients award', desc: 'Recognized for quality program and transparency testing initiatives.' },
+      { icon: 'factory',     title: 'Independent manufacturer', desc: 'Owns its manufacturing — tight ingredient control and traceability.' },
+    ],
+    differentiators: [
+      'Family-owned independence — decisions stay commercial',
+      'Published quality-testing results = storytelling advantage for MecobalActive®',
+      'Scale of a Tier-1 brand at mid-market pricing',
+      'Vertical manufacturing + private label = two revenue lanes',
+      'NutraIngredients-USA award-winning quality program',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Published internal benchmark: >55% of Amazon Methyl B-12 SKUs failed label claim (19-Mar-2025)' },
+      { date: '2025', event: 'NutraIngredients-USA recognition for quality-testing program' },
+      { date: '2024', event: 'Expansion of sports-nutrition private-label contracts' },
+    ],
+    icpMatch: { score: 86, label: 'Strong ICP', text: 'NOW Foods is a great HTBA target — they have a standalone Methyl B-12 SKU and publicly invest in quality storytelling. MecobalActive® with full clinical + analytical dossier reinforces their narrative. Also a private-label channel for mid-market brands HTBA cannot reach alone.' },
+    leads: [
+      { name: 'Upasana Abbott',   title: 'R&D Supervisor',               score: 86, action: 'Share full MecobalActive® analytical + clinical pack',      actionType: 'hot' },
+      { name: 'Mike Anderson',    title: 'Senior R&D Manager',           score: 83, action: 'Technical call · Methyl B-12 stability comparison',        actionType: 'hot' },
+      { name: 'Amber Cerda',      title: 'Director of Marketing',        score: 74, action: 'Co-author quality-story content piece',                    actionType: 'warm' },
+      { name: 'Tara Makare',      title: 'Senior Digital Marketing Manager', score: 68, action: 'Propose ingredient spotlight in quarterly newsletter', actionType: 'warm' },
+    ],
+  },
+
+  'glanbianutritionals.com': {
+    name: 'Glanbia Nutritionals',
+    tagline: 'Better nutrition through bioactive ingredient science',
+    description: 'Glanbia Nutritionals designs custom ingredient solutions across sports nutrition, women\'s health and functional foods. Their FerriUp™ iron-modulating whey concentrate explicitly combines lactoferrin with Vitamin B12 — a strong signal that premium methylated B12 fits their innovation pipeline.',
+    industry: 'Ingredients · Dairy Proteins · Premix',
+    headcount: '1,154+ employees',
+    location: 'Chicago, IL (HQ) · Twin Falls, ID (manufacturing)',
+    founded: 1997,
+    services: [
+      'FerriUp™ whey concentrate (lactoferrin + B12)',
+      'Whey and milk protein isolates',
+      'Custom premixes + bioactive peptides',
+      'Sports-nutrition protein blends',
+      'Functional beverage protein solutions',
+      'Contract ingredient development',
+    ],
+    techStack: ['SAP', 'Siemens MES', 'LabVantage LIMS'],
+    socials: {
+      linkedin: 'http://www.linkedin.com/company/glanbianutritionals',
+      twitter: 'https://twitter.com/GlanbiaPlc',
+      instagram: '',
+      facebook: 'https://www.facebook.com/Glanbia-Nutritionals-104652287788291',
+      youtube: '',
+      tiktok: '',
+    },
+    whatTheyDo: [
+      { icon: 'droplet',      title: 'Dairy bioactives',     desc: 'Whey and milk protein fractions with functional claims beyond simple protein content.' },
+      { icon: 'flame',        title: 'Sports nutrition',     desc: 'Backbone protein supplier to many of the largest sports-nutrition brands in North America.' },
+      { icon: 'user',         title: 'Women\'s health',      desc: 'FerriUp™ targets iron modulation in active women — a whitespace category.' },
+      { icon: 'flask-conical', title: 'Custom premix',       desc: 'Fully custom ingredient blends for functional beverages and RTD protein.' },
+    ],
+    differentiators: [
+      'Publicly combines B12 with lactoferrin — understands premium positioning',
+      'Unique FerriUp™ platform · strong sports-nutrition customer pipeline',
+      'Tier-1 ingredient reputation in dairy space',
+      'Vertical dairy supply chain — end-to-end traceability',
+      'Global sales organization across US, EU, APAC',
+    ],
+    recentMoves: [
+      { date: '2025', event: 'Launched FerriUp™ optimized whey protein concentrate (with B12)' },
+      { date: '2024', event: 'Expansion of sports-nutrition protein portfolio' },
+      { date: '2024', event: 'New customer wins in premium RTD protein segment' },
+    ],
+    icpMatch: { score: 90, label: 'Strategic ICP', text: 'Glanbia is a high-signal HTBA target — FerriUp™ publicly combines lactoferrin with B12, showing they value premium ingredient storytelling. MecobalActive® is a near-exact match for that platform and could also expand into sports-nutrition blends where methylcobalamin has a clear cognition + performance story.' },
+    leads: [
+      { name: 'Brent Petersen',  title: 'Senior VP of R&D', score: 90, action: 'Technical call · MecobalActive® for FerriUp™ and sports blends', actionType: 'hot' },
     ],
   },
 };
@@ -1111,7 +1183,7 @@ async function scrapeCompanyData(url, domain, companyName, lang = 'en') {
       }
 
       // Industry
-      if (lowerHtml.includes('yacht') || lowerHtml.includes('yachts') || lowerHtml.includes('marine') || lowerHtml.includes('nautical') || lowerHtml.includes('boat') || lowerHtml.includes('vessel') || lowerHtml.includes('sailing')) data.industry = 'Luxury Marine / Yacht Manufacturing';
+      if (lowerHtml.includes('supplement') || lowerHtml.includes('nutraceutical') || lowerHtml.includes('methylcobalamin') || lowerHtml.includes('vitamin b12') || lowerHtml.includes('flavonoid') || lowerHtml.includes('nutrition')) data.industry = 'Nutraceuticals · Functional Ingredients';
       else if (lowerHtml.includes('biostimulant') || lowerHtml.includes('fertilizer') || lowerHtml.includes('crop') || lowerHtml.includes('agriculture')) data.industry = 'Agrochemicals / Biostimulants';
       else if (lowerHtml.includes('software') || lowerHtml.includes('saas') || lowerHtml.includes('platform')) data.industry = 'B2B SaaS / Enterprise Software';
       else if (lowerHtml.includes('finance') || lowerHtml.includes('banking') || lowerHtml.includes('fintech')) data.industry = 'Financial Services / Fintech';
@@ -1175,7 +1247,7 @@ function generateViewHTML(view) {
               <div class="kpi-icon"><i data-lucide="users"></i></div>
             </div>
             <div class="kpi-val">${leadsData.length}</div>
-            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +6 since Cannes 2025</div>
+            <div class="kpi-trend trend-up"><i data-lucide="trending-up" style="width:14px"></i> +6 since SupplySide 2025</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-h">
@@ -1210,7 +1282,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">🔥</span>
               <strong style="font-size:13px; color:var(--text-main);">Priority Prospect</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">John Mitchell — Score 95. Meeting booked Apr 22 for 500-seat deployment.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Nadia Vasen (Metagenics) — Score 96. MecobalActive® RFQ pending · reply expected this week.</p>
             <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
@@ -1218,7 +1290,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">⚠️</span>
               <strong style="font-size:13px; color:var(--text-main);">Reactivation Alert</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Marcus Webb dormant 38 days. Was in final vendor selection — time to re-engage.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Concha De La Torre (COVAP) dormant 48 days · Spanish dairy with B12-fortified SKUs — ready for reactivation.</p>
             <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send reactivation</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
@@ -1226,7 +1298,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">💡</span>
               <strong style="font-size:13px; color:var(--text-main);">Market Signal</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Competitor pricing up +8% QoQ. Value advantage on Enterprise tier — brief sales team.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Zhejiang Medicine bulk cyanocobalamin +8% QoQ · premium gap narrows — brief commercial team on MecobalActive® positioning.</p>
             <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #7C3AED;">
@@ -1234,7 +1306,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">📅</span>
               <strong style="font-size:13px; color:var(--text-main);">Upcoming Event</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">SaaStr Annual in 45 days. 5 prospects flagged for VIP dinner — send invites.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Vitafoods Europe in 45 days · Geneva · 5 prospects flagged for booth dinner — send invites.</p>
             <button class="insight-action"><i data-lucide="users" style="width:12px"></i> View prospect list</button>
           </div>
         </div>
@@ -1610,7 +1682,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🔍</div>
           <div class="agent-header-text">
             <h2>LeadMiner™</h2>
-            <p>Your complete prospect database — identifies, enriches, and tracks high-net-worth buyers from boat shows, dealer networks, web inquiries, and owner referrals. Every lead with full context and outreach status.</p>
+            <p>Your complete prospect database — identifies, enriches, and tracks R&D and procurement decision-makers from trade shows, distributor networks, inbound web inquiries and customer referrals. Every lead with full context and outreach status.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -1738,7 +1810,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">✍️</div>
           <div class="agent-header-text">
             <h2>MessageTailor™</h2>
-            <p>Crafts personalized outreach for each prospect — adapted to their profile, preferred channel, buying stage, and the specific yacht model they showed interest in. Every message feels one-to-one.</p>
+            <p>Crafts personalized outreach for each prospect — adapted to their profile, preferred channel, buying stage, and the specific HTBA ingredient (MecobalActive®, Citrosa+®, Bioflavex®) they showed interest in. Every message feels one-to-one.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -1769,7 +1841,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="sparkles"></i> AI-generated message for ICP Scorer's #1 lead</h3>
           <div style="background:#F8F9FF;border-radius:10px;padding:20px;border:1px dashed rgba(142,84,233,0.3)">
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px"><strong>To:</strong> ${getTopLead().name} · <strong>Org:</strong> ${getTopLead().org} · <strong>Channel:</strong> ${getTopLead().channel} · <strong>Score:</strong> ${getTopLead().icpScore}</p>
-            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a private viewing of the vessel at our Piacenza shipyard, where you can experience the craftsmanship and interior options firsthand. We have select build slots available for late 2026 delivery. Would next week work for a brief call to discuss configuration preferences?"</p>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a technical deep-dive and a tour of our B12 plant in Murcia (or a virtual walk-through of our Barcelona application lab) so your R&D team can review MecobalActive® stability data and trial samples firsthand. We have allocation windows opening for late 2026 delivery. Would next week work for a brief call to align on spec and timing?"</p>
             <div style="display:flex;gap:10px;margin-top:14px">
               <button class="btn-sm btn-primary"><i data-lucide="send"></i> Send now</button>
               <button class="btn-sm btn-ai"><i data-lucide="refresh-cw"></i> Regenerate variant</button>
@@ -1782,7 +1854,7 @@ function generateViewHTML(view) {
           <div class="feature-card">
             <div class="feature-icon">🎭</div>
             <h4>Adaptive Tone</h4>
-            <p>Adjusts the message style based on the buyer profile — formal for family offices, warm for returning owners, concierge-level for UHNWI prospects.</p>
+            <p>Adjusts the message style based on the buyer profile — formal for procurement, warm for returning accounts, consultative for strategic R&D customers.</p>
           </div>
           <div class="feature-card">
             <div class="feature-icon">📡</div>
@@ -1792,7 +1864,7 @@ function generateViewHTML(view) {
           <div class="feature-card">
             <div class="feature-icon">📈</div>
             <h4>Context-Aware</h4>
-            <p>References the specific model of interest, last interaction (sea trial, boat show visit, brochure download), and timing for maximum relevance.</p>
+            <p>References the specific model of interest, last interaction (plant tour invitation, trade-show meeting, technical dossier download), and timing for maximum relevance.</p>
           </div>
         </div>
       </div>
@@ -1846,39 +1918,39 @@ function generateViewHTML(view) {
               <div class="seq-num">2</div>
               <div class="seq-body">
                 <h4>Brochure & Configuration Options</h4>
-                <p>If email opened: send digital brochure + interior configuration link. If not opened: resend with adjusted subject line. Day 4.</p>
+                <p>If email opened: send digital spec sheet + application-lab link. If not opened: resend with adjusted subject line. Day 4.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--warning);margin-left:8px">48% click rate</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">3</div>
               <div class="seq-body">
-                <h4>LinkedIn Connection + Shipyard Invitation</h4>
-                <p>Connect on LinkedIn with a note referencing the show meeting. Include an invitation to visit the Piacenza shipyard. Day 7.</p>
+                <h4>LinkedIn Connection + Plant-Tour Invitation</h4>
+                <p>Connect on LinkedIn referencing the trade-show meeting. Include an invitation to tour the Murcia B12 plant or the Barcelona application lab. Day 7.</p>
                 <div class="seq-channels"><span class="ch-badge">💼 LinkedIn</span><span class="act-score" style="color:var(--success);margin-left:8px">55% acceptance</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">4</div>
               <div class="seq-body">
-                <h4>Sea Trial Invitation (if engaged)</h4>
-                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive sea trial event. If no engagement: send lifestyle content instead. Day 14.</p>
+                <h4>Technical Deep-Dive Call (if engaged)</h4>
+                <p>If prospect opened brochure or accepted LinkedIn: invite to exclusive plant tour · Murcia B12 facility. If no engagement: send technical application case studies instead. Day 14.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span><span class="ch-badge">💬 WhatsApp</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">5</div>
               <div class="seq-body">
-                <h4>Build Slot Availability Update</h4>
-                <p>Notify about remaining delivery slots for their model of interest. Creates urgency without pressure. Day 21.</p>
+                <h4>Supply Allocation Update</h4>
+                <p>Notify about remaining Q3 allocations for their target ingredient. Creates urgency around supply predictability without pressuring. Day 21.</p>
                 <div class="seq-channels"><span class="ch-badge">📧 Email</span></div>
               </div>
             </div>
             <div class="seq-step">
               <div class="seq-num">6</div>
               <div class="seq-body">
-                <h4>Dealer Handoff or Direct Call</h4>
-                <p>If high engagement: schedule a direct call with commercial team. If moderate: warm handoff to nearest authorized dealer. Day 30.</p>
+                <h4>Distributor Handoff or Direct Technical Call</h4>
+                <p>If high engagement: book a direct call with the commercial team. If moderate: warm handoff to the nearest authorized distributor. Day 30.</p>
                 <div class="seq-channels"><span class="ch-badge">💬 WhatsApp</span><span class="ch-badge">📧 Email</span><span class="act-score" style="color:var(--success);margin-left:8px">28% conversion to meeting</span></div>
               </div>
             </div>
@@ -1893,7 +1965,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">💬</div>
           <div class="agent-header-text">
             <h2>Smart Nurture™</h2>
-            <p>Keeps dormant prospects warm by detecting re-engagement signals — a brochure reopened, a boat show approaching, a competitor price change — and triggers the right message at the right moment to bring them back into the pipeline.</p>
+            <p>Keeps dormant prospects warm by detecting re-engagement signals — a technical dossier reopened, an upcoming trade show, a competitor API price change — and triggers the right message at the right moment to bring them back into the pipeline.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Monitoring</div><br>
@@ -2387,7 +2459,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">💰</div>
           <div class="agent-header-text">
             <h2>Price Intelligence Agent</h2>
-            <p>Consolidates competitor pricing across markets, dealer networks, and boat show catalogs — giving you a clear view of where you stand versus Ferretti, Azimut, Sunseeker, and Princess at any given moment.</p>
+            <p>Consolidates competitor pricing across markets, distributor networks and trade-show catalogs — giving you a clear view of where you stand versus Zhejiang Medicine, DSM-Firmenich, Naturex, and DSM at any given moment.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2421,11 +2493,11 @@ function generateViewHTML(view) {
 
         <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
           <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Avg Base Price by Brand (50-60 ft segment)</h3>
+            <h3 class="card-title">Avg Base Price by Brand (0.1%–1% methylcobalamin trituration segment)</h3>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceCompChart"></canvas></div>
           </div>
           <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Price Trend — Flybridge Segment (12 months)</h3>
+            <h3 class="card-title">Price Trend — Functional Health Segment (12 months)</h3>
             <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="ciPriceTrendChart"></canvas></div>
           </div>
         </div>
@@ -2435,11 +2507,11 @@ function generateViewHTML(view) {
             <h3 class="card-title" style="margin:0"><i data-lucide="activity"></i> Price Intelligence Feed</h3>
             <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
               <option>All Competitors</option>
-              <option>Ferretti Group</option>
-              <option>Azimut-Benetti</option>
-              <option>Sunseeker</option>
-              <option>Princess Yachts</option>
-              <option>Prestige</option>
+              <option>Zhejiang Medicine</option>
+              <option>CSPC Pharmaceutical</option>
+              <option>Naturex</option>
+              <option>DSM-Firmenich</option>
+              <option>Kemin</option>
             </select>
           </div>
           <div style="overflow-x:auto;">
@@ -2450,10 +2522,10 @@ function generateViewHTML(view) {
               <tbody>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
                   <td><span style="font-size:12px;color:var(--text-muted)">Apr 2026</span></td>
-                  <td><strong>Ferretti Group</strong></td>
-                  <td>Ferretti 780</td>
+                  <td><strong>Zhejiang Medicine</strong></td>
+                  <td>MecobalActive® 1% trituration</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Listed at Cannes 2025 at EUR 2.1M — 8% above previous year pricing</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Listed at SupplySide 2025 at EUR 2.1M — 8% above previous year pricing</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
@@ -2462,13 +2534,13 @@ function generateViewHTML(view) {
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                       <div style="padding:12px; border-left:3px solid #F59E0B; background:white; border-radius:4px;">
                         <strong>Price Signal:</strong>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">Ferretti 780 listed at EUR 2.1M at Cannes Yachting Festival. This represents an 8% increase over the 2024 list price of EUR 1.94M. The increase is attributed to new interior package and upgraded Volvo IPS 950 engines.</p>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">MecobalActive® 1% trituration listed at EUR 2.1M at SupplySide West 2025 (Las Vegas). This represents an 8% increase over the 2024 list price of EUR 1.94M. The increase is attributed to new particle-size specification and upgraded HPLC purity profile.</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
                         <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Opportunity:</strong> Absolute Flybridge 60 sits 12% below Ferretti 780 in the same segment. Price gap is widening — positioning advantage.</li>
-                          <li><strong>Recommendation:</strong> Arm dealers with updated competitive pricing sheet highlighting value-per-foot advantage.</li>
+                          <li><strong>Opportunity:</strong> HTBA Bioflavex® CR sits 12% below MecobalActive® 1% trituration in the same segment. Price gap is widening — positioning advantage.</li>
+                          <li><strong>Recommendation:</strong> Arm distributors with an updated competitive pricing sheet highlighting €/kg active advantage vs generic cyanocobalamin.</li>
                         </ul>
                       </div>
                     </div>
@@ -2476,10 +2548,10 @@ function generateViewHTML(view) {
                 </tr>
                 <tr style="cursor:pointer" onclick="this.nextElementSibling.classList.toggle('hidden')">
                   <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
-                  <td><strong>Azimut</strong></td>
-                  <td>Azimut Magellano 66</td>
+                  <td><strong>DSM-Firmenich</strong></td>
+                  <td>Cyanocobalamin bulk (China)</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">New Pricing</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Revised upward to EUR 1.85M following strong euro and Volvo engine cost pass-through</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Revised upward to €32/kg following EUR/CNY volatility and new HPLC purity spec</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Neutral</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
@@ -2488,13 +2560,13 @@ function generateViewHTML(view) {
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                       <div style="padding:12px; border-left:3px solid #EF4444; background:white; border-radius:4px;">
                         <strong>Price Signal:</strong>
-                        <p style="font-size:13px;color:#475569;margin-top:8px">Azimut Magellano 66 price adjusted to EUR 1.85M from EUR 1.72M. Increase reflects engine cost pass-through (Volvo IPS) and euro appreciation against GBP and USD, impacting export market competitiveness.</p>
+                        <p style="font-size:13px;color:#475569;margin-top:8px">Cyanocobalamin bulk (China) price adjusted to EUR 1.85M from EUR 1.72M. Increase reflects raw-material cost pass-through (fermentation media) and EUR/CNY volatility, impacting export-market competitiveness.</p>
                       </div>
                       <div style="padding:12px; background:white; border-radius:4px; border:1px solid #E2E8F0">
                         <strong>AI Insight</strong>
                         <ul style="font-size:12px; margin-top:8px; padding-left:16px; color:#334155;">
-                          <li><strong>Impact:</strong> Magellano 66 now directly competes with Navetta 68 on price. Historically Azimut was 5-8% cheaper in this segment.</li>
-                          <li><strong>Recommendation:</strong> Highlight Navetta 68 livability advantage and fuel efficiency in dealer talking points for US and UK buyers.</li>
+                          <li><strong>Impact:</strong> Magellano 66 now directly competes with MecobalActive® 0.1% micro on price. Historically DSM-Firmenich was 5-8% cheaper in this segment.</li>
+                          <li><strong>Recommendation:</strong> Highlight MecobalActive® 0.1% micro bioavailability advantage and traceability story in technical talking points for US and EU buyers.</li>
                         </ul>
                       </div>
                     </div>
@@ -2502,19 +2574,19 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Sunseeker</strong></td>
-                  <td>Manhattan 55</td>
+                  <td><strong>Naturex</strong></td>
+                  <td>Citrosa+® F1</td>
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Promo</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">UK dealer offering 5% early-order discount on 2027 build slots — clearing inventory pressure</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">EU distributor offering 5% early-order discount on Q3 allocations — clearing inventory pressure</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Watch</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Princess</strong></td>
-                  <td>Princess F55</td>
+                  <td><strong>DSM</strong></td>
+                  <td>DSM Quali-B complex</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Price Increase</span></td>
-                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">GBP 1.2M base — 6% increase YoY. Attributed to carbon fiber hard-top option becoming standard</td>
+                  <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">€28/kg base — 6% increase YoY. Attributed to inclusion of full analytical dossier as standard</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Favorable</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
@@ -2531,7 +2603,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🚀</div>
           <div class="agent-header-text">
             <h2>Product Launch Tracker</h2>
-            <p>Tracks what your competitors are bringing to market — new models, boat show debuts, design partnerships, and segment expansions — so you always know what you are competing against before it hits the water.</p>
+            <p>Tracks what your competitors are bringing to market — new ingredient launches, trade-show debuts, research partnerships and portfolio expansions — so you always know what you are competing against before it hits the market.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2581,24 +2653,24 @@ function generateViewHTML(view) {
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px; background:linear-gradient(135deg, rgba(109,40,217,0.04) 0%, transparent 60%);">
               <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
                 <div style="width:40px;height:40px;background:linear-gradient(135deg,#6D28D9,#A78BFA);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">SEP</div>
-                <div><strong style="font-size:14px;">Cannes Yachting Festival</strong><br><span style="font-size:12px;color:var(--text-muted)">Sep 9-14, 2026</span></div>
+                <div><strong style="font-size:14px;">SupplySide West 2025 (Las Vegas)</strong><br><span style="font-size:12px;color:var(--text-muted)">Sep 9-14, 2026</span></div>
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti 860</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Azimut S7</span>
-                <span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Absolute Navetta 75</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">MecobalActive® 0.1% premix</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Standard B12 blend</span>
+                <span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">HTBA MecobalActive® 1%</span>
               </div>
             </div>
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
               <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
                 <div style="width:40px;height:40px;background:linear-gradient(135deg,#0369A1,#38BDF8);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:white;font-weight:700;font-size:13px">JAN</div>
-                <div><strong style="font-size:14px;">Boot Düsseldorf</strong><br><span style="font-size:12px;color:var(--text-muted)">Jan 18-26, 2027</span></div>
+                <div><strong style="font-size:14px;">CPhI Worldwide</strong><br><span style="font-size:12px;color:var(--text-muted)">Jan 18-26, 2027</span></div>
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Sunseeker 65 Sport</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Princess Y72</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Naturex 65 Sport</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">DSM Y72</span>
               </div>
             </div>
             <div style="padding:20px; border:1px solid var(--border); border-radius:10px;">
@@ -2608,8 +2680,8 @@ function generateViewHTML(view) {
               </div>
               <p style="font-size:12px; color:var(--text-muted); margin:0 0 8px 0;">Expected debuts:</p>
               <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Ferretti Infynito 80</span>
-                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Prestige M48</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">MecobalActive® 10% concentrate</span>
+                <span class="lm-tag" style="background:#EDE9FE;color:#6D28D9">Kemin M48</span>
               </div>
             </div>
           </div>
@@ -2624,43 +2696,43 @@ function generateViewHTML(view) {
               <tbody>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Mar 2026</span></td>
-                  <td><strong>Ferretti</strong></td>
+                  <td><strong>Zhejiang Medicine</strong></td>
                   <td>INFYNITO 80</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Navetta/Explorer</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Clinical / Pharma</span></td>
                   <td style="font-size:12px;">80 ft · Hybrid propulsion · Interior by Ideaworks</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Feb 2026</span></td>
-                  <td><strong>Azimut</strong></td>
+                  <td><strong>DSM-Firmenich</strong></td>
                   <td>Grande Trideck</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Superyacht</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Pharma Grade</span></td>
                   <td style="font-size:12px;">90 ft · Triple-deck · Alberto Mancini design</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Jan 2026</span></td>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Naturex</strong></td>
                   <td>Ocean 182</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
-                  <td style="font-size:12px;">60 ft · New hull platform · Volvo IPS 950</td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Functional Health</span></td>
+                  <td style="font-size:12px;">0.1% · New particle-size platform · HPLC qualified</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Dec 2025</span></td>
-                  <td><strong>Princess</strong></td>
+                  <td><strong>DSM</strong></td>
                   <td>X80 Superfly</td>
-                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Flybridge</span></td>
+                  <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Functional Health</span></td>
                   <td style="font-size:12px;">80 ft · Carbon superstructure · MTU engines</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Analyze</button></td>
                 </tr>
                 <tr>
                   <td><span style="font-size:12px;color:var(--text-muted)">Nov 2025</span></td>
-                  <td><strong>Prestige</strong></td>
+                  <td><strong>Kemin</strong></td>
                   <td>M-Line 48</td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Coupe/Sport</span></td>
                   <td style="font-size:12px;">48 ft · Catamaran hull · Electric option</td>
@@ -2680,7 +2752,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">📡</div>
           <div class="agent-header-text">
             <h2>Sentiment Analyzer</h2>
-            <p>Shows how owners, press, and the market perceive Absolute versus the competition — across forums, editorial coverage, social channels, and dealer networks. Turns fragmented opinions into a clear picture of brand positioning.</p>
+            <p>Shows how owners, press, and the market perceive HTBA versus the competition — across forums, editorial coverage, social channels, and dealer networks. Turns fragmented opinions into a clear picture of brand positioning.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2700,7 +2772,7 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-stat">
             <div class="agent-stat-val" style="color:#10B981">78%</div>
-            <div class="agent-stat-lbl">Absolute Positive Sentiment</div>
+            <div class="agent-stat-lbl">HTBA Positive Sentiment</div>
           </div>
           <div class="agent-stat">
             <div class="agent-stat-val">+42</div>
@@ -2732,11 +2804,11 @@ function generateViewHTML(view) {
             <h3 class="card-title" style="margin:0"><i data-lucide="message-circle"></i> Live Sentiment Feed</h3>
             <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
               <option>All Brands</option>
-              <option>Absolute Yachts</option>
-              <option>Ferretti Group</option>
-              <option>Azimut-Benetti</option>
-              <option>Sunseeker</option>
-              <option>Princess Yachts</option>
+              <option>HTBA</option>
+              <option>Zhejiang Medicine</option>
+              <option>CSPC Pharmaceutical</option>
+              <option>Naturex</option>
+              <option>DSM-Firmenich</option>
             </select>
           </div>
           <div style="overflow-x:auto;">
@@ -2745,15 +2817,15 @@ function generateViewHTML(view) {
               <tbody>
                 <tr>
                   <td><span class="lm-tag" style="background:#0A66C2;color:white;font-weight:600">LinkedIn</span></td>
-                  <td><strong>Absolute</strong></td>
+                  <td><strong>HTBA</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Design</span></td>
-                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"The Navetta 68 interior is the best livable space I have ever experienced on a yacht this size."</td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"MecobalActive® 0.1% micro keeps its analytical profile after 18 months on shelf — the most consistent lot-to-lot we have used."</td>
                   <td>12.4K</td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">YachtForums</span></td>
-                  <td><strong>Ferretti</strong></td>
+                  <td><strong>Zhejiang Medicine</strong></td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Negative</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">After-Sales</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Waited 6 months for warranty parts on my 720. Dealer communication was almost nonexistent."</td>
@@ -2761,7 +2833,7 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#E4405F;color:white;font-weight:600">Instagram</span></td>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Naturex</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Lifestyle</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Summer at its finest on the Predator 60. British craftsmanship at its peak."</td>
@@ -2769,15 +2841,15 @@ function generateViewHTML(view) {
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#3B82F6;color:white;font-weight:600">Press</span></td>
-                  <td><strong>Absolute</strong></td>
+                  <td><strong>HTBA</strong></td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Positive</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Innovation</span></td>
-                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Absolute continues to push boundaries with the Navetta 75 — a serious contender in the superyacht entry segment."</td>
+                  <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"HTBA continues to raise the bar with MecobalActive® 1% — a serious contender at the pharma-grade end of the market."</td>
                   <td>28.7K</td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#0F172A;color:white;font-weight:600">Dealer Net</span></td>
-                  <td><strong>Azimut</strong></td>
+                  <td><strong>DSM-Firmenich</strong></td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Mixed</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Delivery</span></td>
                   <td style="max-width:280px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">"Great product but build slot availability remains a challenge. Customers waiting 14+ months."</td>
@@ -2877,16 +2949,16 @@ function generateViewHTML(view) {
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
                   <td>Dealer Network</td>
                   <td>Dubai, UAE</td>
-                  <td>Navetta 68</td>
-                  <td style="font-size:12px;">5 qualified inquiries from HNWI clients in Q1 2026 — all first-time buyers</td>
+                  <td>MecobalActive® 0.1% micro</td>
+                  <td style="font-size:12px;">5 qualified inquiries from US nutraceutical brands in Q1 2026 — all targeting methylcobalamin reformulations</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Event Signal</span></td>
                   <td>Boat Show Lead</td>
-                  <td>Fort Lauderdale, US</td>
-                  <td>Flybridge 52</td>
-                  <td style="font-size:12px;">12 sea trial requests post-FLIBS — highest conversion rate in US market</td>
+                  <td>Boston, US</td>
+                  <td>Citrosa+® F1</td>
+                  <td style="font-size:12px;">12 plant tour requests post-Vitafoods Europe — highest conversion rate in US market</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
                 <tr>
@@ -2894,15 +2966,15 @@ function generateViewHTML(view) {
                   <td>Industry Report</td>
                   <td>Southern Europe</td>
                   <td>All Segments</td>
-                  <td style="font-size:12px;">Italian yacht market up 22% in value (2025 vs 2024) — Confindustria Nautica report</td>
+                  <td style="font-size:12px;">Global methylated-B-vitamins market up 14% YoY (2025 vs 2024) — Mintel Ingredient Trends report</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                 </tr>
                 <tr>
                   <td><span class="lm-tag" style="background:#DBEAFE;color:#1D4ED8">Inquiry Cluster</span></td>
                   <td>Website / CRM</td>
                   <td>Hong Kong</td>
-                  <td>Navetta 52</td>
-                  <td style="font-size:12px;">3 qualified leads from HK in 2 weeks — all referencing Cannes 2025 debut</td>
+                  <td>Bioflavex® CA</td>
+                  <td style="font-size:12px;">3 qualified leads from HK in 2 weeks — all referencing SupplySide 2025 debut</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">High</span></td>
                 </tr>
               </tbody>
@@ -2918,7 +2990,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">🔗</div>
           <div class="agent-header-text">
             <h2>Supply Chain CI</h2>
-            <p>Tracks your critical suppliers — engines, electronics, composites, interiors — identifying cost shifts, delivery risks, and component bottlenecks before they impact your production schedule.</p>
+            <p>Tracks your critical suppliers — cobalamin APIs, citrus extracts, excipients, analytical reagents — identifying cost shifts, delivery risks, and component bottlenecks before they impact your production schedule.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -2969,57 +3041,57 @@ function generateViewHTML(view) {
               <thead><tr><th>Supplier</th><th>Category</th><th>Risk Level</th><th>Lead Time</th><th>Cost Trend</th><th>Alert</th><th></th></tr></thead>
               <tbody>
                 <tr>
-                  <td><strong>Volvo Penta</strong></td>
-                  <td>Engines / IPS</td>
+                  <td><strong>Zhejiang Medicine</strong></td>
+                  <td>Cyanocobalamin bulk</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td>22 weeks <span style="font-size:11px;color:#EF4444">(+4w)</span></td>
                   <td style="color:#EF4444; font-weight:600;">+6.2%</td>
-                  <td style="font-size:12px;">IPS 950 allocation reduced for Q3. Production backlog in Gothenburg.</td>
+                  <td style="font-size:12px;">Allocation reduced for Q3. Production backlog in Shaoxing (CN).</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Besenzoni</strong></td>
-                  <td>Marine Accessories</td>
+                  <td><strong>CSPC Pharmaceutical</strong></td>
+                  <td>Cobalamin intermediates</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
                   <td>6 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
                   <td style="color:#10B981; font-weight:600;">+1.1%</td>
-                  <td style="font-size:12px;">On schedule. New gangway model available for 2027 build slots.</td>
+                  <td style="font-size:12px;">On schedule. New higher-purity lot qualified for Q3 allocation.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Webasto Marine</strong></td>
-                  <td>AC / Climate</td>
+                  <td><strong>Citrus botanical partner</strong></td>
+                  <td>Citrus extracts</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td>14 weeks <span style="font-size:11px;color:#F59E0B">(+2w)</span></td>
                   <td style="color:#F59E0B; font-weight:600;">+3.4%</td>
-                  <td style="font-size:12px;">Semiconductor constraint affecting control units. Alternative sourcing under review.</td>
+                  <td style="font-size:12px;">Harvest variability affecting flavonoid yields. Alternative Brazilian sourcing under review.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Poltrona Frau</strong></td>
-                  <td>Leather / Interior</td>
+                  <td><strong>Excipient supplier (EU)</strong></td>
+                  <td>Excipients / carriers</td>
                   <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Low</span></td>
                   <td>8 weeks <span style="font-size:11px;color:#10B981">(stable)</span></td>
                   <td style="color:#10B981; font-weight:600;">+0.8%</td>
-                  <td style="font-size:12px;">Full capacity. Premium leather grades available for custom orders.</td>
+                  <td style="font-size:12px;">Full capacity. GMP-grade carriers available for custom trituration ratios.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Garmin Marine</strong></td>
-                  <td>Navigation / Electronics</td>
+                  <td><strong>Analytical reagents (Sigma-Aldrich)</strong></td>
+                  <td>HPLC / analytical</td>
                   <td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">High</span></td>
                   <td>18 weeks <span style="font-size:11px;color:#EF4444">(+6w)</span></td>
                   <td style="color:#EF4444; font-weight:600;">+8.1%</td>
-                  <td style="font-size:12px;">GPSMAP 9000 series backordered globally. Recommend securing allocations for H2 builds.</td>
+                  <td style="font-size:12px;">Several HPLC columns backordered globally. Recommend securing allocations for H2 QC runs.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
                 <tr>
-                  <td><strong>Fiberglass Italia</strong></td>
-                  <td>Hull / Composite</td>
+                  <td><strong>Packaging (EU glass)</strong></td>
+                  <td>Primary packaging</td>
                   <td><span class="lm-tag" style="background:#FEF3C7;color:#92400E">Medium</span></td>
                   <td>10 weeks <span style="font-size:11px;color:#F59E0B">(+1w)</span></td>
                   <td style="color:#F59E0B; font-weight:600;">+5.3%</td>
-                  <td style="font-size:12px;">Resin prices elevated due to EU chemical regulation (REACH). Stable supply volume.</td>
+                  <td style="font-size:12px;">Amber-glass prices elevated due to energy costs. Stable supply volume from EU suppliers.</td>
                   <td><button class="lm-btn-outline" style="padding:2px 6px">Detail</button></td>
                 </tr>
               </tbody>
@@ -3090,7 +3162,7 @@ function generateViewHTML(view) {
             </div>
             <div>
               <label class="bk-label">Industry</label>
-              <input class="bk-input" type="text" value="${brandKitData.industry}" oninput="updateBrandField('industry', this.value)" placeholder="e.g. Enterprise SaaS · B2B">
+              <input class="bk-input" type="text" value="${brandKitData.industry}" oninput="updateBrandField('industry', this.value)" placeholder="e.g. Ingredients · B12 Active Forms & Flavonoids">
             </div>
             <div>
               <label class="bk-label">Tagline</label>
@@ -3410,7 +3482,7 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Brand: Acme Corp</span>
+            <span class="agent-tag">Brand: HTBA</span>
           </div>
         </div>
 
@@ -3429,11 +3501,11 @@ function generateViewHTML(view) {
         <!-- Brand Profile -->
         <div class="kpi-grid" style="grid-template-columns:2fr 1fr; margin-top:24px;">
           <div class="card">
-            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — Acme Corp</h3>
+            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — HTBA</h3>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Industry</div>
-                <div style="font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+                <div style="font-size:14px; font-weight:600;">Ingredients · B12 Active Forms & Flavonoids</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Target Audience</div>
@@ -3515,7 +3587,7 @@ function generateViewHTML(view) {
             </div>
             <div style="padding:16px; border:1px solid #86EFAC; background:#F0FDF4; border-radius:8px;">
               <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;"><span style="font-size:18px;">✅</span><strong style="font-size:13px;">After — rewritten with voice rules</strong></div>
-              <p style="font-size:13px; line-height:1.6; color:#14532D;">"Your engineers spend 12 hours a week debugging in five different tools. Acme replaces them with one. Setup takes 5 minutes. First alert fires within the hour. VP Engineering at Linear cut their on-call pages by 73% in six weeks. Ship faster. Debug less."</p>
+              <p style="font-size:13px; line-height:1.6; color:#14532D;">"Your R&D team qualifies three different methylcobalamin sources a year and still ships specification variance. HTBA replaces that with one clinically validated, traceable ingredient — MecobalActive® — backed by full technical dossiers and a European GMP plant. VP R&D at Metagenics cut their B-complex qualification cycle by 61% in one quarter. Better nutrition through nature-led science."</p>
               <div style="margin-top:10px; font-size:11px; color:#166534;"><strong>Voice-fit: 96%</strong> · specific numbers · named customer outcome · short sentences · imperative CTA · zero jargon</div>
             </div>
           </div>
@@ -3611,7 +3683,7 @@ function generateViewHTML(view) {
               {brand:'Datadog',     posts:42, share:22, engagement:4.1, color:'#632CA6'},
               {brand:'Vercel',      posts:38, share:20, engagement:5.6, color:'#000000'},
               {brand:'Linear',      posts:31, share:16, engagement:7.2, color:'#5E6AD2'},
-              {brand:'Acme Corp',   posts:12, share:6,  engagement:4.8, color:'#6366F1', self:true},
+              {brand:'HTBA',   posts:12, share:6,  engagement:4.8, color:'#6366F1', self:true},
               {brand:'Honeycomb',   posts:18, share:10, engagement:3.4, color:'#F97316'},
               {brand:'New Relic',   posts:16, share:8,  engagement:2.1, color:'#00AC69'},
               {brand:'Grafana',     posts:14, share:7,  engagement:2.8, color:'#F46800'},
@@ -3920,7 +3992,7 @@ Ship faster. Debug less.</p>
 
         <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
           <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: HTBA · v3.1</span>
         </div>
 
         <div class="agent-stats">
@@ -4331,21 +4403,21 @@ Ship faster. Debug less.</p>
                 <div><strong>Marco R.</strong> <span style="font-size:12px; color:var(--text-muted);">· Google Reviews</span></div>
                 <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 days ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"The Navetta 68 is simply in another league. The interior space feels like a luxury apartment on water. The Absolute team made the entire buying experience seamless — from the Cannes sea trial to delivery in Sardinia."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"The MecobalActive® 0.1% micro is simply in another league. The interior space feels like a luxury apartment on water. The HTBA team made the entire buying experience seamless — from the Cannes plant tour to delivery in Sardinia."</p>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div><strong>James W.</strong> <span style="font-size:12px; color:var(--text-muted);">· Trustpilot</span></div>
                 <div><span style="color:#F59E0B;">★★★★☆</span> <span style="font-size:12px; color:var(--text-muted);">1 week ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Purchased a Flybridge 52 through the Fort Lauderdale dealer. Beautiful boat, great fuel efficiency. Only minor complaint is the wait time for custom interior options — took 3 weeks longer than quoted."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Purchased a Citrosa+® F1 through the Fort Lauderdale dealer. Beautiful boat, great fuel efficiency. Only minor complaint is the wait time for custom interior options — took 3 weeks longer than quoted."</p>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                 <div><strong>Abdullah K.</strong> <span style="font-size:12px; color:var(--text-muted);">· YachtForums</span></div>
                 <div><span style="color:#F59E0B;">★★★★★</span> <span style="font-size:12px; color:var(--text-muted);">2 weeks ago</span></div>
               </div>
-              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from a Sunseeker 55, the Absolute Navetta 52 is a completely different experience. Quieter, more livable, better use of space. The Italian design philosophy shows in every detail. Best decision I made."</p>
+              <p style="margin:0; font-size:13px; color:var(--text-muted); line-height:1.6;">"Coming from generic bulk cyanocobalamin, HTBA Bioflavex® CA is a completely different experience. Cleaner analytical profile, better stability in our shelf-life studies, tighter spec-to-spec variance. The European science-first approach shows in every lot. Best sourcing decision we made."</p>
             </div>
           </div>
         </div>
@@ -4358,7 +4430,7 @@ Ship faster. Debug less.</p>
               <thead><tr><th>Content</th><th>Platform</th><th>Type</th><th>Reach</th><th>Engagement</th><th>Saves/Shares</th><th>Date</th></tr></thead>
               <tbody>
                 <tr>
-                  <td><strong>Navetta 75 — First Sea Trial</strong></td>
+                  <td><strong>MecobalActive® 1% — First Plant Tour</strong></td>
                   <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Video Reel</span></td>
                   <td style="font-weight:700;">248K</td>
@@ -4376,7 +4448,7 @@ Ship faster. Debug less.</p>
                   <td style="font-size:12px; color:var(--text-muted);">Apr 2</td>
                 </tr>
                 <tr>
-                  <td><strong>Full Walkthrough — Flybridge 60</strong></td>
+                  <td><strong>Full Walkthrough — Bioflavex® CR</strong></td>
                   <td><span class="lm-tag" style="background:#FF0000;color:white">YouTube</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Long Video</span></td>
                   <td style="font-weight:700;">142K</td>
@@ -4394,7 +4466,7 @@ Ship faster. Debug less.</p>
                   <td style="font-size:12px; color:var(--text-muted);">Mar 22</td>
                 </tr>
                 <tr>
-                  <td><strong>Cannes 2025 — Behind the Scenes</strong></td>
+                  <td><strong>SupplySide 2025 — Behind the Scenes</strong></td>
                   <td><span class="lm-tag" style="background:#E4405F;color:white">Instagram</span></td>
                   <td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Stories</span></td>
                   <td style="font-weight:700;">72K</td>
@@ -4415,7 +4487,7 @@ Ship faster. Debug less.</p>
               <thead><tr><th>Brand</th><th>Instagram</th><th>LinkedIn</th><th>YouTube</th><th>Avg Engagement</th><th>Review Score</th><th>Trend</th></tr></thead>
               <tbody>
                 <tr style="background:rgba(124,58,237,0.04);">
-                  <td><strong style="color:#7C3AED;">Absolute Yachts</strong></td>
+                  <td><strong style="color:#7C3AED;">HTBA</strong></td>
                   <td style="font-weight:700;">145K</td>
                   <td style="font-weight:700;">48K</td>
                   <td style="font-weight:700;">67K</td>
@@ -4424,7 +4496,7 @@ Ship faster. Debug less.</p>
                   <td><span style="color:#10B981; font-weight:600;">↑ Growing</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Ferretti Group</strong></td>
+                  <td><strong>Zhejiang Medicine</strong></td>
                   <td>312K</td>
                   <td>85K</td>
                   <td>120K</td>
@@ -4433,7 +4505,7 @@ Ship faster. Debug less.</p>
                   <td><span style="color:var(--text-muted);">→ Stable</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Azimut-Benetti</strong></td>
+                  <td><strong>CSPC Pharmaceutical</strong></td>
                   <td>280K</td>
                   <td>72K</td>
                   <td>95K</td>
@@ -4442,7 +4514,7 @@ Ship faster. Debug less.</p>
                   <td><span style="color:var(--text-muted);">→ Stable</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Sunseeker</strong></td>
+                  <td><strong>Naturex</strong></td>
                   <td>420K</td>
                   <td>38K</td>
                   <td>52K</td>
@@ -4451,7 +4523,7 @@ Ship faster. Debug less.</p>
                   <td><span style="color:#EF4444; font-weight:600;">↓ Declining</span></td>
                 </tr>
                 <tr>
-                  <td><strong>Princess Yachts</strong></td>
+                  <td><strong>DSM-Firmenich</strong></td>
                   <td>198K</td>
                   <td>45K</td>
                   <td>78K</td>
@@ -4464,7 +4536,7 @@ Ship faster. Debug less.</p>
           </div>
           <div style="margin-top:16px; padding:16px; background:#F0FDF4; border:1px solid #BBF7D0; border-radius:8px;">
             <strong style="color:#166534; font-size:13px;">Key Insight:</strong>
-            <span style="color:#15803D; font-size:13px;"> Absolute has the highest engagement rate (4.2%) and review score (4.7) among all competitors despite having fewer followers. Growth trajectory is positive across all platforms except Facebook. Sunseeker leads in Instagram reach but shows declining engagement — quantity over quality.</span>
+            <span style="color:#15803D; font-size:13px;"> HTBA has the highest engagement rate (4.2%) and review score (4.7) among all competitors despite having fewer followers. Growth trajectory is positive across all platforms except Facebook. Naturex leads in Instagram reach but shows declining engagement — quantity over quality.</span>
           </div>
         </div>
       </div>
@@ -4515,14 +4587,14 @@ function renderDashboardCharts() {
     chartInstances['dashEventChart'] = new Chart(evtCtx, {
       type: 'bar',
       data: {
-        labels: ['Cannes 2025', 'FLIBS 2025', 'Boot 2026', 'Dubai 2025', 'Dealer Refs', 'Web / Direct'],
+        labels: ['SupplySide 2025', 'Vitafoods Europe 2025', 'Boot 2026', 'Dubai 2025', 'Dealer Refs', 'Web / Direct'],
         datasets: [{
           label: 'Leads Generated',
           data: [5, 3, 2, 1, 2, 1],
           backgroundColor: 'rgba(255, 123, 84, 0.8)',
           borderRadius: 4
         }, {
-          label: 'Sea Trials Completed',
+          label: 'Plant Tours Completed',
           data: [3, 1, 1, 0, 1, 0],
           backgroundColor: 'rgba(142, 84, 233, 0.8)',
           borderRadius: 4
@@ -4547,7 +4619,7 @@ function renderDashboardCharts() {
     chartInstances['dashRegionChart'] = new Chart(regCtx, {
       type: 'doughnut',
       data: {
-        labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+        labels: ['Western Europe', 'North America', 'Latin America', 'Asia-Pacific', 'Middle East & Africa'],
         datasets: [{ data: [5, 3, 2, 2, 2], backgroundColor: ['#7C3AED','#3B82F6','#F59E0B','#10B981','#94A3B8'] }]
       },
       options: {
@@ -4570,7 +4642,7 @@ function renderCICharts(viewId) {
       chartInstances['ciPriceCompChart'] = new Chart(comp, {
         type: 'bar',
         data: {
-          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige'],
+          labels: ['HTBA', 'Zhejiang Medicine', 'DSM-Firmenich', 'Naturex', 'DSM', 'Kemin'],
           datasets: [
             { label: 'Base Price (EUR K)', data: [1420, 1680, 1580, 1520, 1610, 1180], backgroundColor: ['#7C3AED','#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981'], borderRadius: 4 }
           ]
@@ -4584,10 +4656,10 @@ function renderCICharts(viewId) {
         data: {
           labels: ['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'],
           datasets: [
-            { label: 'Absolute', data: [1380,1380,1390,1400,1400,1410,1410,1420,1420,1420,1420,1420], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Ferretti', data: [1550,1560,1580,1590,1600,1620,1640,1650,1660,1670,1680,1680], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Azimut',   data: [1480,1490,1500,1510,1520,1530,1540,1550,1560,1570,1580,1580], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 2 },
-            { label: 'Sunseeker',data: [1460,1470,1470,1480,1490,1490,1500,1500,1510,1510,1520,1520], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'HTBA', data: [1380,1380,1390,1400,1400,1410,1410,1420,1420,1420,1420,1420], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Zhejiang Medicine', data: [1550,1560,1580,1590,1600,1620,1640,1650,1660,1670,1680,1680], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'DSM-Firmenich',   data: [1480,1490,1500,1510,1520,1530,1540,1550,1560,1570,1580,1580], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 2 },
+            { label: 'Naturex',data: [1460,1470,1470,1480,1490,1490,1500,1500,1510,1510,1520,1520], borderColor: '#F59E0B', tension: 0.3, borderWidth: 2, pointRadius: 2 },
           ]
         },
         options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { ticks: { callback: v => v + 'K' } } } }
@@ -4602,7 +4674,7 @@ function renderCICharts(viewId) {
       chartInstances['ciLaunchBarChart'] = new Chart(bar, {
         type: 'bar',
         data: {
-          labels: ['Ferretti', 'Azimut', 'Sunseeker', 'Princess', 'Prestige', 'Absolute'],
+          labels: ['Zhejiang Medicine', 'DSM-Firmenich', 'Naturex', 'DSM', 'Kemin', 'HTBA'],
           datasets: [{ label: 'Launches (24m)', data: [4, 3, 3, 2, 1, 1], backgroundColor: ['#EF4444','#3B82F6','#F59E0B','#EC4899','#10B981','#7C3AED'], borderRadius: 4 }]
         },
         options: { ...chartOpts, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
@@ -4612,7 +4684,7 @@ function renderCICharts(viewId) {
       chartInstances['ciLaunchSegmentChart'] = new Chart(seg, {
         type: 'doughnut',
         data: {
-          labels: ['Flybridge', 'Navetta/Explorer', 'Coupe/Sport', 'Superyacht'],
+          labels: ['Functional Health', 'Pharmaceutical', 'Taste Modulation', 'Animal Nutrition'],
           datasets: [{ data: [5, 4, 3, 2], backgroundColor: ['#3B82F6','#7C3AED','#F59E0B','#EF4444'] }]
         },
         options: { ...chartOpts, cutout: '60%', plugins: { legend: { position: 'bottom' } } }
@@ -4628,7 +4700,7 @@ function renderCICharts(viewId) {
       chartInstances['ciSentimentBarChart'] = new Chart(bar, {
         type: 'bar',
         data: {
-          labels: ['Absolute', 'Ferretti', 'Azimut', 'Sunseeker', 'Princess'],
+          labels: ['HTBA', 'Zhejiang Medicine', 'DSM-Firmenich', 'Naturex', 'DSM'],
           datasets: [
             { label: 'Positive', data: [78, 65, 70, 72, 68], backgroundColor: '#10B981', borderRadius: 4 },
             { label: 'Neutral',  data: [16, 20, 18, 17, 22], backgroundColor: '#F59E0B', borderRadius: 4 },
@@ -4654,9 +4726,9 @@ function renderCICharts(viewId) {
         data: {
           labels: ['Nov','Dec','Jan','Feb','Mar','Apr'],
           datasets: [
-            { label: 'Absolute',  data: [74,75,76,77,77,78], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
-            { label: 'Ferretti',  data: [68,67,66,65,65,65], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 3 },
-            { label: 'Azimut',    data: [71,70,71,70,70,70], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'HTBA',  data: [74,75,76,77,77,78], borderColor: '#7C3AED', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'Zhejiang Medicine',  data: [68,67,66,65,65,65], borderColor: '#EF4444', tension: 0.3, borderWidth: 2, pointRadius: 3 },
+            { label: 'DSM-Firmenich',    data: [71,70,71,70,70,70], borderColor: '#3B82F6', tension: 0.3, borderWidth: 2, pointRadius: 3 },
           ]
         },
         options: { ...chartOpts, plugins: { legend: { position: 'bottom' } }, scales: { y: { min: 50, max: 100, ticks: { callback: v => v + '%' } } } }
@@ -4684,7 +4756,7 @@ function renderCICharts(viewId) {
       chartInstances['ciDemandRegionChart'] = new Chart(region, {
         type: 'bar',
         data: {
-          labels: ['Mediterranean', 'North America', 'Middle East', 'Asia-Pacific', 'Northern Europe'],
+          labels: ['Western Europe', 'North America', 'Latin America', 'Asia-Pacific', 'Middle East & Africa'],
           datasets: [{ label: 'Demand Signals', data: [312, 224, 178, 133, 67], backgroundColor: ['#059669','#3B82F6','#F59E0B','#8B5CF6','#94A3B8'], borderRadius: 4 }]
         },
         options: { ...chartOpts, indexAxis: 'y', plugins: { legend: { display: false } } }
@@ -4714,7 +4786,7 @@ function renderCICharts(viewId) {
       chartInstances['ciSupplyLeadChart'] = new Chart(lead, {
         type: 'bar',
         data: {
-          labels: ['Engines (Volvo)', 'Electronics (Garmin)', 'AC (Webasto)', 'Composites', 'Interior (Poltrona Frau)', 'Accessories (Besenzoni)'],
+          labels: ['Methylcobalamin API', 'Bioflavex® (citrus)', 'Citrosa+® (taste)', 'Packaging', 'Analytical (HPLC)', 'Regulatory / Dossier'],
           datasets: [
             { label: 'Current (wks)', data: [22, 18, 14, 10, 8, 6], backgroundColor: '#3B82F6', borderRadius: 4 },
             { label: 'Normal (wks)',   data: [18, 12, 12, 9, 8, 6],  backgroundColor: '#E2E8F0', borderRadius: 4 },
