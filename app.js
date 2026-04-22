@@ -42,8 +42,9 @@ const leadsData = [
     linkedin: 'https://www.linkedin.com/in/umberto-verga-0252b0213',
     mailSent: true,  liSent: true,
     icpScore: 88, closingProb: 71, channel: 'LinkedIn',
-    signal: 'Audit energetico completato Q1 2026 — ricerca installatori FV certificati per stabilimento 470 dipendenti',
-    status: 'hot'
+    signal: 'Audit energetico completato Q1 2026 · FV parziale già installato — valuta estensione 1.5 MWp su tetto secondario',
+    status: 'hot',
+    photo: 'Rooftop with solar panels.png'
   },
   {
     name: 'Andrea Sartirana',     org: 'Cameo S.p.A.',              title: 'Executive Manager Supply Chain',          dur: 'Since Feb 2026',
@@ -123,8 +124,9 @@ const leadsData = [
     linkedin: 'https://www.linkedin.com/in/matteoscordo',
     mailSent: true,  liSent: false,
     icpScore: 62, closingProb: 20, channel: 'Email',
-    signal: 'Nessuna attività da 35 giorni — ricontattare post-MCE Milano con proposta aggiornata',
-    status: 'dormant'
+    signal: 'Competitor ha completato installazione FV · nessuna attività da 35 giorni — riattivare su O&M e storage',
+    status: 'dormant',
+    photo: 'Rooftop with solar panels.png'
   },
   {
     name: 'Francesca Cisbani',    org: 'Cameo S.p.A.',              title: 'Senior Consultant Quality Management',    dur: 'Since Nov 2025',
@@ -1647,34 +1649,6 @@ function generateViewHTML(view) {
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#3ECF8E;border-radius:50%;display:inline-block"></span> Active</div><br>
             <span class="agent-tag">Continuous Enrichment</span>
-          </div>
-        </div>
-
-        <div class="card" style="padding:18px; margin-bottom:20px; background:linear-gradient(135deg,#F0F9FF 0%,#ECFDF5 100%); border-left:4px solid #0EA5E9;">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
-            <span style="font-size:20px;">🛰️</span>
-            <div>
-              <h3 style="margin:0; font-size:15px; color:var(--text-main);">Case study visivo · rilevamento siti da immagini satellitari</h3>
-              <p style="margin:2px 0 0 0; font-size:12px; color:var(--text-muted);">LeadMiner identifica stabilimenti industriali con tetti adatti al FV rooftop incrociando dati aziendali con immagini aeree — ogni lead qui sotto è già stato pre-qualificato tecnicamente.</p>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
-            <div style="background:white; border-radius:8px; padding:10px; border:1px solid #E2E8F0;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                <strong style="font-size:13px; color:var(--text-main);">Prima · tetto non utilizzato</strong>
-                <span style="background:#FEE2E2; color:#991B1B; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:700;">0 kWp</span>
-              </div>
-              <img src="Rooftop without solar panels.png" alt="Stabilimento industriale prima dell'installazione FV" style="width:100%; border-radius:6px; display:block;">
-              <p style="margin:8px 0 0 0; font-size:11px; color:var(--text-muted);">~5.200 m² · stabilimento alimentare Nord Italia · consumo stimato 1.8 GWh/anno</p>
-            </div>
-            <div style="background:white; border-radius:8px; padding:10px; border:1px solid #E2E8F0;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                <strong style="font-size:13px; color:var(--text-main);">Dopo · installazione Everest</strong>
-                <span style="background:#D1FAE5; color:#065F46; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:700;">1.2 MWp</span>
-              </div>
-              <img src="Rooftop with solar panels.png" alt="Stabilimento industriale dopo installazione FV rooftop Everest" style="width:100%; border-radius:6px; display:block;">
-              <p style="margin:8px 0 0 0; font-size:11px; color:var(--text-muted);">Copertura FV 78% · produzione 1.4 GWh/anno · payback 4,8 anni</p>
-            </div>
           </div>
         </div>
 
