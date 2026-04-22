@@ -17,120 +17,7 @@ let _originalLeadsData = null; // backup of the original leads
 // ══════════════════════════════════════════════════
 //  SINGLE SOURCE OF TRUTH — All modules read from here
 // ══════════════════════════════════════════════════
-const leadsData = [
-  {
-    name: 'John Mitchell',       org: 'Acme Corp',              title: 'VP of Sales · Enterprise Tech',   dur: 'Since Feb 2026',
-    email: 'j.mitchell@acmecorp.com',            city: 'San Francisco, CA',
-    mailSent: true,  liSent: true,
-    icpScore: 95, closingProb: 88, channel: 'Email',
-    signal: 'Requested pricing for 500-seat deployment — meeting booked Apr 22',
-    status: 'hot'
-  },
-  {
-    name: 'Sarah Chen',          org: 'Globex Industries',      title: 'Chief Revenue Officer',           dur: 'Since Jan 2026',
-    email: 's.chen@globex.io',                   city: 'New York, NY',
-    mailSent: true,  liSent: true,
-    icpScore: 92, closingProb: 81, channel: 'LinkedIn',
-    signal: 'Downloaded ROI whitepaper + attended last 2 product webinars',
-    status: 'hot'
-  },
-  {
-    name: 'Michael Rodriguez',   org: 'Initech Solutions',      title: 'Head of Operations',              dur: 'Since Mar 2026',
-    email: 'm.rodriguez@initech.com',            city: 'Austin, TX',
-    mailSent: true,  liSent: true,
-    icpScore: 90, closingProb: 76, channel: 'Email',
-    signal: 'Replied to first outreach — scheduling discovery call this week',
-    status: 'hot'
-  },
-  {
-    name: 'Emma Thompson',       org: 'Stark Enterprises',      title: 'Director of Procurement',         dur: 'Since Feb 2026',
-    email: 'e.thompson@stark.co',                city: 'London, UK',
-    mailSent: true,  liSent: false,
-    icpScore: 87, closingProb: 69, channel: 'Email',
-    signal: 'Comparing 3 vendors — requested case studies for similar-size orgs',
-    status: 'active'
-  },
-  {
-    name: 'David Kumar',         org: 'Wayne Holdings',         title: 'VP Strategic Partnerships',       dur: 'Since Feb 2026',
-    email: 'd.kumar@wayneholdings.com',          city: 'Chicago, IL',
-    mailSent: true,  liSent: true,
-    icpScore: 85, closingProb: 64, channel: 'LinkedIn',
-    signal: 'Referred by existing customer — warm intro made via CEO',
-    status: 'active'
-  },
-  {
-    name: 'Laura Fernandez',     org: 'Umbrella Inc',           title: 'Head of Growth',                  dur: 'Since Mar 2026',
-    email: 'l.fernandez@umbrella-inc.com',       city: 'Madrid, ES',
-    mailSent: true,  liSent: false,
-    icpScore: 83, closingProb: 58, channel: 'Email',
-    signal: 'High engagement on product pages — visited pricing 4 times',
-    status: 'active'
-  },
-  {
-    name: 'Robert Klein',        org: 'Hooli Technologies',     title: 'SVP Business Development',        dur: 'Since Jan 2026',
-    email: 'r.klein@hooli.tech',                 city: 'Seattle, WA',
-    mailSent: false, liSent: true,
-    icpScore: 80, closingProb: 52, channel: 'WhatsApp',
-    signal: 'Inbound lead from SDR outreach — requested technical deep-dive',
-    status: 'active'
-  },
-  {
-    name: 'Akira Tanaka',        org: 'Massive Dynamic',        title: 'Director of Innovation',          dur: 'Since Feb 2026',
-    email: 'a.tanaka@massivedynamic.jp',         city: 'Tokyo, JP',
-    mailSent: true,  liSent: false,
-    icpScore: 78, closingProb: 46, channel: 'Email',
-    signal: 'APAC expansion project — evaluating vendors for Q3 rollout',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Isabella Moretti',    org: 'Pied Piper Software',    title: 'Head of Customer Success',        dur: 'Since Mar 2026',
-    email: 'i.moretti@piedpiper.io',             city: 'Milan, IT',
-    mailSent: true,  liSent: false,
-    icpScore: 75, closingProb: 42, channel: 'Email',
-    signal: 'Signed up for free trial — used product 12 times in 7 days',
-    status: 'in-sequence'
-  },
-  {
-    name: 'James O\'Brien',       org: 'Oscorp Industries',      title: 'VP of Finance',                   dur: 'Since Feb 2026',
-    email: 'j.obrien@oscorp.com',                city: 'Dublin, IE',
-    mailSent: true,  liSent: true,
-    icpScore: 73, closingProb: 38, channel: 'LinkedIn',
-    signal: 'Budget approval pending Q2 board review — champion identified',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Sofia Petrov',        org: 'Cyberdyne Systems',      title: 'CTO',                             dur: 'Since Mar 2026',
-    email: 's.petrov@cyberdyne.tech',            city: 'Berlin, DE',
-    mailSent: false, liSent: false,
-    icpScore: 70, closingProb: 33, channel: 'Email',
-    signal: 'Technical evaluation in progress — needs integration docs',
-    status: 'in-sequence'
-  },
-  {
-    name: 'Marcus Webb',         org: 'Vandelay Industries',    title: 'Head of Procurement',             dur: 'Since Dec 2025',
-    email: 'm.webb@vandelay.com',                city: 'Toronto, CA',
-    mailSent: true,  liSent: false,
-    icpScore: 68, closingProb: 28, channel: 'Email',
-    signal: 'No activity for 38 days — was in final vendor selection',
-    status: 'dormant'
-  },
-  {
-    name: 'Priya Nair',          org: 'Dunder Mifflin Corp',    title: 'Regional Director',               dur: 'Since Nov 2025',
-    email: 'p.nair@dundermifflin.com',           city: 'Mumbai, IN',
-    mailSent: false, liSent: true,
-    icpScore: 64, closingProb: 22, channel: 'LinkedIn',
-    signal: 'No activity for 52 days — pilot paused after budget cut',
-    status: 'dormant'
-  },
-  {
-    name: 'Thomas Anderson',     org: 'Nakatomi Trading',       title: 'Director of Sales Ops',           dur: 'Since Oct 2025',
-    email: 't.anderson@nakatomi.co',             city: 'Los Angeles, CA',
-    mailSent: true,  liSent: false,
-    icpScore: 60, closingProb: 17, channel: 'Email',
-    signal: 'No activity for 65 days — interest paused after reorg',
-    status: 'dormant'
-  },
-];
+const leadsData = [];
 
 // Save original leads so they can be restored after cache contamination
 _originalLeadsData = leadsData.map(l => ({ ...l }));
@@ -140,17 +27,17 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 //  Editable at runtime; every Marketing Pilot agent reads from here
 // ══════════════════════════════════════════════════
 const brandKitData = {
-  name: 'Acme Corp',
-  industry: 'Enterprise SaaS · B2B',
-  tagline: 'Ship faster. Debug less.',
-  mission: 'We help engineering teams ship reliable software faster by replacing fragile in-house tooling with a single observability + incident platform — opinionated defaults, zero config, 5-minute setup.',
+  name: 'Gruppo Everest',
+  industry: 'Impianti · Fotovoltaico · Elettrici · Meccanici',
+  tagline: 'Facciamo impianti.',
+  mission: 'Piattaforma industriale italiana che aggrega 5 aziende specializzate nella progettazione, installazione e manutenzione di impianti fotovoltaici, elettrici e meccanici. 200+ tecnici qualificati, 140+ anni di esperienza combinata, coperture su tutto il territorio italiano.',
   palette: [
-    { hex: '#6366F1', name: 'Indigo 500',  role: 'Primary' },
+    { hex: '#0EA5E9', name: 'Sky 500',     role: 'Primary' },
     { hex: '#0F172A', name: 'Slate 900',   role: 'Text / Dark' },
-    { hex: '#F59E0B', name: 'Amber 500',   role: 'Accent' },
-    { hex: '#10B981', name: 'Emerald 500', role: 'Success' },
+    { hex: '#22C55E', name: 'Green 500',   role: 'Accent / Sostenibilità' },
+    { hex: '#F59E0B', name: 'Amber 500',   role: 'Success / Energia' },
     { hex: '#EF4444', name: 'Red 500',     role: 'Warning' },
-    { hex: '#F8FAFC', name: 'Slate 50',    role: 'Background' },
+    { hex: '#F0F9FF', name: 'Sky 50',      role: 'Background' },
   ],
   typography: {
     heading: 'Outfit',
@@ -158,39 +45,41 @@ const brandKitData = {
     mono: 'JetBrains Mono',
   },
   values: [
-    { title: 'Craft',           desc: 'We sweat the small stuff because engineers notice it. Typography, latency, error messages.', color: '#6366F1' },
-    { title: 'Reliability',     desc: 'The thing we sell is trust. If our dashboard goes down, we\'ve lost — no excuses.',       color: '#10B981' },
-    { title: 'Developer-first', desc: 'We write docs before code. We expose APIs before UIs. We respect engineering time.',      color: '#F59E0B' },
+    { title: 'Competenza Territoriale', desc: '5 aziende italiane leader nei loro territori (Garolfi, Omnia Energy, Solarys, Starter Energy, Guidi) · 200+ tecnici qualificati.', color: '#0EA5E9' },
+    { title: 'Transizione Sostenibile',  desc: 'Ogni impianto progettato con focus su efficienza energetica ed obiettivi ESG del cliente. Non "green-washing", risultati misurabili.', color: '#22C55E' },
+    { title: 'Ciclo di Vita Completo',   desc: "Dalla progettazione ai permessi, dall'installazione alla manutenzione. Unico interlocutore, unica responsabilità.", color: '#F59E0B' },
   ],
   personas: [
-    { code: 'P1', role: 'VP of Engineering', label: 'Primary buyer',      size: '100–2,000 engineers', pains: 'Fragile tooling stack, on-call burnout, post-mortem quality', triggers: 'Recent outage, new funding round, scale inflection' },
-    { code: 'P2', role: 'Staff Engineer / Tech Lead', label: 'Technical champion', size: 'Platform or SRE', pains: 'Debugging time, cross-team visibility, alert fatigue', triggers: 'Self-serve trial, peer reference, technical deep-dive' },
+    { code: 'P1', role: 'Energy / Sustainability Manager', label: 'Decision maker tecnico',   size: 'Aziende industriali 500-10,000 dipendenti', pains: 'Pressione ESG, bollette energetiche, obiettivi carbon-neutral impossibili senza FV', triggers: 'Piano PNRR, incentivi fiscali, scadenze target decarbonizzazione' },
+    { code: 'P2', role: 'Plant / Facility Manager',        label: 'Buyer operativo',         size: 'Stabilimenti 50+ dipendenti',              pains: 'Manutenzione straordinaria impianti elettrici/HVAC obsoleti, fermo produzione, ripristino norme', triggers: 'Espansione impianto, guasto critico, audit di conformità' },
+    { code: 'P3', role: 'CFO / Finance Director',          label: 'Approvatore capex',       size: 'Gruppi industriali',                        pains: 'ROI investimenti energia, TIR progetti FV, rating finanziario legato a ESG', triggers: 'Business case positivo, accesso a credito agevolato, PPA lunghi' },
   ],
   competitors: [
-    { name: 'Datadog',        positioning: 'All-in-one observability',   tier: 'Premium', diff: 'Breadth of integrations · enterprise mindshare' },
-    { name: 'New Relic',      positioning: 'APM + infra',                 tier: 'Mid',     diff: 'APM depth · long-standing brand' },
-    { name: 'Honeycomb',      positioning: 'Observability for SREs',      tier: 'Mid',     diff: 'Event-driven model · technical credibility' },
-    { name: 'Grafana Cloud',  positioning: 'Open-source stack, hosted',   tier: 'Low',     diff: 'OSS story · low entry cost' },
+    { name: 'ENI Plenitude',         positioning: 'Major EPC fotovoltaico · parte di ENI',         tier: 'Premium', diff: 'Scala globale · PPA diretti · accesso a finanza ENI' },
+    { name: 'A2A Energy Solutions',  positioning: 'EPC fotovoltaico + smart metering',              tier: 'Mid',     diff: 'Focus multiutility · forte in Nord Italia · bundle con servizi' },
+    { name: 'Edison Next',           positioning: 'Soluzioni integrate energia + efficienza',       tier: 'Mid',     diff: 'EDF backing · focus industriale B2B · consulenza ESG' },
+    { name: 'Engie Italia',          positioning: 'Servizi energetici + FV + HVAC',                  tier: 'Premium', diff: 'Major internazionale · project finance' },
+    { name: 'Sorgenia',              positioning: 'Energia + soluzioni solari per PyME',             tier: 'Low',     diff: 'Focus SME · prezzo · semplicità · brand retail' },
   ],
   channels: [
-    { name: 'LinkedIn',         icon: 'linkedin', color: '#0A66C2', handle: '@acme-corp',          audience: '18.4K followers · primary channel' },
-    { name: 'X / Twitter',      icon: 'at-sign',  color: '#0F172A', handle: '@acmehq',             audience: '6.2K followers · thought-leadership' },
-    { name: 'YouTube',          icon: 'youtube',  color: '#EF4444', handle: '@acmecorp',           audience: '1.8K subs · tutorials + post-mortems' },
-    { name: 'Email / Newsletter', icon: 'mail',  color: '#F59E0B', handle: 'newsletter@acme.dev', audience: '4.1K subscribers · weekly eng brief' },
+    { name: 'LinkedIn',           icon: 'linkedin', color: '#0A66C2', handle: '@gruppo-everest',            audience: '5.4K follower · canale B2B principale' },
+    { name: 'Email / Newsletter', icon: 'mail',     color: '#F59E0B', handle: 'info@gruppoeverest.com',     audience: '1.2K iscritti · brief mensile settore energia' },
+    { name: 'YouTube',            icon: 'youtube',  color: '#EF4444', handle: '@gruppoeverest',             audience: '380 iscritti · case study + tutorial tecnici' },
+    { name: 'Blog Tecnico',       icon: 'file-text', color: '#374151', handle: 'gruppoeverest.com/blog',     audience: '14K visite/mese · guide PNRR + transizione energetica' },
   ],
   toneByChannel: [
-    { channel: 'LinkedIn',     tone: 'Contrarian · confident',            formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"We killed 40% of our dashboards…" — short sentences, line breaks, founder POV' },
-    { channel: 'X / Twitter',  tone: 'Dry · technical · witty',           formality: 'Casual',     formalityColor: '#D1FAE5,#065F46', pattern: 'Threads on debugging stories. One-liners with a code snippet. Self-deprecating on failures.' },
-    { channel: 'YouTube',      tone: 'Calm · explanatory · no hype',      formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: 'Screen recordings, real dashboards, voice-over. No intro music. No "like and subscribe" CTAs.' },
-    { channel: 'Email',        tone: 'Newsletter-style · crisp',          formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"Hi [first name] —" opener. 3 sections max. One actionable takeaway per email.' },
+    { channel: 'LinkedIn',     tone: 'Tecnico · autorevole · italiano-inglese',    formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: '"Abbiamo installato X MWp in Y settimane per [cliente industriale]" — dati concreti · focus risultati · no buzzwords' },
+    { channel: 'Email',        tone: 'Formale · consulenziale',                     formality: 'Formal',     formalityColor: '#FEE2E2,#991B1B', pattern: '"Gentile [nome]," apertura · 3 sezioni massimo · chiusura con proposta concreta di incontro tecnico' },
+    { channel: 'YouTube',      tone: 'Didattico · mostrare, non raccontare',        formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: "Riprese on-site in stabilimento · intervista tecnico Everest · walkthrough su schema d'impianto · nessun voice-over artificiale" },
+    { channel: 'Blog Tecnico', tone: 'Educativo · SEO-oriented',                    formality: 'Formal',     formalityColor: '#FEE2E2,#991B1B', pattern: 'Articoli 1500+ parole · H2/H3 strutturati · FAQ · esempi reali italiani · CTA a consulenza' },
   ],
   samples: [
-    { title: '"Why we killed our roadmap" — Founder post',   channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: '18.4K reactions',  voiceFit: 98 },
-    { title: '"How we cut CI time by 60%" — Blog',            channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: '12.1K views',      voiceFit: 95 },
-    { title: '"Debugging a 2ms latency spike" — Post-mortem', channel: 'YouTube',   channelColor: '#FEE2E2,#991B1B', perf: '9.2K views',       voiceFit: 92 },
-    { title: '"A new way to handle incidents" — Launch email', channel: 'Email',    channelColor: '#FEF3C7,#B45309', perf: '48% open rate',    voiceFit: 81 },
-    { title: '"Hiring our first SRE" — Thread',               channel: 'X/Twitter', channelColor: '#F3F4F6,#374151', perf: '4.3K likes',       voiceFit: 94 },
-    { title: '"Old blog draft — Transform your workflow"',    channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Archived',         voiceFit: 42 },
+    { title: '"Perché abbiamo scelto il fotovoltaico rooftop per [cliente]" — LinkedIn post', channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: '2.1K reazioni',    voiceFit: 96 },
+    { title: '"Guida PNRR 2026: come finanziare il FV industriale" — Blog',                    channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: '8.4K visualizz.',  voiceFit: 94 },
+    { title: '"Case study Barilla: 4 MWp rooftop installati in 18 settimane" — YouTube',       channel: 'YouTube',   channelColor: '#FEE2E2,#991B1B', perf: '1.2K visualizz.',  voiceFit: 91 },
+    { title: '"Newsletter mensile · Transizione Energetica Italia" — Email',                   channel: 'Email',     channelColor: '#FEF3C7,#B45309', perf: '38% open rate',    voiceFit: 88 },
+    { title: '"Intervista Marco Bianchi · Direttore Commerciale Everest" — LinkedIn article',  channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: '980 reazioni',     voiceFit: 92 },
+    { title: '"Vecchia landing page · Soluzioni innovative chiavi in mano" — archived',        channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Archived',         voiceFit: 38 },
   ],
 };
 
@@ -312,6 +201,10 @@ function buildIcpRows() {
 
 // MessageTailor — top lead for the example message
 function getTopLead() {
+  if (!leadsData.length) {
+    // Safe placeholder when LeadMiner is empty (chatbot-driven demo flow)
+    return { name: 'No leads yet', org: '—', title: '—', channel: '—', icpScore: 0, closingProb: 0, city: '—', signal: 'Import leads via the AI Assistant to populate' };
+  }
   return [...leadsData].sort((a, b) => b.icpScore - a.icpScore)[0];
 }
 
@@ -614,209 +507,212 @@ function switchView(viewId) {
 // ═══════════════════════════════════════════════════════════
 
 const companyCacheDB = {
-  'acmecorp.com': {
-    name: 'Acme Corp',
-    tagline: 'Enterprise Technology Solutions',
-    description: 'Acme Corp is a leading enterprise technology provider delivering scalable SaaS solutions for Fortune 500 companies. Founded in 1998 and headquartered in San Francisco, the company serves over 2,000 customers worldwide with a focus on cloud infrastructure, data analytics, and workflow automation.',
-    industry: 'Enterprise SaaS / Technology',
-    headcount: '1,000 – 5,000 employees',
-    location: 'San Francisco, CA, USA',
-    founded: 1998,
+  'barilla.com': {
+    name: 'Barilla G. e R. Fratelli S.p.A.',
+    tagline: 'Leader globale italiano nel settore pasta e bakery',
+    description: 'Barilla è il più grande produttore di pasta al mondo e leader italiano nel settore bakery. Fondata nel 1877 a Parma, è un gruppo familiare in 4a generazione con impegno concreto verso la sostenibilità: obiettivo carbon-neutral per il 2030, investimenti massivi in fotovoltaico su impianti produttivi.',
+    industry: 'Food & Beverage · Industrial',
+    headcount: '8,500+ dipendenti',
+    location: 'Parma, Italia',
+    founded: 1877,
     services: [
-      'Cloud Infrastructure Platform',
-      'Data Analytics Suite',
-      'Workflow Automation',
-      'Enterprise Integrations',
-      'Professional Services',
-      'Custom Development',
+      'Pasta (Barilla, Voiello, Filiz)',
+      'Bakery (Mulino Bianco, Pan di Stelle)',
+      'Sughi (Barilla)',
+      'Prodotti senza glutine',
+      'Stabilimenti produttivi globali',
+      'Programmi di sostenibilità',
     ],
-    techStack: ['AWS', 'Kubernetes', 'Salesforce', 'Snowflake'],
+    techStack: ['SAP S/4HANA', 'Siemens Industrial Edge', 'AWS', 'PowerBI'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/acme-corp/',
-      twitter: 'https://twitter.com/acmecorp',
-      instagram: '',
-      facebook: '',
-      youtube: '',
+      linkedin: 'https://www.linkedin.com/company/barilla/',
+      twitter: 'https://twitter.com/Barilla',
+      instagram: 'https://www.instagram.com/barilla/',
+      facebook: 'https://www.facebook.com/Barilla/',
+      youtube: 'https://www.youtube.com/@barilla',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'cloud', title: 'Cloud Platform', desc: 'Enterprise-grade cloud infrastructure serving 2,000+ customers across regulated industries.' },
-      { icon: 'bar-chart', title: 'Analytics Suite', desc: 'Real-time data analytics and BI tools powering data-driven decisions.' },
-      { icon: 'zap', title: 'Workflow Automation', desc: 'Low-code automation platform reducing manual operations by 60%.' },
-      { icon: 'link', title: 'Integrations', desc: '500+ pre-built integrations with popular enterprise software.' },
+      { icon: 'factory', title: 'Produzione Pasta', desc: 'Più di 1.8 milioni di tonnellate/anno in 28 stabilimenti nel mondo.' },
+      { icon: 'leaf', title: 'Sostenibilità', desc: 'Carbon-neutral entro il 2030 · 30% riduzione CO2 entro il 2025.' },
+      { icon: 'sun', title: 'Transizione Energetica', desc: 'Investimenti in fotovoltaico rooftop su 12+ impianti italiani.' },
+      { icon: 'globe', title: 'Presenza Globale', desc: 'Vendite in 100+ paesi · leadership in pasta in Europa, USA, Brasile.' },
     ],
     differentiators: [
-      '25+ years of enterprise SaaS experience',
-      'Fortune 500 customer base with 98% retention rate',
-      'Global presence across 40+ countries',
-      'SOC 2 Type II and ISO 27001 certified',
-      'Industry-leading 99.99% uptime SLA',
+      'Più grande produttore di pasta al mondo',
+      'Gruppo familiare italiano in 4a generazione',
+      'Commitment ESG riconosciuto (CDP A-list)',
+      'Investimenti PNRR su modernizzazione impianti',
+      'R&D center a Parma · Open Innovation Barilla',
     ],
     recentMoves: [
-      { date: '2026', event: 'Series F funding round — $150M at $2.5B valuation' },
-      { date: '2025', event: 'Acquired DataStream Analytics for real-time BI capabilities' },
-      { date: '2024', event: 'Launched AI-powered workflow engine with GPT integration' },
+      { date: '2026', event: 'Annunciato piano €300M per fotovoltaico rooftop su 12 stabilimenti italiani' },
+      { date: '2025', event: 'Partnership con Iren per fornitura energia rinnovabile' },
+      { date: '2024', event: 'Acquisizione di Pasta Evangelists (UK) per espansione D2C' },
     ],
-    icpMatch: { score: 95, label: 'Perfect ICP Match', text: 'Acme Corp fits your ICP perfectly: large enterprise SaaS with complex sales cycles, strong technology adoption, and recent expansion into AI/ML. High probability of strategic partnership.' },
+    icpMatch: { score: 96, label: 'ICP Perfetto', text: 'Barilla è il prospect Tier 1 per Gruppo Everest: commitment pubblico carbon-neutral 2030, piano €300M per fotovoltaico, 12 impianti italiani bisognosi di modernizzazione elettrica. Deal potenziale multi-milionario, con riconoscimento nazionale.' },
     leads: [
-      { name: 'John Mitchell', title: 'VP of Sales — Enterprise Tech', score: 95, action: 'Send personalized LinkedIn InMail — Decision maker', actionType: 'hot' },
-      { name: 'Jennifer Park', title: 'Chief Marketing Officer', score: 88, action: 'Invite to executive briefing', actionType: 'hot' },
-      { name: 'Ryan Foster', title: 'Director of Partnerships', score: 82, action: 'Request warm intro via mutual contact', actionType: 'warm' },
-      { name: 'Diana Chen', title: 'Head of Product Strategy', score: 76, action: 'Share relevant case study', actionType: 'warm' },
+      { name: 'Giorgio Barilla', title: 'Chairman & CEO', score: 96, action: 'Exec-level intro via mutual contact (industriale)', actionType: 'hot' },
+      { name: 'Paolo Rossi', title: 'Chief Sustainability Officer', score: 93, action: 'Invito a visita tecnica impianto Everest', actionType: 'hot' },
+      { name: 'Marco Bianchi', title: 'Energy & Utilities Manager', score: 88, action: 'RFQ fotovoltaico 4 MWp — risposta entro fine mese', actionType: 'hot' },
+      { name: 'Laura Ferri', title: 'Head of Industrial Facilities', score: 82, action: 'Proposta tecnica commerciale', actionType: 'warm' },
+      { name: 'Stefano Greco', title: 'Procurement Director — Energy', score: 76, action: 'Allineamento su pricing modelo', actionType: 'warm' },
     ],
   },
 
-  'globex.io': {
-    name: 'Globex Industries',
-    tagline: 'Industrial Innovation at Scale',
-    description: 'Globex Industries is a diversified industrial conglomerate operating in manufacturing, logistics, and supply chain technology. Founded in 1985 and headquartered in New York, Globex serves B2B clients across 62 countries with a focus on operational excellence and sustainable industrial practices.',
-    industry: 'Industrial / Manufacturing',
-    headcount: '10,000+ employees',
-    location: 'New York, NY, USA',
-    founded: 1985,
+  'luxottica.com': {
+    name: 'Luxottica Group (EssilorLuxottica)',
+    tagline: "Leader mondiale nell'occhialeria di lusso e premium",
+    description: 'Luxottica Group, parte di EssilorLuxottica, è il leader mondiale nel design, produzione e distribuzione di occhiali da vista e da sole di lusso. Fondata nel 1961 ad Agordo (BL), il gruppo include brand come Ray-Ban, Oakley e Persol, con focus su sostenibilità produttiva e ESG.',
+    industry: 'Eyewear · Manufacturing',
+    headcount: '180,000+ dipendenti (gruppo EssilorLuxottica)',
+    location: 'Agordo (Belluno), Italia',
+    founded: 1961,
     services: [
-      'Industrial Manufacturing',
-      'Supply Chain Solutions',
-      'Logistics & Distribution',
-      'IoT & Industry 4.0',
-      'Sustainability Consulting',
-      'Custom Engineering',
+      'Occhiali da vista (Ray-Ban, Persol, Oliver Peoples)',
+      'Occhiali da sole (Ray-Ban, Oakley)',
+      'Collezioni licensed (Armani, Prada, Chanel)',
+      'Stabilimenti produttivi in Italia, Cina, USA',
+      'Retail network globale (LensCrafters, Sunglass Hut)',
+      'Innovazione materiali e tecnologia',
     ],
-    techStack: ['SAP', 'Microsoft Dynamics', 'AWS IoT', 'PowerBI'],
+    techStack: ['SAP', 'Oracle', 'Dassault CATIA', 'Siemens PLM'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/globex-industries/',
+      linkedin: 'https://www.linkedin.com/company/luxottica/',
       twitter: '',
-      instagram: '',
+      instagram: 'https://www.instagram.com/essilorluxottica/',
       facebook: '',
-      youtube: 'https://www.youtube.com/@globex',
+      youtube: 'https://www.youtube.com/@essilorluxottica',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'factory', title: 'Manufacturing', desc: 'Large-scale industrial production across 45 facilities globally.' },
-      { icon: 'truck', title: 'Supply Chain', desc: 'End-to-end supply chain management with 99.2% on-time delivery.' },
-      { icon: 'cpu', title: 'Industry 4.0', desc: 'IoT-enabled smart factories with real-time production monitoring.' },
-      { icon: 'leaf', title: 'Sustainability', desc: 'Net-zero roadmap by 2035 with circular economy initiatives.' },
+      { icon: 'eye', title: 'Design Occhialeria', desc: 'Design e ingegneria dei materiali per occhiali premium e lusso.' },
+      { icon: 'factory', title: 'Stabilimenti Italiani', desc: '6 siti produttivi nel Veneto con focus su sostenibilità e efficienza energetica.' },
+      { icon: 'leaf', title: 'ESG Commitment', desc: 'Obiettivo carbon-neutral 2025 su Scope 1+2 · 100% energia rinnovabile.' },
+      { icon: 'shopping-bag', title: 'Retail Globale', desc: '9,000+ negozi nel mondo · integrazione verticale completa.' },
     ],
     differentiators: [
-      '40+ years of industrial operational experience',
-      '45 manufacturing facilities across 6 continents',
-      'Vertically integrated supply chain control',
-      'Industry-leading sustainability practices (CDP A-list)',
-      'Strategic partnerships with top-tier OEMs',
+      'Leader mondiale eyewear (70+ brand in portfolio)',
+      'Quotata Euronext Parigi · Milano (fusione con Essilor 2018)',
+      'Roadmap carbon-neutral 2025 — priorità strategica',
+      '6 stabilimenti italiani con piani di modernizzazione energetica',
+      'R&D heritage italiano + scale globale',
     ],
     recentMoves: [
-      { date: '2026', event: 'Announced $500M investment in Mexico manufacturing hub' },
-      { date: '2025', event: 'Launched AI-driven predictive maintenance platform' },
-      { date: '2024', event: 'Completed acquisition of European logistics leader TransGlobal' },
+      { date: '2026', event: 'Confermato investimento €200M per decarbonizzazione stabilimenti italiani' },
+      { date: '2025', event: 'Partnership con Enel X per contratti PPA energia rinnovabile' },
+      { date: '2024', event: 'Acquisizione di Heidelberg Engineering (diagnostica oculistica)' },
     ],
-    icpMatch: { score: 89, label: 'Strong ICP Match', text: 'Globex matches your ICP: global industrial player with complex B2B sales, strong digital transformation agenda, and active M&A strategy. Ideal for enterprise-scale partnerships.' },
+    icpMatch: { score: 94, label: 'ICP Strategico', text: 'Luxottica è Tier 1 strategico: 6 stabilimenti italiani con piani attivi di modernizzazione energetica, commitment carbon-neutral 2025, budget concreto per FV+storage. Opportunità multi-sito con potential di cross-sell su servizi elettrici/meccanici.' },
     leads: [
-      { name: 'Sarah Chen', title: 'Chief Revenue Officer', score: 92, action: 'Executive outreach via LinkedIn', actionType: 'hot' },
-      { name: 'Martin Reyes', title: 'VP of Operations', score: 85, action: 'Send industry benchmark report', actionType: 'hot' },
-      { name: 'Angela Brooks', title: 'Director of Procurement', score: 79, action: 'Schedule budget-aligned proposal meeting', actionType: 'warm' },
-      { name: 'Hiroshi Yamamoto', title: 'Head of APAC Strategy', score: 74, action: 'Connect via regional event', actionType: 'warm' },
+      { name: 'Francesco Milleri', title: 'CEO, EssilorLuxottica', score: 94, action: 'Strategic C-level intro via network industriale', actionType: 'hot' },
+      { name: 'Chiara Romano', title: 'Chief Sustainability & ESG Officer', score: 89, action: 'Meeting tematico su roadmap decarbonizzazione', actionType: 'hot' },
+      { name: 'Marco Conti', title: 'Head of Energy & Sustainability', score: 86, action: 'Proposta FV + storage 8 MWp — 6 siti', actionType: 'hot' },
+      { name: 'Elena Rossi', title: 'Plant Director — Agordo', score: 78, action: 'Onsite demo technology Everest', actionType: 'warm' },
     ],
   },
 
-  'initech.com': {
-    name: 'Initech Solutions',
-    tagline: 'Consulting for the Modern Enterprise',
-    description: 'Initech Solutions is a management consulting firm specializing in digital transformation, operational efficiency, and technology strategy. Founded in 2005 and headquartered in Austin, Initech advises mid-market and enterprise clients on high-impact change initiatives.',
-    industry: 'Management Consulting',
-    headcount: '500 – 1,000 employees',
-    location: 'Austin, TX, USA',
-    founded: 2005,
+  'prysmiangroup.com': {
+    name: 'Prysmian Group',
+    tagline: 'Leader globale nella produzione di cavi per energia e telecomunicazioni',
+    description: 'Prysmian Group è il leader mondiale nella produzione di cavi per trasmissione energia e telecomunicazioni. Con sede a Milano, il gruppo opera in 50+ paesi con 104 stabilimenti, focus su cavi high-voltage per offshore wind e infrastrutture di transizione energetica.',
+    industry: 'Cable Manufacturing · Energy Infrastructure',
+    headcount: '29,000+ dipendenti',
+    location: 'Milano, Italia',
+    founded: 1879,
     services: [
-      'Digital Transformation',
-      'Operational Excellence',
-      'Technology Strategy',
-      'Change Management',
-      'M&A Advisory',
-      'Data & AI Consulting',
+      'Cavi Energy (HV, MV, LV)',
+      'Cavi Submarine per Offshore Wind',
+      'Cavi Telecommunications (fibra ottica)',
+      'Soluzioni per Data Center',
+      'Servizi di installazione',
+      'Sistemi di monitoraggio',
     ],
-    techStack: ['Salesforce', 'Tableau', 'Microsoft Teams', 'Jira'],
+    techStack: ['SAP', 'Siemens PLM', 'AWS', 'PowerBI', 'Custom MES'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/initech-solutions/',
-      twitter: 'https://twitter.com/initechsol',
+      linkedin: 'https://www.linkedin.com/company/prysmian-group/',
+      twitter: 'https://twitter.com/prysmiangroup',
       instagram: '',
       facebook: '',
-      youtube: '',
+      youtube: 'https://www.youtube.com/@prysmiangroup',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'trending-up', title: 'Digital Transformation', desc: 'End-to-end DX programs for enterprises navigating legacy modernization.' },
-      { icon: 'settings', title: 'Operations', desc: 'Lean/Six Sigma methodology combined with tech enablement.' },
-      { icon: 'layers', title: 'Tech Strategy', desc: 'Technology roadmaps aligned with business outcomes and KPIs.' },
-      { icon: 'users', title: 'Change Mgmt', desc: 'Organizational change programs with 85%+ adoption rates.' },
+      { icon: 'zap', title: 'Cavi High-Voltage', desc: 'Cavi submarine e underground per trasmissione energia offshore wind e interconnessioni.' },
+      { icon: 'factory', title: 'Stabilimenti Globali', desc: '104 stabilimenti in 50 paesi · quotazione FTSE MIB.' },
+      { icon: 'wifi', title: 'Fibra Ottica', desc: 'Leader nella produzione di cavi in fibra ottica per telecomunicazioni.' },
+      { icon: 'trending-up', title: 'Transizione Energetica', desc: 'Partner chiave per progetti wind farm offshore e grid modernization.' },
     ],
     differentiators: [
-      'Top 20 boutique consulting firm in North America',
-      'Industry-leading 4.8 Glassdoor rating',
-      'Deep bench of ex-Big 4 and ex-FAANG talent',
-      'Outcome-based pricing models',
-      'Published proprietary research on Industry 4.0',
+      'Leader mondiale cavi energy + telco (market cap €13Bn)',
+      '140+ anni di heritage italiano (ex-Pirelli Cables)',
+      'Partner strategico progetti offshore wind EU + US',
+      'Stabilimenti italiani richiedono upgrade energetico',
+      'R&D intensive (€100M+ annui)',
     ],
     recentMoves: [
-      { date: '2026', event: 'Opened new EMEA office in London' },
-      { date: '2025', event: 'Launched AI Advisory practice with 40+ practitioners' },
-      { date: '2024', event: 'Recognized as "Best Consulting Firm to Work For" — Forbes' },
+      { date: '2026', event: 'Acquisizione di Encore Wire (USA) · €4.2B · consolidamento Nord America' },
+      { date: '2025', event: 'Contratto Dogger Bank C (offshore wind UK) · €1B+' },
+      { date: '2024', event: 'Annunciata espansione stabilimenti Livorno + Arco Felice' },
     ],
-    icpMatch: { score: 87, label: 'Strong ICP Match', text: 'Initech aligns well: consulting firm with strong advisor network, active digital practice, and propensity to recommend solutions to clients. High leverage for multi-deal partnerships.' },
+    icpMatch: { score: 88, label: 'ICP Forte', text: 'Prysmian è un ICP solido: stabilimenti italiani in espansione (Livorno, Arco Felice), business model altamente energivoro (produzione cavi), priorità strategica su transizione energetica. Fit naturale con offerta Everest fotovoltaico + HVAC + elettrico.' },
     leads: [
-      { name: 'Michael Rodriguez', title: 'Head of Operations', score: 90, action: 'Executive discovery call scheduled', actionType: 'hot' },
-      { name: 'Laura Pierce', title: 'Managing Partner — Tech Practice', score: 84, action: 'Invite to partner advisory board', actionType: 'warm' },
-      { name: 'Dan Wexler', title: 'Principal — Digital Strategy', score: 78, action: 'Share sector benchmarks', actionType: 'warm' },
+      { name: 'Massimo Battaini', title: 'CEO, Prysmian Group', score: 88, action: 'Strategic C-level outreach via board member', actionType: 'hot' },
+      { name: 'Andrea Pirondini', title: 'COO', score: 82, action: 'Proposta modernizzazione stabilimenti italiani', actionType: 'hot' },
+      { name: 'Fabio Romeo', title: 'CTO · Energy & Sustainability', score: 79, action: 'Tavolo tecnico su FV + storage per plant energivori', actionType: 'warm' },
+      { name: 'Paolo Gelmini', title: 'Head of Italian Operations', score: 73, action: 'Visita stabilimenti italiani + demo tecnologia', actionType: 'warm' },
     ],
   },
 
-  'stark.co': {
-    name: 'Stark Enterprises',
-    tagline: 'Advanced Manufacturing & Clean Energy',
-    description: 'Stark Enterprises is a diversified industrial and technology conglomerate focused on advanced manufacturing, clean energy, and defense innovation. Founded in 1940 and headquartered in London, Stark operates in 30+ countries with strong R&D investment in sustainable technologies.',
-    industry: 'Industrial / Clean Energy',
-    headcount: '5,000 – 10,000 employees',
-    location: 'London, UK',
-    founded: 1940,
+  'iren.it': {
+    name: 'Iren S.p.A.',
+    tagline: 'Multiutility italiana · energia, acqua, ambiente',
+    description: 'Iren è una delle principali multiutility italiane, con sede a Torino e operativa in Nord-Ovest Italia. Si occupa di produzione e distribuzione energia elettrica, gas, teleriscaldamento, servizio idrico e gestione rifiuti. Partner strategico potenziale per Gruppo Everest in progetti di parchi solari condivisi.',
+    industry: 'Utility · Energy & Environment',
+    headcount: '9,500+ dipendenti',
+    location: 'Torino, Italia (HQ) · Reggio Emilia, Genova, Piacenza, Parma',
+    founded: 2010,
     services: [
-      'Advanced Manufacturing',
-      'Clean Energy Systems',
-      'Defense Technology',
-      'R&D Services',
-      'Engineering Consulting',
-      'Specialty Materials',
+      'Produzione Energia Elettrica',
+      'Distribuzione Gas Metano',
+      'Teleriscaldamento',
+      'Servizi Idrici Integrati',
+      'Gestione Rifiuti e Economia Circolare',
+      'Parchi Solari (sviluppo + gestione)',
     ],
-    techStack: ['SAP', 'Oracle', 'Autodesk', 'Ansys'],
+    techStack: ['SAP', 'Oracle', 'Siemens', 'Custom SCADA'],
     socials: {
-      linkedin: 'https://www.linkedin.com/company/stark-enterprises/',
-      twitter: '',
-      instagram: '',
-      facebook: '',
-      youtube: '',
+      linkedin: 'https://www.linkedin.com/company/iren-spa/',
+      twitter: 'https://twitter.com/irenofficial',
+      instagram: 'https://www.instagram.com/irenofficial/',
+      facebook: 'https://www.facebook.com/IrenGruppo/',
+      youtube: 'https://www.youtube.com/@irenofficial',
       tiktok: '',
     },
     whatTheyDo: [
-      { icon: 'cpu', title: 'Advanced Mfg', desc: 'Precision engineering for aerospace, automotive, and defense.' },
-      { icon: 'zap', title: 'Clean Energy', desc: 'Solar, wind, and battery storage solutions at utility scale.' },
-      { icon: 'shield', title: 'Defense Tech', desc: 'Mission-critical systems for defense and security markets.' },
-      { icon: 'flask-conical', title: 'R&D', desc: '$800M annual R&D spend across 12 research centers.' },
+      { icon: 'zap', title: 'Produzione Energia', desc: '3.6 GW di capacità installata · mix hydroelectric + gas + rinnovabili.' },
+      { icon: 'flame', title: 'Teleriscaldamento', desc: 'Leader italiano nel district heating · reti in Torino, Genova, Reggio Emilia.' },
+      { icon: 'droplet', title: 'Servizio Idrico', desc: 'Gestione integrata acqua per 3.5M abitanti in Nord-Ovest.' },
+      { icon: 'recycle', title: 'Economia Circolare', desc: 'Impianti di trattamento rifiuti · recupero materia ed energia.' },
     ],
     differentiators: [
-      '80+ years of industrial heritage',
-      'Top-tier defense contractor with NATO clearance',
-      '12 R&D centers across UK, US, and APAC',
-      'ESG leadership — CDP A-list 5 years running',
-      'Extensive IP portfolio (3,200+ active patents)',
+      'Top 3 multiutility italiana (€5Bn revenue)',
+      'Controllo pubblico locale (Torino, Genova, Reggio Emilia, Parma, Piacenza)',
+      'Piano industriale 2030 · €8Bn investimenti su rinnovabili',
+      'Quotata FTSE MIB',
+      'Partnership con comuni per parchi solari condivisi',
     ],
     recentMoves: [
-      { date: '2026', event: 'Announced $2B clean energy megaproject in North Sea' },
-      { date: '2025', event: 'Strategic partnership with leading aerospace OEM' },
-      { date: '2024', event: 'Launched venture arm with $300M deployment target' },
+      { date: '2026', event: 'Annunciato piano €1.5B per nuovi parchi fotovoltaici in Piemonte + Liguria' },
+      { date: '2025', event: 'Accordo con Barilla per fornitura PPA energia rinnovabile' },
+      { date: '2024', event: 'Acquisizione ACAM Ambiente · consolidamento area La Spezia' },
     ],
-    icpMatch: { score: 82, label: 'Good ICP Match', text: 'Stark is a strong fit: established industrial player with heavy R&D investment and active corporate venture arm. Multiple entry points across divisions.' },
+    icpMatch: { score: 91, label: 'Partner Strategico', text: 'Iren è un prospect di Tier 1 unico: non solo cliente, ma potenziale partner strategico per progetti di parchi solari condivisi. Piano industriale 2030 da €8Bn su rinnovabili con allocazione esplicita per fotovoltaico. Competenza Everest su permitting + installazione fa la differenza.' },
     leads: [
-      { name: 'Emma Thompson', title: 'Director of Procurement', score: 87, action: 'Request RFP/vendor onboarding', actionType: 'hot' },
-      { name: 'Harold Sterling', title: 'Chief Innovation Officer', score: 81, action: 'Position as strategic innovation partner', actionType: 'warm' },
-      { name: 'Nina Kowalski', title: 'Head of Corporate Venture', score: 75, action: 'Explore partnership or investment fit', actionType: 'warm' },
+      { name: 'Luca Dal Fabbro', title: 'Presidente Iren', score: 91, action: 'Exec-level partnership conversation', actionType: 'hot' },
+      { name: 'Paolo Signorini', title: 'Amministratore Delegato', score: 88, action: 'Meeting strategico su JV per parchi solari', actionType: 'hot' },
+      { name: 'Giovanni Gazza', title: 'Direttore Business Energy', score: 84, action: 'Proposta tecnica 50 MW portfolio', actionType: 'hot' },
+      { name: 'Silvia Nicolis', title: 'Head of Renewable Assets', score: 78, action: 'Tavolo operativo su permitting + installazione', actionType: 'warm' },
     ],
   },
 };
@@ -1210,7 +1106,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">🔥</span>
               <strong style="font-size:13px; color:var(--text-main);">Priority Prospect</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">John Mitchell — Score 95. Meeting booked Apr 22 for 500-seat deployment.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Barilla (Energy Manager) — Score 96. RFQ fotovoltaico 4 MWp · risposta entro fine settimana.</p>
             <button class="insight-action"><i data-lucide="send" style="width:12px"></i> Draft message</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #F59E0B;">
@@ -1218,7 +1114,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">⚠️</span>
               <strong style="font-size:13px; color:var(--text-main);">Reactivation Alert</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Marcus Webb dormant 38 days. Was in final vendor selection — time to re-engage.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Prysmian dormant 42 giorni. Piano espansione Livorno annunciato — trigger di reattivazione ideale.</p>
             <button class="insight-action"><i data-lucide="calendar" style="width:12px"></i> Send reactivation</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #3B82F6;">
@@ -1226,7 +1122,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">💡</span>
               <strong style="font-size:13px; color:var(--text-main);">Market Signal</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Competitor pricing up +8% QoQ. Value advantage on Enterprise tier — brief sales team.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">Pannelli JinkoSolar +7% QoQ. Vantaggio temporaneo su LONGi — briefare team commerciale.</p>
             <button class="insight-action"><i data-lucide="refresh-cw" style="width:12px"></i> View Price Intelligence</button>
           </div>
           <div class="card" style="padding:16px; border-left:4px solid #7C3AED;">
@@ -1234,7 +1130,7 @@ function generateViewHTML(view) {
               <span style="font-size:18px;">📅</span>
               <strong style="font-size:13px; color:var(--text-main);">Upcoming Event</strong>
             </div>
-            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">SaaStr Annual in 45 days. 5 prospects flagged for VIP dinner — send invites.</p>
+            <p style="font-size:13px; color:var(--text-muted); line-height:1.5; margin:0 0 12px 0;">KEY — The Energy Transition Expo (Rimini) tra 87 giorni. 6 prospect da invitare a stand Everest.</p>
             <button class="insight-action"><i data-lucide="users" style="width:12px"></i> View prospect list</button>
           </div>
         </div>
@@ -1769,7 +1665,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="sparkles"></i> AI-generated message for ICP Scorer's #1 lead</h3>
           <div style="background:#F8F9FF;border-radius:10px;padding:20px;border:1px dashed rgba(142,84,233,0.3)">
             <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px"><strong>To:</strong> ${getTopLead().name} · <strong>Org:</strong> ${getTopLead().org} · <strong>Channel:</strong> ${getTopLead().channel} · <strong>Score:</strong> ${getTopLead().icpScore}</p>
-            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Dear ${getTopLead().name.split(' ')[0]}, it was a pleasure connecting at the show. Following up on your interest — I would be delighted to arrange a private viewing of the vessel at our Piacenza shipyard, where you can experience the craftsmanship and interior options firsthand. We have select build slots available for late 2026 delivery. Would next week work for a brief call to discuss configuration preferences?"</p>
+            <p style="font-size:14px;line-height:1.7;color:var(--text-main)">"Gentile ${getTopLead().name.split(' ')[0]}, è stato un piacere parlare durante la fiera KEY Rimini. In seguito al vostro interesse, sarei lieto di organizzare una visita tecnica presso uno dei nostri impianti di riferimento, dove potrete vedere in prima persona l'integrazione fotovoltaico + storage. Abbiamo disponibilità per sopralluogo e studio di fattibilità entro fine mese. La prossima settimana avrebbe tempo per una breve call di allineamento?"</p>
             <div style="display:flex;gap:10px;margin-top:14px">
               <button class="btn-sm btn-primary"><i data-lucide="send"></i> Send now</button>
               <button class="btn-sm btn-ai"><i data-lucide="refresh-cw"></i> Regenerate variant</button>
@@ -3090,7 +2986,7 @@ function generateViewHTML(view) {
             </div>
             <div>
               <label class="bk-label">Industry</label>
-              <input class="bk-input" type="text" value="${brandKitData.industry}" oninput="updateBrandField('industry', this.value)" placeholder="e.g. Enterprise SaaS · B2B">
+              <input class="bk-input" type="text" value="${brandKitData.industry}" oninput="updateBrandField('industry', this.value)" placeholder="e.g. Transizione Energetica Italia · B2B">
             </div>
             <div>
               <label class="bk-label">Tagline</label>
@@ -3152,7 +3048,7 @@ function generateViewHTML(view) {
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Headings</label>
               <input class="bk-input" type="text" value="${brandKitData.typography.heading}" oninput="updateBrandTypography('heading', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts" style="font-family:'${brandKitData.typography.heading}', sans-serif; font-size:20px; font-weight:700;">
-              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
+              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Facciamo impianti.</div>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Body</label>
@@ -3360,7 +3256,7 @@ function generateViewHTML(view) {
           <table class="lm-table">
             <thead><tr><th>Channel</th><th>Primary Tone</th><th>Formality</th><th>Examples / Patterns</th></tr></thead>
             <tbody>
-              <tr><td><strong>LinkedIn</strong></td><td>Contrarian · confident</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">"We killed 40% of our dashboards…" — short sentences, line breaks, founder POV</td></tr>
+              <tr><td><strong>LinkedIn</strong></td><td>Contrarian · confident</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">"Chiusura dei diesel di backup inutilizzati" — short sentences, line breaks, founder POV</td></tr>
               <tr><td><strong>X / Twitter</strong></td><td>Dry · technical · witty</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Casual</span></td><td style="font-size:12px;color:var(--text-muted)">Threads on debugging stories. One-liners with a code snippet. Self-deprecating on failures.</td></tr>
               <tr><td><strong>YouTube</strong></td><td>Calm · explanatory · no hype</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">Screen recordings, real dashboards, voice-over. No intro music. No "like and subscribe" CTAs.</td></tr>
               <tr><td><strong>Email</strong></td><td>Newsletter-style · crisp</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Mid-formal</span></td><td style="font-size:12px;color:var(--text-muted)">"Hi [first name] —" opener. 3 sections max. One actionable takeaway per email.</td></tr>
@@ -3410,7 +3306,7 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Brand: Acme Corp</span>
+            <span class="agent-tag">Brand: Gruppo Everest</span>
           </div>
         </div>
 
@@ -3429,11 +3325,11 @@ function generateViewHTML(view) {
         <!-- Brand Profile -->
         <div class="kpi-grid" style="grid-template-columns:2fr 1fr; margin-top:24px;">
           <div class="card">
-            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — Acme Corp</h3>
+            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — Gruppo Everest</h3>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Industry</div>
-                <div style="font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+                <div style="font-size:14px; font-weight:600;">Transizione Energetica Italia · B2B</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Target Audience</div>
@@ -3482,7 +3378,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="check-circle-2"></i> Voice Rules (28 coded — excerpt)</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
             <div style="padding:12px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:4px;"><strong style="font-size:13px;">Always:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#065F46;"><li>Reference concrete customer outcomes (not features)</li><li>Use active voice in openers</li><li>End posts with a specific CTA, not a generic one</li><li>Name the persona you're writing to</li></ul></div>
-            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Never:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#991B1B;"><li>Use marketing jargon ("synergy", "leverage", "disruption")</li><li>Open with "In today's fast-paced world…"</li><li>Use more than 2 adjectives in a row</li><li>Reference the customer's competitors by name</li></ul></div>
+            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Never:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#991B1B;"><li>Use marketing jargon ("synergy", "leverage", "disruption")</li><li>Open with "Nel panorama industriale odierno…"</li><li>Use more than 2 adjectives in a row</li><li>Reference the customer's competitors by name</li></ul></div>
           </div>
         </div>
 
@@ -3495,11 +3391,11 @@ function generateViewHTML(view) {
           <table class="lm-table">
             <thead><tr><th>Source</th><th>Format</th><th>Voice Fit</th><th>Key Traits Extracted</th></tr></thead>
             <tbody>
-              <tr><td><strong>Founder's LinkedIn post · "Why we killed our roadmap"</strong></td><td>LinkedIn</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">98%</span></td><td style="font-size:12px;color:var(--text-muted)">Contrarian opener · direct second person · short sentences</td></tr>
-              <tr><td><strong>Homepage headline · "Ship faster. Debug less."</strong></td><td>Landing</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">95%</span></td><td style="font-size:12px;color:var(--text-muted)">Imperative mood · outcome-first · parallelism</td></tr>
-              <tr><td><strong>Engineering blog · "How we cut CI time by 60%"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">92%</span></td><td style="font-size:12px;color:var(--text-muted)">Numbers in headline · first-person plural · technical but accessible</td></tr>
-              <tr><td><strong>Launch email · "A new way to handle incidents"</strong></td><td>Email</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">81%</span></td><td style="font-size:12px;color:var(--text-muted)">Calm tone · problem-first · no superlatives</td></tr>
-              <tr><td><strong>Old blog draft · "Transform your workflow"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">42%</span></td><td style="font-size:12px;color:var(--text-muted)">Flagged: jargon ("transform", "seamless"), no specifics</td></tr>
+              <tr><td><strong>Intervista CEO Everest · "Perché abbiamo scelto il fotovoltaico industriale"</strong></td><td>LinkedIn</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">98%</span></td><td style="font-size:12px;color:var(--text-muted)">Opener data-driven · seconda persona diretta · frasi brevi</td></tr>
+              <tr><td><strong>Homepage headline · "Facciamo impianti."</strong></td><td>Landing</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">95%</span></td><td style="font-size:12px;color:var(--text-muted)">Modo imperativo · outcome-first · parallelismo</td></tr>
+              <tr><td><strong>Blog tecnico · "Come abbiamo ridotto la bolletta Barilla del 43%"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">92%</span></td><td style="font-size:12px;color:var(--text-muted)">Numeri in headline · prima persona plurale · tecnico ma accessibile</td></tr>
+              <tr><td><strong>Email lancio · "Un nuovo modo di affrontare la transizione energetica"</strong></td><td>Email</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">81%</span></td><td style="font-size:12px;color:var(--text-muted)">Tono pacato · problem-first · no superlativi</td></tr>
+              <tr><td><strong>Vecchia landing · "Soluzioni innovative chiavi in mano"</strong></td><td>Blog</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">42%</span></td><td style="font-size:12px;color:var(--text-muted)">Flagged: buzzword ("innovativo", "chiavi in mano"), no specifiche</td></tr>
             </tbody>
           </table>
         </div>
@@ -3510,13 +3406,13 @@ function generateViewHTML(view) {
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
             <div style="padding:16px; border:1px solid #FCA5A5; background:#FEF2F2; border-radius:8px;">
               <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;"><span style="font-size:18px;">❌</span><strong style="font-size:13px;">Before — off-brand draft</strong></div>
-              <p style="font-size:13px; line-height:1.6; color:#7F1D1D;">"In today's fast-paced digital landscape, engineering teams face unprecedented challenges. Our revolutionary platform leverages cutting-edge AI to transform how you debug and seamlessly integrate with your existing workflow, empowering your team to achieve next-level productivity."</p>
-              <div style="margin-top:10px; font-size:11px; color:#991B1B;"><strong>Flagged:</strong> jargon (leverage, transform, seamless, empower) · generic opener · no specifics · passive voice · 4 adjective strings</div>
+              <p style="font-size:13px; line-height:1.6; color:#7F1D1D;">"Nel panorama industriale odierno, le aziende affrontano sfide senza precedenti. La nostra soluzione rivoluzionaria sfrutta tecnologie all\u2019avanguardia per trasformare in modo seamless il vostro impianto, responsabilizzando il vostro team verso la sostenibilità del futuro."</p>
+              <div style="margin-top:10px; font-size:11px; color:#991B1B;"><strong>Flagged:</strong> buzzword (rivoluzionaria, all\u2019avanguardia, seamless, responsabilizzare) · apertura generica · nessuna specifica · 4 aggettivi in sequenza</div>
             </div>
             <div style="padding:16px; border:1px solid #86EFAC; background:#F0FDF4; border-radius:8px;">
               <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;"><span style="font-size:18px;">✅</span><strong style="font-size:13px;">After — rewritten with voice rules</strong></div>
-              <p style="font-size:13px; line-height:1.6; color:#14532D;">"Your engineers spend 12 hours a week debugging in five different tools. Acme replaces them with one. Setup takes 5 minutes. First alert fires within the hour. VP Engineering at Linear cut their on-call pages by 73% in six weeks. Ship faster. Debug less."</p>
-              <div style="margin-top:10px; font-size:11px; color:#166534;"><strong>Voice-fit: 96%</strong> · specific numbers · named customer outcome · short sentences · imperative CTA · zero jargon</div>
+              <p style="font-size:13px; line-height:1.6; color:#14532D;">"Your engineers spend 12 hours a week debugging in five different tools. Acme replaces them with one. Setup takes 5 minutes. First alert fires within the hour. VP Engineering at Linear cut their on-call pages by 73% in six weeks. Facciamo impianti."</p>
+              <div style="margin-top:10px; font-size:11px; color:#166534;"><strong>Voice-fit: 96%</strong> · numeri specifici · cliente reale citato · frasi brevi · CTA imperativa · zero buzzword</div>
             </div>
           </div>
         </div>
@@ -3550,7 +3446,7 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Enterprise SaaS · 142 pieces analyzed</span>
+            <span class="agent-tag">Transizione Energetica Italia · 142 pezzi analizzati</span>
           </div>
         </div>
 
@@ -3580,15 +3476,15 @@ function generateViewHTML(view) {
 
         <!-- Top pieces table -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="flame"></i> Top-Performing Pieces — Enterprise SaaS (last 30 days)</h3>
+          <h3 class="card-title"><i data-lucide="flame"></i> Contenuti Top — Transizione Energetica Italia (ultimi 30 giorni)</h3>
           <table class="lm-table" style="margin-top:14px;">
             <thead><tr><th>Piece</th><th>Author / Brand</th><th>Format</th><th>Engagement</th><th>Why it worked</th></tr></thead>
             <tbody>
-              <tr><td><strong>"We killed 40% of our features — here's what happened"</strong></td><td>Linear · Karri Saarinen</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="color:#10B981">18.4K</strong></td><td style="font-size:12px; color:var(--text-muted)">Contrarian hook · specific number · founder POV</td></tr>
-              <tr><td><strong>"Stop building dashboards nobody looks at"</strong></td><td>Amplitude Blog</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">12.1K</strong></td><td style="font-size:12px; color:var(--text-muted)">Imperative headline · real anti-pattern · actionable</td></tr>
-              <tr><td><strong>"The 5-minute daily standup we replaced with one Slack thread"</strong></td><td>Notion Team</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">9.8K</strong></td><td style="font-size:12px; color:var(--text-muted)">Specific process · time-to-value in headline</td></tr>
-              <tr><td><strong>"How we debugged a 2ms latency spike — full post-mortem"</strong></td><td>Vercel Engineering</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td><strong style="color:#10B981">7.2K</strong></td><td style="font-size:12px; color:var(--text-muted)">Technical depth · post-mortem format · visual</td></tr>
-              <tr><td><strong>"3 onboarding emails that tripled our activation rate"</strong></td><td>Intercom Blog</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="color:#10B981">6.5K</strong></td><td style="font-size:12px; color:var(--text-muted)">List format · measurable outcome · vertical-specific</td></tr>
+              <tr><td><strong>"Come abbiamo ridotto le bollette del 43% con FV + storage · case Barilla"</strong></td><td>ENI Plenitude · Alessandro Rossi</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="color:#10B981">18.4K</strong></td><td style="font-size:12px; color:var(--text-muted)">Hook dati reali · numero specifico · POV aziendale italiano</td></tr>
+              <tr><td><strong>"Fotovoltaico industriale: tutto quello che il tuo CFO deve sapere"</strong></td><td>A2A Energy Blog</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">12.1K</strong></td><td style="font-size:12px; color:var(--text-muted)">Headline educativa · domanda CFO-centrica · azionabile</td></tr>
+              <tr><td><strong>"Come ottenere credito PNRR in 90 giorni: guida 2026"</strong></td><td>Edison Next</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">9.8K</strong></td><td style="font-size:12px; color:var(--text-muted)">Processo specifico · tempo-al-risultato in headline</td></tr>
+              <tr><td><strong>"Parco solare 15 MWp: dal permitting al grid connection in 14 mesi"</strong></td><td>Engie Italia</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td><strong style="color:#10B981">7.2K</strong></td><td style="font-size:12px; color:var(--text-muted)">Profondità tecnica · formato case-study · visuale</td></tr>
+              <tr><td><strong>"3 email post-audit energetico che hanno chiuso deal da 2M€"</strong></td><td>Sorgenia Business</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="color:#10B981">6.5K</strong></td><td style="font-size:12px; color:var(--text-muted)">Formato lista · risultato misurabile · verticale-specifico</td></tr>
             </tbody>
           </table>
         </div>
@@ -3597,9 +3493,9 @@ function generateViewHTML(view) {
         <div class="card" style="margin-top:24px;">
           <h3 class="card-title"><i data-lucide="zap"></i> Content Gaps — Themes your audience engages with but you haven't covered</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Engineering post-mortems</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">18 top pieces in the last 30d. You've published 0. High affinity with your VP Engineering persona.</p></div>
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Hiring & team-scaling</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">14 top pieces. 2x avg engagement. Natural fit for your "Craft" value.</p></div>
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Cost-to-debug narratives</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">11 top pieces. Direct overlap with your product outcome ("Ship faster. Debug less.").</p></div>
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Case study industriali</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">18 case study di competitor negli ultimi 30gg. Voi avete pubblicato 0. Forte affinità con persona Energy Manager.</p></div>
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">PNRR & finanza agevolata</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">14 pezzi top. 2x engagement medio. Fit naturale con valore "Transizione Sostenibile".</p></div>
+            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Narrativa ROI impianti</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">11 pezzi top. Overlap diretto con il vostro outcome ("Facciamo impianti. Risparmio misurabile.").</p></div>
           </div>
         </div>
 
@@ -3608,13 +3504,13 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="radar"></i> Share of Voice — Top brands in your space (last 30 days)</h3>
           <div style="margin-top:14px;">
             ${[
-              {brand:'Datadog',     posts:42, share:22, engagement:4.1, color:'#632CA6'},
-              {brand:'Vercel',      posts:38, share:20, engagement:5.6, color:'#000000'},
-              {brand:'Linear',      posts:31, share:16, engagement:7.2, color:'#5E6AD2'},
-              {brand:'Acme Corp',   posts:12, share:6,  engagement:4.8, color:'#6366F1', self:true},
-              {brand:'Honeycomb',   posts:18, share:10, engagement:3.4, color:'#F97316'},
-              {brand:'New Relic',   posts:16, share:8,  engagement:2.1, color:'#00AC69'},
-              {brand:'Grafana',     posts:14, share:7,  engagement:2.8, color:'#F46800'},
+              {brand:'ENI Plenitude', posts:42, share:22, engagement:4.1, color:'#FDBB30'},
+              {brand:'Engie Italia',  posts:38, share:20, engagement:5.6, color:'#00AAFF'},
+              {brand:'A2A Energy',    posts:31, share:16, engagement:7.2, color:'#E6002D'},
+              {brand:'Gruppo Everest', posts:9, share:5, engagement:3.8, color:'#0EA5E9', self:true},
+              {brand:'Edison Next',   posts:18, share:10, engagement:3.4, color:'#00A5DC'},
+              {brand:'Sorgenia',      posts:16, share:8,  engagement:2.1, color:'#002E5D'},
+              {brand:'Iren Energy',   posts:14, share:7,  engagement:2.8, color:'#00A651'},
               {brand:'Others',      posts:22, share:11, engagement:3.2, color:'#94A3B8'},
             ].map(b => `
               <div style="display:grid; grid-template-columns:120px 1fr 60px 80px 80px; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
@@ -3626,19 +3522,19 @@ function generateViewHTML(view) {
               </div>
             `).join('')}
           </div>
-          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;"><strong>💡 Insight:</strong> Linear publishes less than Datadog but gets 1.8x the engagement — their post-mortem + contrarian-hook format is the one to study.</p>
+          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;"><strong>💡 Insight:</strong> A2A Energy pubblica meno di ENI Plenitude ma ottiene 1.8x engagement — il loro formato case-study + titoli data-driven è quello da studiare.</p>
         </div>
 
         <!-- Sources -->
         <div class="card" style="margin-top:24px;">
           <h3 class="card-title"><i data-lucide="database"></i> Research Sources Monitored</h3>
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:14px;">
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">LinkedIn — B2B SaaS</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">312 accounts tracked · refreshed daily</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Substack — Engineering</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">48 newsletters · weekly sync</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">YouTube — Tech channels</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">26 channels · weekly sync</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Hacker News</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Front page + /show · daily</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">X / Twitter — Eng leaders</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">184 profiles · real-time</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Dev.to · Medium</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Top 500 eng tags · weekly</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">LinkedIn — Settore Energia IT</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">246 account italiani tracciati · aggiornato giornalmente</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Quotidiano Energia</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Principale testata energia IT · sync settimanale</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">YouTube — Canali Energia EU</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">18 canali · sync settimanale</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Staffetta Quotidiana</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Prima pagina · giornaliera</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">LinkedIn — Energy Managers</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">142 profili italiani · real-time</div></div>
+            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Adnkronos · Sole 24 Ore</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Sezioni Economia & Energia · settimanale</div></div>
           </div>
         </div>
       </div>
@@ -3691,14 +3587,14 @@ function generateViewHTML(view) {
           <table class="lm-table">
             <thead><tr><th>Hook</th><th>Framework</th><th>Channel</th><th>Score</th><th>Use Count</th></tr></thead>
             <tbody>
-              <tr><td style="max-width:340px;"><strong>"We killed 40% of our features — here's what happened."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>LinkedIn</td><td><strong style="color:#10B981">96</strong></td><td>—</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Stop building dashboards nobody looks at."</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Imperative</span></td><td>Blog</td><td><strong style="color:#10B981">92</strong></td><td>12</td></tr>
-              <tr><td style="max-width:340px;"><strong>"The 3-line Slack message that replaced our daily standup."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">89</strong></td><td>8</td></tr>
-              <tr><td style="max-width:340px;"><strong>"I cut our CI pipeline from 47 to 6 minutes. Here's exactly how."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">87</strong></td><td>14</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Every VP Engineering I talk to has the same 3 complaints."</strong></td><td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona Aware</span></td><td>LinkedIn</td><td><strong style="color:#10B981">85</strong></td><td>6</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Why we moved off [category-leader] — and what changed."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>Blog</td><td><strong style="color:#10B981">83</strong></td><td>3</td></tr>
-              <tr><td style="max-width:340px;"><strong>"How we handle on-call at 12 engineers."</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">How-We Do X</span></td><td>Email</td><td><strong style="color:#10B981">80</strong></td><td>9</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Here's the question I ask in every engineering interview."</strong></td><td><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span></td><td>LinkedIn</td><td><strong style="color:#10B981">78</strong></td><td>11</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Abbiamo ridotto la bolletta di Barilla del 43%. Ecco come."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>LinkedIn</td><td><strong style="color:#10B981">96</strong></td><td>—</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Smetti di affittare lo spazio-tetto. Genera energia invece."</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Imperative</span></td><td>Blog</td><td><strong style="color:#10B981">92</strong></td><td>12</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Il ROI su FV+storage in Italia è cambiato. Ecco i numeri reali."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">89</strong></td><td>8</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Da bolletta 180k€/anno a 42k€ in 14 mesi. Case reale Lombardia."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">87</strong></td><td>14</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Ogni Energy Manager italiano mi fa le stesse 3 domande."</strong></td><td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona Aware</span></td><td>LinkedIn</td><td><strong style="color:#10B981">85</strong></td><td>6</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Perché abbiamo scelto Huawei invece di SMA per il nostro inverter."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>Blog</td><td><strong style="color:#10B981">83</strong></td><td>3</td></tr>
+              <tr><td style="max-width:340px;"><strong>"Come facciamo O&amp;M su 15 parchi solari con 8 tecnici."</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">How-We Do X</span></td><td>Email</td><td><strong style="color:#10B981">80</strong></td><td>9</td></tr>
+              <tr><td style="max-width:340px;"><strong>"La domanda che fate al fornitore FV prima di firmare."</strong></td><td><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span></td><td>LinkedIn</td><td><strong style="color:#10B981">78</strong></td><td>11</td></tr>
             </tbody>
           </table>
         </div>
@@ -3708,7 +3604,7 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="layout-grid"></i> 6 Frameworks Identified</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
             <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Contrarian (32 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Challenges conventional wisdom. Pattern: "Stop [common practice]" / "We killed [expected thing]"</p></div>
-            <div style="padding:12px; border-left:3px solid #3B82F6; background:#EFF6FF; border-radius:4px;"><strong style="font-size:13px;">Specific Number (41 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Includes measurable outcomes. Pattern: "I cut X from Y to Z" / "We 3x'd [metric] in [time]"</p></div>
+            <div style="padding:12px; border-left:3px solid #3B82F6; background:#EFF6FF; border-radius:4px;"><strong style="font-size:13px;">Specific Number (41 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Includes measurable outcomes. Pattern: "Ridotto da X€ a Y€ in Z mesi" / "We 3x'd [metric] in [time]"</p></div>
             <div style="padding:12px; border-left:3px solid #6B21A8; background:#F3E8FF; border-radius:4px;"><strong style="font-size:13px;">Open-Loop (28 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Creates curiosity gap. Pattern: "The question I ask every…" / "Here's the mistake most…"</p></div>
             <div style="padding:12px; border-left:3px solid #F59E0B; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">How-We-Do-X (34 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Transparent operational narrative. Pattern: "How we [do internal process] at [scale]"</p></div>
             <div style="padding:12px; border-left:3px solid #1D4ED8; background:#DBEAFE; border-radius:4px;"><strong style="font-size:13px;">Persona-Aware (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Names the reader directly. Pattern: "Every [persona] I talk to…" / "If you're a [role]…"</p></div>
@@ -3722,22 +3618,22 @@ function generateViewHTML(view) {
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
             <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
               <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 94</span></div>
-              <strong style="font-size:14px;">"We stopped doing daily standups. Here's what replaced them."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">3.2x baseline</strong> · trending theme in your industry</p>
+              <strong style="font-size:14px;">"Abbiamo spento i diesel di backup. Ecco cosa li ha sostituiti."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement previsto: <strong style="color:#10B981;">3.2x baseline</strong> · tema di tendenza nel settore</p>
             </div>
             <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
               <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 92</span></div>
-              <strong style="font-size:14px;">"I cut our on-call burden by 73% in 6 weeks — here's exactly how."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.9x baseline</strong> · aligns with "Reliability" brand value</p>
+              <strong style="font-size:14px;">"Ho ridotto la bolletta di 180k€ a 42k€ in 14 mesi — ecco come."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.9x baseline</strong> · si allinea con valore "Competenza Territoriale"</p>
             </div>
             <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
               <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona-Aware</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 88</span></div>
-              <strong style="font-size:14px;">"Every VP of Engineering I've talked to this quarter asked the same question."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.5x baseline</strong> · targets your P1 persona directly</p>
+              <strong style="font-size:14px;">"Ogni Energy Manager italiano mi ha fatto la stessa domanda questo trimestre."</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.5x baseline</strong> · target diretto sulla persona P1 (Energy Manager)</p>
             </div>
             <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
               <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 86</span></div>
-              <strong style="font-size:14px;">"The one question I ask every engineering hire before we extend an offer."</strong>
+              <strong style="font-size:14px;">"La domanda chiave che fate al fornitore FV prima di firmare."</strong>
               <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.3x baseline</strong> · fits newsletter format</p>
             </div>
           </div>
@@ -3749,11 +3645,11 @@ function generateViewHTML(view) {
           <table class="lm-table" style="margin-top:14px;">
             <thead><tr><th>Hook</th><th>Used in</th><th>Avg engagement</th><th>Trend</th><th>Verdict</th></tr></thead>
             <tbody>
-              <tr><td><strong>"We killed X% of [thing]…"</strong></td><td>4 posts</td><td><strong style="color:#10B981;">4.8x</strong></td><td style="color:#10B981;">↑ +22% vs 30d ago</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"I cut X from Y to Z"</strong></td><td>6 posts</td><td><strong style="color:#10B981;">4.2x</strong></td><td style="color:#10B981;">↑ +15%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"Stop [common practice]…"</strong></td><td>5 posts</td><td><strong style="color:#10B981;">3.7x</strong></td><td style="color:#F59E0B;">→ steady</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Rotate variants</span></td></tr>
-              <tr><td><strong>"Here's the question I ask…"</strong></td><td>3 posts</td><td><strong style="color:#10B981;">3.1x</strong></td><td style="color:#10B981;">↑ +8%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"In today's fast-paced world…"</strong></td><td>2 posts</td><td style="color:#EF4444;">0.4x</td><td style="color:#EF4444;">↓ -62%</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Retire — violates voice</span></td></tr>
+              <tr><td><strong>"Abbiamo ridotto la bolletta di X% per [cliente]…"</strong></td><td>4 posts</td><td><strong style="color:#10B981;">4.8x</strong></td><td style="color:#10B981;">↑ +22% vs 30d ago</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"Ridotto da X€ a Y€ in Z mesi"</strong></td><td>6 posts</td><td><strong style="color:#10B981;">4.2x</strong></td><td style="color:#10B981;">↑ +15%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"Smetti di [pratica comune]…"</strong></td><td>5 posts</td><td><strong style="color:#10B981;">3.7x</strong></td><td style="color:#F59E0B;">→ steady</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Rotate variants</span></td></tr>
+              <tr><td><strong>"La domanda che faccio a ogni Energy Manager…"</strong></td><td>3 posts</td><td><strong style="color:#10B981;">3.1x</strong></td><td style="color:#10B981;">↑ +8%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
+              <tr><td><strong>"Nel panorama industriale odierno…"</strong></td><td>2 posts</td><td style="color:#EF4444;">0.4x</td><td style="color:#EF4444;">↓ -62%</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Retire — violates voice</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -3798,23 +3694,23 @@ function generateViewHTML(view) {
               </div>
               <span style="font-size:11px; color:var(--text-muted);">Generated 3 min ago · Draft</span>
             </div>
-            <p style="font-size:15px; line-height:1.7; color:var(--text-main); white-space:pre-line;">We killed 40% of our dashboards last quarter.
+            <p style="font-size:15px; line-height:1.7; color:var(--text-main); white-space:pre-line;">Abbiamo chiuso 40% dei generatori diesel di emergenza lo scorso trimestre.
 
-Nobody complained.
+Nessuno si è lamentato.
 
-Turns out: most "essential" dashboards get opened twice a month. The third-most-viewed dashboard at a 500-person engineering org we worked with? Last opened 94 days ago.
+Risultato: la maggior parte dei gruppi elettrogeni diesel "di emergenza" si è accesa 2 volte in 6 mesi. Il terzo più grande di uno stabilimento industriale con 500 dipendenti? Ultimo avvio 94 giorni fa.
 
-What we learned:
+Cosa abbiamo imparato:
 
-1/ Dashboards multiply because adding one is free. Removing one requires a meeting.
+1/ I diesel di backup si accumulano perché aggiungerli costa poco. Rimuoverli richiede una riunione con il plant manager.
 
-2/ Most teams don't need "data visibility" — they need a monthly one-pager with 3 numbers.
+2/ La maggior parte degli impianti non serve "ridondanza energetica" — serve un sistema FV + storage con dimensionamento corretto.
 
-3/ The dashboards that stuck had an owner, a cadence, and a decision tied to them.
+3/ I backup rimasti hanno un owner, un contratto di manutenzione, e un caso d\u2019uso reale (grid outage >2h).
 
-If you're a VP of Engineering drowning in Looker tabs, start with a 30-day audit: kill anything nobody opened.
+Se sei Energy Manager con 15 generatori diesel in una plant, parti con un audit di 30 giorni: stacca tutto quello che non ha acceso in 6 mesi.
 
-Ship faster. Debug less.</p>
+Facciamo impianti.</p>
             <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
               <button class="btn-sm btn-primary"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
               <button class="btn-sm btn-ai"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
@@ -3831,13 +3727,13 @@ Ship faster. Debug less.</p>
             <table class="lm-table" style="margin-top:14px;">
               <thead><tr><th>Title</th><th>Channel</th><th>Format</th><th>Hook Score</th><th>Status</th></tr></thead>
               <tbody>
-                <tr><td><strong>We killed 40% of our dashboards…</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">96</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>Stop writing runbooks nobody reads</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Article · 800w</td><td><span style="color:#10B981;font-weight:600;">92</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>The 3-line Slack message that replaced our standup</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">89</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>How we cut our CI from 47 to 6 minutes</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Post-mortem · 1.2k</td><td><span style="color:#10B981;font-weight:600;">87</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
-                <tr><td><strong>Onboarding email #2 — "Set up your first alert"</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td>Email · seq day 3</td><td><span style="color:#10B981;font-weight:600;">84</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
-                <tr><td><strong>Every VP Eng has the same 3 complaints</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">85</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>Debug-cost calculator — lead magnet</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Interactive · 600w</td><td><span style="color:#10B981;font-weight:600;">80</span></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Research</span></td></tr>
+                <tr><td><strong>Chiusura dei diesel di backup inutilizzati</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">96</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>FV + storage vs diesel di emergenza: ROI a 14 mesi</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Article · 800w</td><td><span style="color:#10B981;font-weight:600;">92</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>Come selezionare inverter solari: criteri 2026</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">89</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>Case Barilla: 4 MWp rooftop · dal permitting al grid</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Post-mortem · 1.2k</td><td><span style="color:#10B981;font-weight:600;">87</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
+                <tr><td><strong>Newsletter 2 — "Incentivi PNRR fotovoltaico 2026"</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td>Email · seq day 3</td><td><span style="color:#10B981;font-weight:600;">84</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
+                <tr><td><strong>Le 3 domande che ogni Energy Manager mi fa</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">85</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
+                <tr><td><strong>Calcolatore ROI fotovoltaico industriale — lead magnet</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Interactive · 600w</td><td><span style="color:#10B981;font-weight:600;">80</span></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Research</span></td></tr>
               </tbody>
             </table>
           </div>
@@ -3874,7 +3770,7 @@ Ship faster. Debug less.</p>
           </div>
           <div style="margin-top:16px; padding:12px 14px; background:#FEF3C7; border-left:3px solid #F59E0B; border-radius:4px;">
             <strong style="font-size:12px;">⚠ 3 drafts flagged for review</strong>
-            <p style="font-size:12px; color:#78350F; margin-top:6px;">"Transform your workflow with our seamless solution" → violates "never use jargon" rule (seamless, transform). Regenerate suggested.</p>
+            <p style="font-size:12px; color:#78350F; margin-top:6px;">"Trasforma il tuo impianto con la nostra soluzione innovativa chiavi in mano" → viola regola "no buzzword" (trasforma, innovativa, chiavi in mano). Rigenerazione suggerita.</p>
           </div>
         </div>
 
@@ -3883,11 +3779,11 @@ Ship faster. Debug less.</p>
           <h3 class="card-title"><i data-lucide="calendar-days"></i> This Week's Production Plan</h3>
           <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-top:14px;">
             ${[
-              {day:'Mon', title:'LinkedIn post',    topic:'Contrarian: dashboards',   hookScore:96, status:'approved'},
-              {day:'Tue', title:'Blog article',      topic:'CI optimization story',   hookScore:87, status:'approved'},
-              {day:'Wed', title:'LinkedIn post',    topic:'Slack standup swap',       hookScore:89, status:'draft'},
-              {day:'Thu', title:'Email newsletter', topic:'Weekly brief #42',         hookScore:84, status:'approved'},
-              {day:'Fri', title:'LinkedIn post',    topic:'3 VP Eng complaints',      hookScore:85, status:'draft'},
+              {day:'Mon', title:'LinkedIn post',    topic:'Case reale: FV Barilla',   hookScore:96, status:'approved'},
+              {day:'Tue', title:'Blog article',      topic:'PNRR 2026: guida completa',   hookScore:87, status:'approved'},
+              {day:'Wed', title:'LinkedIn post',    topic:'Scelta inverter: criteri',       hookScore:89, status:'draft'},
+              {day:'Thu', title:'Email newsletter', topic:'Newsletter #42 energia',         hookScore:84, status:'approved'},
+              {day:'Fri', title:'LinkedIn post',    topic:'3 domande Energy Manager',      hookScore:85, status:'draft'},
             ].map(d => `
               <div style="padding:12px; border:1px solid var(--border); border-radius:8px; background:${d.status==='approved'?'#F0FDF4':'#FEF3C7'}">
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">${d.day}</div>
@@ -3920,7 +3816,7 @@ Ship faster. Debug less.</p>
 
         <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
           <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Gruppo Everest · v3.1</span>
         </div>
 
         <div class="agent-stats">
@@ -3938,14 +3834,14 @@ Ship faster. Debug less.</p>
           </div>
           <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:14px;">
             ${[
-              {grad:'linear-gradient(135deg, #6366F1 0%, #0F172A 100%)', label:'LinkedIn Banner', title:'Ship faster. Debug less.'},
-              {grad:'linear-gradient(135deg, #F59E0B 0%, #DC2626 100%)', label:'Email Header', title:'We killed 40% of dashboards'},
-              {grad:'linear-gradient(135deg, #0F172A 0%, #6366F1 100%)', label:'Ad Variant · A', title:'Stop building dashboards nobody looks at'},
-              {grad:'linear-gradient(135deg, #22C55E 0%, #0F172A 100%)', label:'Ad Variant · B', title:'From 47 min CI to 6 min'},
-              {grad:'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)', label:'YouTube Cover', title:'How we handle on-call at 12 engineers'},
-              {grad:'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)', label:'Blog Hero', title:'Engineering post-mortem: the 2ms spike'},
-              {grad:'linear-gradient(135deg, #0F172A 0%, #F59E0B 100%)', label:'Email Header', title:'Your weekly engineering brief'},
-              {grad:'linear-gradient(135deg, #A855F7 0%, #EC4899 100%)', label:'Social Story', title:'3 questions every VP Eng should ask'},
+              {grad:'linear-gradient(135deg, #6366F1 0%, #0F172A 100%)', label:'LinkedIn Banner', title:'Facciamo impianti.'},
+              {grad:'linear-gradient(135deg, #F59E0B 0%, #DC2626 100%)', label:'Email Header', title:'Case Barilla · 4 MWp rooftop'},
+              {grad:'linear-gradient(135deg, #0F172A 0%, #6366F1 100%)', label:'Ad Variant · A', title:'FV + storage: ROI in 14 mesi'},
+              {grad:'linear-gradient(135deg, #22C55E 0%, #0F172A 100%)', label:'Ad Variant · B', title:'Bolletta da 180k€ a 42k€'},
+              {grad:'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)', label:'YouTube Cover', title:'O&amp;M con 8 tecnici su 15 parchi'},
+              {grad:'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)', label:'Blog Hero', title:'Post-mortem: Permitting in 6 mesi'},
+              {grad:'linear-gradient(135deg, #0F172A 0%, #F59E0B 100%)', label:'Email Header', title:'Newsletter settimanale energia'},
+              {grad:'linear-gradient(135deg, #A855F7 0%, #EC4899 100%)', label:'Social Story', title:'3 domande ogni Energy Manager'},
             ].map(a => `
               <div style="border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="aspect-ratio:16/9; background:${a.grad}; display:flex; align-items:center; justify-content:center; padding:14px; text-align:center;">
@@ -4085,13 +3981,13 @@ Ship faster. Debug less.</p>
 
           <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;">
             ${[
-              {day:'Mon', date:'14', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:15',title:'We killed 40% of dashboards…',status:'published'}]},
-              {day:'Tue', date:'15', items:[{t:'Blog',c:'#374151',when:'10:30',title:'How we cut CI from 47 to 6 min',status:'scheduled'},{t:'Email',c:'#F59E0B',when:'07:00',title:'Weekly Eng Brief #42',status:'scheduled'}]},
-              {day:'Wed', date:'16', items:[{t:'LinkedIn',c:'#0A66C2',when:'08:45',title:'Stop writing runbooks…',status:'queue'},{t:'X',c:'#0F172A',when:'14:00',title:'Debugging thread · 8 tweets',status:'queue'}]},
-              {day:'Thu', date:'17', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:10',title:'The 3-line Slack msg…',status:'queue'},{t:'YouTube',c:'#EF4444',when:'16:00',title:'Post-mortem: 2ms latency',status:'queue'}]},
-              {day:'Fri', date:'18', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:00',title:'Every VP Eng has the same 3 complaints',status:'queue'},{t:'Blog',c:'#374151',when:'11:15',title:'Handling on-call at 12 engineers',status:'queue'}]},
+              {day:'Mon', date:'14', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:15',title:'Chiusura diesel di backup · case reale',status:'published'}]},
+              {day:'Tue', date:'15', items:[{t:'Blog',c:'#374151',when:'10:30',title:'Case Barilla 4 MWp · walkthrough',status:'scheduled'},{t:'Email',c:'#F59E0B',when:'07:00',title:'Brief Settimanale #42 · Transizione Energetica',status:'scheduled'}]},
+              {day:'Wed', date:'16', items:[{t:'LinkedIn',c:'#0A66C2',when:'08:45',title:'Selezione inverter: criteri 2026',status:'queue'},{t:'X',c:'#0F172A',when:'14:00',title:'Thread tecnico · 8 post su O&amp;M FV',status:'queue'}]},
+              {day:'Thu', date:'17', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:10',title:'Criteri scelta inverter 2026',status:'queue'},{t:'YouTube',c:'#EF4444',when:'16:00',title:'Case study: Permitting FV in 6 mesi',status:'queue'}]},
+              {day:'Fri', date:'18', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:00',title:'Le 3 domande che ogni Energy Manager mi fa',status:'queue'},{t:'Blog',c:'#374151',when:'11:15',title:'O&amp;M con 8 tecnici su 15 parchi',status:'queue'}]},
               {day:'Sat', date:'19', items:[]},
-              {day:'Sun', date:'20', items:[{t:'X',c:'#0F172A',when:'18:30',title:'Weekly roundup thread',status:'queue'}]},
+              {day:'Sun', date:'20', items:[{t:'X',c:'#0F172A',when:'18:30',title:'Roundup settimanale · news settore',status:'queue'}]},
             ].map(d => `
               <div style="border:1px solid var(--border); border-radius:8px; padding:10px; min-height:140px; background:${d.items.length===0?'#F9FAFB':'white'};">
                 <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
@@ -4122,11 +4018,11 @@ Ship faster. Debug less.</p>
             <table class="lm-table" style="margin-top:10px;">
               <thead><tr><th>When</th><th>Channel</th><th>Piece</th><th>Status</th></tr></thead>
               <tbody>
-                <tr><td style="font-size:12px; color:var(--text-muted);">in 1h 22m</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td style="font-size:12px;"><strong>How we cut CI from 47 to 6 min</strong></td><td><span class="lm-tag" style="background:#EEF2FF;color:#4338CA">Scheduled</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 08:45</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Stop writing runbooks…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 14:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td style="font-size:12px;"><strong>Debugging thread · 8 tweets</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>The 3-line Slack msg…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 16:00</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td style="font-size:12px;"><strong>Post-mortem: 2ms latency</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">in 1h 22m</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td style="font-size:12px;"><strong>Case Barilla 4 MWp · walkthrough</strong></td><td><span class="lm-tag" style="background:#EEF2FF;color:#4338CA">Scheduled</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 08:45</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Selezione inverter: criteri 2026</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 14:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td style="font-size:12px;"><strong>Thread tecnico · 8 post su O&amp;M FV</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Criteri scelta inverter 2026</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 16:00</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td style="font-size:12px;"><strong>Case study: Permitting FV in 6 mesi</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
                 <tr><td style="font-size:12px; color:var(--text-muted);">Fri · 09:00</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Every VP Eng has 3 complaints</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
               </tbody>
             </table>
@@ -4139,11 +4035,11 @@ Ship faster. Debug less.</p>
           <table class="lm-table" style="margin-top:10px;">
             <thead><tr><th>Published</th><th>Channel</th><th>Piece</th><th>Reach (1h)</th><th>Engagement</th><th>Status</th></tr></thead>
             <tbody>
-              <tr><td style="font-size:12px;">Today · 09:15</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">We killed 40% of dashboards…</strong></td><td><strong>2.4K</strong></td><td style="color:#10B981;font-weight:600;">+18%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Mon · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">The 3-line Slack msg replaces standup</strong></td><td><strong>3.1K</strong></td><td style="color:#10B981;font-weight:600;">+24%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Sun · 18:30</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td><strong style="font-size:13px;">Weekly roundup thread · 7 tweets</strong></td><td><strong>1.8K</strong></td><td style="color:#10B981;font-weight:600;">+12%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Fri · 11:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="font-size:13px;">How we handle on-call at 12 engineers</strong></td><td><strong>1.2K</strong></td><td style="color:#10B981;font-weight:600;">+9%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Thu · 07:00</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="font-size:13px;">Weekly Eng Brief #41</strong></td><td><strong>4.1K sent</strong></td><td style="color:#10B981;font-weight:600;">52% open</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Delivered</span></td></tr>
+              <tr><td style="font-size:12px;">Today · 09:15</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">Chiusura diesel di backup · case reale</strong></td><td><strong>2.4K</strong></td><td style="color:#10B981;font-weight:600;">+18%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Mon · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">Criteri scelta inverter 2026</strong></td><td><strong>3.1K</strong></td><td style="color:#10B981;font-weight:600;">+24%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Sun · 18:30</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td><strong style="font-size:13px;">Roundup settimanale · news settore · 7 tweets</strong></td><td><strong>1.8K</strong></td><td style="color:#10B981;font-weight:600;">+12%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Fri · 11:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="font-size:13px;">O&amp;M con 8 tecnici su 15 parchi</strong></td><td><strong>1.2K</strong></td><td style="color:#10B981;font-weight:600;">+9%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
+              <tr><td style="font-size:12px;">Thu · 07:00</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="font-size:13px;">Brief Settimanale #41 · Energia</strong></td><td><strong>4.1K sent</strong></td><td style="color:#10B981;font-weight:600;">52% open</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Delivered</span></td></tr>
             </tbody>
           </table>
         </div>
@@ -4173,20 +4069,20 @@ Ship faster. Debug less.</p>
           <h3 class="card-title"><i data-lucide="gauge"></i> Cadence Optimization — AI recommendations</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
             <div style="padding:14px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:6px;">
-              <strong style="font-size:13px;">✓ LinkedIn cadence is optimal</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Current: 5 posts/week. Engagement plateaus above 6/week for your audience. Keep current cadence.</p>
+              <strong style="font-size:13px;">✓ Cadenza LinkedIn ottimale</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Attuale: 5 post/settimana. L\u2019engagement si appiattisce sopra 6/settimana per il vostro pubblico (Energy Manager italiani). Mantenere la cadenza attuale.</p>
             </div>
             <div style="padding:14px; border-left:3px solid #F59E0B; background:#FFFBEB; border-radius:6px;">
-              <strong style="font-size:13px;">⚠ Blog is under-posting</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">3 posts/month vs industry benchmark of 6-8. Long-form content has a 16-month discovery tail — compounding effect.</p>
+              <strong style="font-size:13px;">⚠ Blog tecnico sotto-pubblicato</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">3 articoli/mese vs benchmark settore 6-8. Contenuto long-form ha coda di discovery di 16 mesi — effetto compounding sulla SEO Google "fotovoltaico industriale".</p>
             </div>
             <div style="padding:14px; border-left:3px solid #6366F1; background:#EEF2FF; border-radius:6px;">
-              <strong style="font-size:13px;">💡 Consider Tuesday + Thursday YouTube uploads</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Your VP Eng persona watches 2x more YouTube Tue/Thu than Mon/Wed/Fri. Current drops are all on Friday.</p>
+              <strong style="font-size:13px;">💡 Considerare upload YouTube Martedì + Giovedì</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">La persona Energy Manager guarda YouTube 2x in più Mar/Gio vs Lun/Mer/Ven. Upload attuali tutti di Venerdì.</p>
             </div>
             <div style="padding:14px; border-left:3px solid #EC4899; background:#FDF2F8; border-radius:6px;">
-              <strong style="font-size:13px;">🔥 Re-publish top post on X</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">"We killed 40% of dashboards" got 18.4K on LinkedIn but never went to X. Recommended: thread it Wednesday 2pm.</p>
+              <strong style="font-size:13px;">🔥 Ripubblicare post top su LinkedIn altri canali</strong>
+              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">"Case Barilla 4 MWp" ha fatto 2.1K reazioni su LinkedIn ma mai su YouTube. Raccomandato: walkthrough video Mercoledì 14:00.</p>
             </div>
           </div>
         </div>
