@@ -1650,6 +1650,34 @@ function generateViewHTML(view) {
           </div>
         </div>
 
+        <div class="card" style="padding:18px; margin-bottom:20px; background:linear-gradient(135deg,#F0F9FF 0%,#ECFDF5 100%); border-left:4px solid #0EA5E9;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:20px;">🛰️</span>
+            <div>
+              <h3 style="margin:0; font-size:15px; color:var(--text-main);">Case study visivo · rilevamento siti da immagini satellitari</h3>
+              <p style="margin:2px 0 0 0; font-size:12px; color:var(--text-muted);">LeadMiner identifica stabilimenti industriali con tetti adatti al FV rooftop incrociando dati aziendali con immagini aeree — ogni lead qui sotto è già stato pre-qualificato tecnicamente.</p>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+            <div style="background:white; border-radius:8px; padding:10px; border:1px solid #E2E8F0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <strong style="font-size:13px; color:var(--text-main);">Prima · tetto non utilizzato</strong>
+                <span style="background:#FEE2E2; color:#991B1B; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:700;">0 kWp</span>
+              </div>
+              <img src="Rooftop without solar panels.png" alt="Stabilimento industriale prima dell'installazione FV" style="width:100%; border-radius:6px; display:block;">
+              <p style="margin:8px 0 0 0; font-size:11px; color:var(--text-muted);">~5.200 m² · stabilimento alimentare Nord Italia · consumo stimato 1.8 GWh/anno</p>
+            </div>
+            <div style="background:white; border-radius:8px; padding:10px; border:1px solid #E2E8F0;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <strong style="font-size:13px; color:var(--text-main);">Dopo · installazione Everest</strong>
+                <span style="background:#D1FAE5; color:#065F46; font-size:10px; padding:3px 8px; border-radius:10px; font-weight:700;">1.2 MWp</span>
+              </div>
+              <img src="Rooftop with solar panels.png" alt="Stabilimento industriale dopo installazione FV rooftop Everest" style="width:100%; border-radius:6px; display:block;">
+              <p style="margin:8px 0 0 0; font-size:11px; color:var(--text-muted);">Copertura FV 78% · produzione 1.4 GWh/anno · payback 4,8 anni</p>
+            </div>
+          </div>
+        </div>
+
         <div class="agent-stats">
           <div class="agent-stat">
             <div class="agent-stat-val">${getLeadStats().total}</div>
@@ -5228,7 +5256,9 @@ function processCommand(text) {
   }
 
   // ─── CLEAR / HIDE LEADS ───
-  if (lower.includes('clear') || lower.includes('hide') || lower.includes('reset') || lower.includes('delete') || lower.includes('remove') || lower.includes('borra')) {
+  if (lower.includes('clear') || lower.includes('hide') || lower.includes('reset') || lower.includes('delete') || lower.includes('remove') ||
+      lower.includes('borra') || lower.includes('elimina') || lower.includes('limpia') || lower.includes('limpiar') ||
+      lower.includes('cancella') || lower.includes('rimuovi') || lower.includes('svuota') || lower.includes('ripulisci')) {
     if (!leadsRevealed) {
       addBotMessage("There are no leads to hide right now. The database is already empty.");
       return;
@@ -5245,8 +5275,35 @@ function processCommand(text) {
     return;
   }
 
-  // ─── BRING / FIND / SEARCH LEADS ───
-  if (lower.includes('bring') || lower.includes('find leads') || lower.includes('search leads') || lower.includes('get leads') || lower.includes('import leads') || lower.includes('fetch leads') || (lower.includes('leads') && lower.includes('for '))) {
+  // ─── BRING / FIND / SEARCH / GENERATE LEADS ───
+  // Supports English, Spanish and Italian verbs
+  const leadIntent = (
+    lower.includes('bring') ||
+    lower.includes('find leads') || lower.includes('find lead') ||
+    lower.includes('search leads') || lower.includes('search lead') ||
+    lower.includes('get leads') || lower.includes('get lead') ||
+    lower.includes('import leads') || lower.includes('import lead') ||
+    lower.includes('fetch leads') || lower.includes('fetch lead') ||
+    lower.includes('show leads') || lower.includes('show me lead') ||
+    lower.includes('generate leads') || lower.includes('generate lead') ||
+    // Spanish
+    lower.includes('generame lead') || lower.includes('genérame lead') ||
+    lower.includes('genera lead') || lower.includes('generar lead') ||
+    lower.includes('traeme lead') || lower.includes('tráeme lead') ||
+    lower.includes('trae lead') || lower.includes('traer lead') ||
+    lower.includes('dame lead') || lower.includes('busca lead') || lower.includes('buscar lead') ||
+    lower.includes('muestra lead') || lower.includes('muéstrame lead') || lower.includes('mostrame lead') ||
+    lower.includes('encontrar lead') || lower.includes('encuentra lead') ||
+    // Italian
+    lower.includes('portami lead') || lower.includes('porta lead') ||
+    lower.includes('cerca lead') || lower.includes('cercare lead') ||
+    lower.includes('trova lead') || lower.includes('trovami lead') ||
+    lower.includes('genera lead') ||
+    // Generic: mentions leads + a preposition pointing to a target
+    (lower.includes('lead') && (lower.includes(' for ') || lower.includes(' para ') || lower.includes(' per ') || lower.includes(' di ')))
+  );
+
+  if (leadIntent) {
 
     // Extract company name from message and try to match in cache
     const searchContext = text.replace(/^.*?(for|about|in|related to)\s*/i, '').trim() || 'your specified criteria';
