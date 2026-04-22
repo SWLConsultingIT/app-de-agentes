@@ -4980,7 +4980,7 @@ function renderLeadPanel(lead, idx) {
     <div class="lp-body">
 
       <!-- Satellite site scan (Google Maps scrape) -->
-      <div style="position:relative; margin:-16px -16px 14px -16px; border-bottom:1px solid #E5E7EB;">
+      <div style="position:relative; margin:-24px -24px 18px -24px; border-bottom:1px solid #E5E7EB;">
         <img src="${lead.photo || 'Rooftop without solar panels.png'}" alt="Vista satellitare · stabilimento ${lead.org}" style="width:100%; display:block; max-height:220px; object-fit:cover;">
         <div style="position:absolute; top:10px; left:12px; background:rgba(17,24,39,0.82); color:white; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:600; letter-spacing:.4px; text-transform:uppercase;">🛰️ Satellite scan · Google Maps</div>
         <div style="position:absolute; bottom:10px; right:12px; background:${(lead.photo === 'Rooftop with solar panels.png') ? '#D1FAE5' : '#FEE2E2'}; color:${(lead.photo === 'Rooftop with solar panels.png') ? '#065F46' : '#991B1B'}; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:700;">${(lead.photo === 'Rooftop with solar panels.png') ? '✓ FV già installato' : '⚠ Tetto libero · FV non installato'}</div>
