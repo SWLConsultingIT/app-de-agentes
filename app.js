@@ -42,9 +42,8 @@ const leadsData = [
     linkedin: 'https://www.linkedin.com/in/umberto-verga-0252b0213',
     mailSent: true,  liSent: true,
     icpScore: 88, closingProb: 71, channel: 'LinkedIn',
-    signal: 'Audit energetico completato Q1 2026 · FV parziale già installato — valuta estensione 1.5 MWp su tetto secondario',
-    status: 'hot',
-    photo: 'Rooftop with solar panels.png'
+    signal: 'Audit energetico completato Q1 2026 — ricerca installatori FV certificati per stabilimento 470 dipendenti',
+    status: 'hot'
   },
   {
     name: 'Andrea Sartirana',     org: 'Cameo S.p.A.',              title: 'Executive Manager Supply Chain',          dur: 'Since Feb 2026',
@@ -124,9 +123,8 @@ const leadsData = [
     linkedin: 'https://www.linkedin.com/in/matteoscordo',
     mailSent: true,  liSent: false,
     icpScore: 62, closingProb: 20, channel: 'Email',
-    signal: 'Competitor ha completato installazione FV · nessuna attività da 35 giorni — riattivare su O&M e storage',
-    status: 'dormant',
-    photo: 'Rooftop with solar panels.png'
+    signal: 'Nessuna attività da 35 giorni — ricontattare post-MCE Milano con proposta aggiornata',
+    status: 'dormant'
   },
   {
     name: 'Francesca Cisbani',    org: 'Cameo S.p.A.',              title: 'Senior Consultant Quality Management',    dur: 'Since Nov 2025',
@@ -4936,6 +4934,9 @@ function renderLeadPanel(lead, idx) {
   const firstName = lead.name.split(' ')[0];
   const initials = lead.name.split(' ').map(n => n[0]).join('');
   const seniority = lead.title.toLowerCase().includes('head') || lead.title.toLowerCase().includes('dir') || lead.title.toLowerCase().includes('senior') ? 'Senior / Director' : 'Manager';
+  // Alternate satellite photo: even idx → tetto libero, odd idx → FV già installato
+  const hasSolar = (idx % 2) === 1;
+  const satellitePhoto = hasSolar ? 'Rooftop with solar panels.png' : 'Rooftop without solar panels.png';
 
   return `
     <div class="lp-topbar">
@@ -4952,13 +4953,6 @@ function renderLeadPanel(lead, idx) {
     </div>
 
     <div class="lp-body">
-
-      <!-- Satellite site scan (Google Maps scrape) -->
-      <div style="position:relative; margin:-24px -24px 18px -24px; border-bottom:1px solid #E5E7EB;">
-        <img src="${lead.photo || 'Rooftop without solar panels.png'}" alt="Vista satellitare · stabilimento ${lead.org}" style="width:100%; display:block; max-height:220px; object-fit:cover;">
-        <div style="position:absolute; top:10px; left:12px; background:rgba(17,24,39,0.82); color:white; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:600; letter-spacing:.4px; text-transform:uppercase;">🛰️ Satellite scan · Google Maps</div>
-        <div style="position:absolute; bottom:10px; right:12px; background:${(lead.photo === 'Rooftop with solar panels.png') ? '#D1FAE5' : '#FEE2E2'}; color:${(lead.photo === 'Rooftop with solar panels.png') ? '#065F46' : '#991B1B'}; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:700;">${(lead.photo === 'Rooftop with solar panels.png') ? '✓ FV già installato' : '⚠ Tetto libero · FV non installato'}</div>
-      </div>
 
       <!-- Profile Card -->
       <div class="lp-profile-card">
@@ -5064,6 +5058,17 @@ function renderLeadPanel(lead, idx) {
             <span class="lp-detail-value"><span class="lp-tag lp-tag-blue">${lead.channel}</span></span>
           </div>
         </div>
+      </div>
+
+      <!-- Satellite Site Scan (Google Maps scrape) -->
+      <div class="lp-section">
+        <div class="lp-section-title"><span>🛰️ Satellite Site Scan</span></div>
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #E5E7EB;">
+          <img src="${satellitePhoto}" alt="Vista satellitare · stabilimento ${lead.org}" style="width:100%; display:block;">
+          <div style="position:absolute; top:10px; left:12px; background:rgba(17,24,39,0.82); color:white; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:600; letter-spacing:.4px; text-transform:uppercase;">Google Maps · scrape</div>
+          <div style="position:absolute; bottom:10px; right:12px; background:${hasSolar ? '#D1FAE5' : '#FEE2E2'}; color:${hasSolar ? '#065F46' : '#991B1B'}; font-size:10px; padding:4px 8px; border-radius:10px; font-weight:700;">${hasSolar ? '✓ FV già installato' : '⚠ Tetto libero · FV non installato'}</div>
+        </div>
+        <p style="margin:8px 0 0 0; font-size:11px; color:var(--text-muted);">${hasSolar ? 'Installazione esistente rilevata — opportunità: estensione, storage, O&M.' : 'Superficie tetto disponibile — lead pre-qualificato tecnicamente per FV rooftop.'}</p>
       </div>
 
     </div>
