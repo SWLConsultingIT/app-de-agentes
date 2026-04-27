@@ -233,8 +233,54 @@ function updatePaletteColor(idx, hex) {
   }
 }
 
+
+// ── SAVE BRAND PROFILE → WF01 ──────────────────────────
+const BRAND_ID = '00000000-0000-0000-0000-000000000002';
+const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
+
+async function saveBrandProfile() {
+  const btn = document.getElementById('bk-save-btn');
+  if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
+
+  const profile_payload = {
+    identity: {
+      company_name: brandKitData.name,
+      industry:     brandKitData.industry,
+      tagline:      brandKitData.tagline,
+      mission:      brandKitData.mission,
+    },
+    palette:        brandKitData.palette.map(c => ({ role: c.role, hex: c.hex })),
+    typography:     brandKitData.typography,
+    values:         brandKitData.values,
+    personas:       brandKitData.personas,
+    competitors:    brandKitData.competitors,
+    channels:       brandKitData.channels,
+    tone_by_channel: brandKitData.toneByChannel,
+    content_samples: brandKitData.samples,
+  };
+
+  try {
+    const res = await fetch(WF01_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id: BRAND_ID,
+        changed_fields: ['mission', 'personas', 'competitors', 'tone_by_channel'],
+        profile_payload,
+      }),
+    });
+    const data = await res.json();
+    if (btn) { btn.textContent = data.brandvoice_queued ? '✅ Saved & queued' : '✅ Saved'; }
+    setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
+  } catch (e) {
+    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    console.error('saveBrandProfile error:', e);
+  }
+}
+
 // Update a top-level brandKitData text field silently
 function updateBrandField(key, value) { brandKitData[key] = value; }
+
 function updateBrandTypography(key, value) { brandKitData.typography[key] = value; }
 function updateBrandListItem(list, idx, key, value) {
   if (brandKitData[list] && brandKitData[list][idx]) brandKitData[list][idx][key] = value;
@@ -3065,9 +3111,17 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="check-circle-2" style="width:11px;vertical-align:middle;margin-right:4px"></i>All 10 sections completed</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="arrow-right" style="width:11px;vertical-align:middle;margin-right:4px"></i>Feeds: BrandVoice Optimizer · ContentBuilder · CreativeBrain</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="check-circle-2" style="width:11px;vertical-align:middle;margin-right:4px"></i>All 10 sections completed</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="arrow-right" style="width:11px;vertical-align:middle;margin-right:4px"></i>Feeds: BrandVoice Optimizer · ContentBuilder · CreativeBrain</span>
+          </div>
+          <button
+            id="bk-save-btn"
+            onclick="saveBrandProfile()"
+            style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
+            Save & Sync
+          </button>
         </div>
 
         <div class="agent-stats">
