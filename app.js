@@ -278,6 +278,120 @@ async function saveBrandProfile() {
   }
 }
 
+// ── WF06 Brief Generator (ContentBuilder) ──────────────
+const WF06_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator';
+const WF06_BRAND_ID = '20000000-0000-0000-0000-000000000002';
+
+async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineering') {
+  try {
+    const res = await fetch(WF06_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: WF06_BRAND_ID, channel, persona })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[WF06] Error:', err);
+    return null;
+  }
+}
+
+async function handleRegenerate() {
+  const btn = document.getElementById('btn-regenerate');
+  if (!btn) return;
+
+  const channel = document.getElementById('cb-channel')?.value || 'LinkedIn';
+  const persona = document.getElementById('cb-persona')?.value || 'VP Engineering';
+
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Generating...';
+  lucide.createIcons();
+
+  let result = await generateContentBrief(channel, persona);
+  console.log('[WF06] raw response:', result);
+
+  // n8n a veces envuelve la respuesta — desempaquetamos los casos comunes
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json && typeof result.ok === 'undefined') result = result.json;
+  if (result && result.data && typeof result.ok === 'undefined') result = result.data;
+
+  console.log('[WF06] unwrapped:', result);
+
+  // Considerar éxito si ok===true, o si hay brief_id (por si "ok" no viaja)
+  const success = result && (result.ok === true || !!result.brief_id);
+
+  if (success) {
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Brief queued!';
+    btn.style.background = '#10B981';
+    btn.style.color = 'white';
+    const idShort = result.brief_id ? result.brief_id.slice(0, 8) : 'ok';
+    showToast(`New brief generated — ID: ${idShort}...`);
+
+    // Render brief into the DOM if backend returned it
+    let brief = result.brief;
+    if (typeof brief === 'string') {
+      try { brief = JSON.parse(brief); } catch (e) { brief = null; }
+    }
+    if (brief) renderBriefIntoView(brief, channel);
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="refresh-cw" style="width:12px"></i> Regenerate';
+      btn.style.background = '';
+      btn.style.color = '';
+      lucide.createIcons();
+    }, 3000);
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — retry';
+    btn.style.background = '#EF4444';
+    btn.style.color = 'white';
+    btn.disabled = false;
+    lucide.createIcons();
+    showToast('Could not generate brief. Try again.', 'error');
+    console.warn('[WF06] response did not match expected shape:', result);
+  }
+}
+
+// Render the brief returned by WF06 into the ContentBuilder preview card
+function renderBriefIntoView(brief, channel) {
+  const bodyEl = document.getElementById('cb-post-body');
+  if (!bodyEl) return;
+
+  const lines = [];
+  if (brief.hook)     lines.push(brief.hook);
+  if (brief.opening)  lines.push(brief.opening);
+
+  const bodyParas = Array.isArray(brief.body) ? brief.body : [];
+  bodyParas.forEach(p => p && lines.push(p));
+
+  if (brief.cta) lines.push(brief.cta);
+
+  // Join with double newline; the <p> uses white-space: pre-line so \n becomes a break
+  bodyEl.textContent = lines.filter(Boolean).join('\n\n');
+
+  const channelEl = document.getElementById('cb-tag-channel');
+  if (channelEl && channel) channelEl.textContent = channel;
+
+  const metaEl = document.getElementById('cb-generated-meta');
+  if (metaEl) metaEl.textContent = 'Generated just now · Draft';
+}
+
+function showToast(message, type = 'success') {
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: ${type === 'success' ? '#10B981' : '#EF4444'};
+    color: white; padding: 12px 20px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: fadeIn 0.2s ease;
+  `;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
 // Update a top-level brandKitData text field silently
 function updateBrandField(key, value) { brandKitData[key] = value; }
 
@@ -3846,13 +3960,13 @@ function generateViewHTML(view) {
           <div style="background:white; border:1px solid var(--border); border-radius:10px; padding:20px; margin-top:14px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
               <div style="display:flex; gap:8px; align-items:center;">
-                <span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span>
+                <span id="cb-tag-channel" class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span>
                 <span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian hook</span>
                 <span class="lm-tag" style="background:#F0FDF4;color:#166534">Hook score 96</span>
               </div>
-              <span style="font-size:11px; color:var(--text-muted);">Generated 3 min ago · Draft</span>
+              <span id="cb-generated-meta" style="font-size:11px; color:var(--text-muted);">Generated 3 min ago · Draft</span>
             </div>
-            <p style="font-size:15px; line-height:1.7; color:var(--text-main); white-space:pre-line;">We killed 40% of our dashboards last quarter.
+            <p id="cb-post-body" style="font-size:15px; line-height:1.7; color:var(--text-main); white-space:pre-line;">We killed 40% of our dashboards last quarter.
 
 Nobody complained.
 
@@ -3869,9 +3983,18 @@ What we learned:
 If you're a VP of Engineering drowning in Looker tabs, start with a 30-day audit: kill anything nobody opened.
 
 Ship faster. Debug less.</p>
-            <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+            <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); align-items:center; flex-wrap:wrap;">
               <button class="btn-sm btn-primary"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
-              <button class="btn-sm btn-ai"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
+              <select id="cb-channel" style="font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;">
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Blog">Blog</option>
+                <option value="Email">Email</option>
+              </select>
+              <select id="cb-persona" style="font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;">
+                <option value="VP Engineering">VP Engineering</option>
+                <option value="Senior Developer">Senior Developer</option>
+              </select>
+              <button class="btn-sm btn-ai" id="btn-regenerate" onclick="handleRegenerate()"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
               <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
               <button class="btn-sm" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
             </div>
