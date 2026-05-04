@@ -278,6 +278,90 @@ async function saveBrandProfile() {
   }
 }
 
+// ── WF02 BrandVoice Optimizer ──────────────────────────
+const WF02_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brandvoice';
+
+async function runBrandVoiceOptimizer() {
+  const btn = document.getElementById('wf02-run-btn');
+  if (btn) { btn.textContent = 'Running…'; btn.disabled = true; }
+  try {
+    const res = await fetch(WF02_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: BRAND_ID }),
+    });
+    const data = await res.json();
+    if (btn) { btn.textContent = '✅ Optimized'; }
+    showToast('BrandVoice optimization triggered.');
+    setTimeout(() => { if (btn) { btn.textContent = 'Run Optimizer'; btn.disabled = false; } }, 3000);
+  } catch (e) {
+    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    console.error('[WF02] error:', e);
+  }
+}
+
+// ── WF03 Research Source Sync ──────────────────────────
+const WF03_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/research-sync';
+
+async function syncResearchSources() {
+  const btn = document.getElementById('wf03-sync-btn');
+  if (btn) { btn.textContent = 'Syncing…'; btn.disabled = true; }
+  try {
+    const res = await fetch(WF03_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
+    });
+    const data = await res.json();
+    if (btn) { btn.textContent = '✅ Synced'; }
+    showToast('Research sources sync triggered.');
+    setTimeout(() => { if (btn) { btn.textContent = '↻ Sync Sources'; btn.disabled = false; } }, 3000);
+  } catch (e) {
+    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    console.error('[WF03] error:', e);
+  }
+}
+
+// ── WF04 Content Analyzer ──────────────────────────────
+const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
+
+async function runContentAnalysis() {
+  const btn = document.getElementById('wf04-analyze-btn');
+  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
+  try {
+    const res = await fetch(WF04_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
+    });
+    const data = await res.json();
+    if (btn) { btn.textContent = '✅ Queued'; }
+    showToast('Content analysis triggered.');
+    setTimeout(() => { if (btn) { btn.textContent = 'Run Analysis'; btn.disabled = false; } }, 3000);
+  } catch (e) {
+    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    console.error('[WF04] error:', e);
+  }
+}
+
+// ── WF05 Hook Miner ────────────────────────────────────
+const WF05_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/hook-mining';
+
+async function runHookMiner() {
+  const btn = document.getElementById('wf05-mine-btn');
+  if (btn) { btn.textContent = 'Mining…'; btn.disabled = true; }
+  try {
+    const res = await fetch(WF05_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
+    });
+    const data = await res.json();
+    if (btn) { btn.textContent = '✅ Hooks queued'; }
+    showToast('Hook mining triggered.');
+    setTimeout(() => { if (btn) { btn.textContent = 'Mine Hooks'; btn.disabled = false; } }, 3000);
+  } catch (e) {
+    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    console.error('[WF05] error:', e);
+  }
+}
+
 // ── WF06 Brief Generator (ContentBuilder) ──────────────
 const WF06_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator';
 const WF06_BRAND_ID = '20000000-0000-0000-0000-000000000002';
@@ -3582,9 +3666,12 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last calibration: Today, 08:12 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 42 sample posts · 6 landing pages · brand deck</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last calibration: Today, 08:12 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 42 sample posts · 6 landing pages · brand deck</span>
+          </div>
+          <button id="wf02-run-btn" onclick="runBrandVoiceOptimizer()" style="padding:8px 16px; background:#EC4899; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="sparkles" style="width:13px;vertical-align:middle;margin-right:6px"></i>Run Optimizer</button>
         </div>
 
         <div class="agent-stats">
@@ -3722,9 +3809,15 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:40 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: LinkedIn, Substack, Medium, YouTube, X/Twitter</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:40 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: LinkedIn, Substack, Medium, YouTube, X/Twitter</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button id="wf03-sync-btn" onclick="syncResearchSources()" style="padding:8px 14px; background:white; color:#0369A1; border:1px solid #BAE6FD; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Sources</button>
+            <button id="wf04-analyze-btn" onclick="runContentAnalysis()" style="padding:8px 14px; background:#06B6D4; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Run Analysis</button>
+          </div>
         </div>
 
         <div class="agent-stats">
@@ -3826,9 +3919,12 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last refresh: Today, 09:40 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Derived from ContentEngine's top-142 corpus</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last refresh: Today, 09:40 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Derived from ContentEngine's top-142 corpus</span>
+          </div>
+          <button id="wf05-mine-btn" onclick="runHookMiner()" style="padding:8px 16px; background:#F97316; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Mine Hooks</button>
         </div>
 
         <div class="agent-stats">
