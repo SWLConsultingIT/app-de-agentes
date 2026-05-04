@@ -343,6 +343,89 @@ async function createQueueJob(job_type) {
   return res.json();
 }
 
+// ── Content Queue table — reads content_drafts from Supabase ───
+async function supabaseGet(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${SUPABASE_ANON}`
+    }
+  });
+  if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function fetchContentDrafts(brandId, limit = 12) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'created_at.desc',
+    limit: String(limit),
+    select: 'id,title,status,qa_json,created_at,brief:content_briefs(channel,goal)'
+  });
+  return supabaseGet(`content_drafts?${params}`);
+}
+
+function statusBadge(status) {
+  const map = {
+    draft:     { bg: '#FEF3C7', fg: '#B45309', label: 'Draft' },
+    approved:  { bg: '#D1FAE5', fg: '#065F46', label: 'Approved' },
+    rejected:  { bg: '#FEE2E2', fg: '#991B1B', label: 'Rejected' },
+    qa_failed: { bg: '#F3F4F6', fg: '#374151', label: 'QA failed' }
+  };
+  const s = map[status] || { bg: '#F3F4F6', fg: '#374151', label: status };
+  return `<span class="lm-tag" style="background:${s.bg};color:${s.fg}">${s.label}</span>`;
+}
+
+function channelBadge(channel) {
+  const map = {
+    LinkedIn: { bg: '#EFF6FF', fg: '#1D4ED8' },
+    Blog:     { bg: '#F3F4F6', fg: '#374151' },
+    Email:    { bg: '#FEF3C7', fg: '#B45309' }
+  };
+  const c = map[channel] || { bg: '#F3F4F6', fg: '#374151' };
+  return `<span class="lm-tag" style="background:${c.bg};color:${c.fg}">${channel || '—'}</span>`;
+}
+
+function parseQaJson(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try { return JSON.parse(raw); } catch (e) { return {}; }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function refreshContentQueue() {
+  const tbody = document.getElementById('content-queue-tbody');
+  if (!tbody) return;
+  try {
+    const rows = await fetchContentDrafts(WF06_BRAND_ID);
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No drafts yet — click "Build Draft" to generate one.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(r => {
+      const qa = parseQaJson(r.qa_json);
+      const score = qa.final_score != null ? qa.final_score : '—';
+      const scoreColor = (typeof score === 'number' && score >= 85) ? '#10B981' :
+                        (typeof score === 'number' && score >= 70) ? '#F59E0B' : '#9CA3AF';
+      const channel = r.brief?.channel || '—';
+      const titleShort = (r.title || '(no title)').slice(0, 60) + ((r.title || '').length > 60 ? '…' : '');
+      return `<tr>
+        <td><strong>${escapeHtml(titleShort)}</strong></td>
+        <td>${channelBadge(channel)}</td>
+        <td>Post</td>
+        <td><span style="color:${scoreColor};font-weight:600">${score}</span></td>
+        <td>${statusBadge(r.status)}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    console.error('[content-queue] refresh error:', err);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#991B1B;padding:20px">Failed to load drafts. See console.</td></tr>';
+  }
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -531,6 +614,9 @@ async function handleBuildDraft() {
     }
     if (draft) renderDraftIntoView(draft);
 
+    // Refresh queue table to show the newly inserted draft
+    refreshContentQueue();
+
     setTimeout(() => {
       btn.disabled = false;
       btn.innerHTML = '<i data-lucide="wand-2" style="width:12px"></i> Build Draft';
@@ -607,6 +693,7 @@ async function handleApproveQueue() {
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Approved & queued';
     btn.style.background = '#10B981';
     showToast(`Draft ${lastBuiltDraftId.slice(0, 8)} approved. Creative render job queued.`);
+    refreshContentQueue();
   } else {
     btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
     btn.style.background = '#EF4444';
@@ -643,6 +730,7 @@ async function handleDiscardDraft() {
   if (result && result.ok) {
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Rejected';
     showToast(`Draft ${lastBuiltDraftId.slice(0, 8)} rejected.`);
+    refreshContentQueue();
   } else {
     btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
     showToast('Reject failed. See console.', 'error');
@@ -1069,6 +1157,10 @@ function switchView(viewId) {
     setTimeout(() => renderCICharts(viewId), 50);
   } else if (viewId === 'analytics') {
     setTimeout(() => renderAnalyticsCharts(), 50);
+  }
+
+  if (viewId === 'content-builder') {
+    setTimeout(() => refreshContentQueue(), 80);
   }
 }
 
@@ -4326,15 +4418,9 @@ Ship faster. Debug less.</p>
           <div class="card">
             <h3 class="card-title"><i data-lucide="list"></i> Content Queue — awaiting approval</h3>
             <table class="lm-table" style="margin-top:14px;">
-              <thead><tr><th>Title</th><th>Channel</th><th>Format</th><th>Hook Score</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td><strong>We killed 40% of our dashboards…</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">96</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>Stop writing runbooks nobody reads</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Article · 800w</td><td><span style="color:#10B981;font-weight:600;">92</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>The 3-line Slack message that replaced our standup</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">89</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>How we cut our CI from 47 to 6 minutes</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Post-mortem · 1.2k</td><td><span style="color:#10B981;font-weight:600;">87</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
-                <tr><td><strong>Onboarding email #2 — "Set up your first alert"</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td>Email · seq day 3</td><td><span style="color:#10B981;font-weight:600;">84</span></td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span></td></tr>
-                <tr><td><strong>Every VP Eng has the same 3 complaints</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td>Post</td><td><span style="color:#10B981;font-weight:600;">85</span></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Draft</span></td></tr>
-                <tr><td><strong>Debug-cost calculator — lead magnet</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td>Interactive · 600w</td><td><span style="color:#10B981;font-weight:600;">80</span></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Research</span></td></tr>
+              <thead><tr><th>Title</th><th>Channel</th><th>Format</th><th>QA Score</th><th>Status</th></tr></thead>
+              <tbody id="content-queue-tbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">Loading drafts...</td></tr>
               </tbody>
             </table>
           </div>
