@@ -285,9 +285,10 @@ async function runBrandVoiceOptimizer() {
   const btn = document.getElementById('wf02-run-btn');
   if (btn) { btn.textContent = 'Running…'; btn.disabled = true; }
   try {
-    const res = await fetch(WF02_URL, {
+    // WF01 creates the brandvoice_rebuild job then calls WF02 internally
+    const res = await fetch(WF01_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID }),
+      body: JSON.stringify({ brand_id: BRAND_ID, profile_payload: {}, changed_fields: [] }),
     });
     const data = await res.json();
     if (btn) { btn.textContent = '✅ Optimized'; }
@@ -295,7 +296,7 @@ async function runBrandVoiceOptimizer() {
     setTimeout(() => { if (btn) { btn.textContent = 'Run Optimizer'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
-    console.error('[WF02] error:', e);
+    console.error('[WF01→WF02] error:', e);
   }
 }
 
