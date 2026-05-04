@@ -442,6 +442,10 @@ async function handleRegenerate() {
 const WF07_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder';
 // Reuses WF06_BRAND_ID
 
+// Tracks the most recent draft built by WF07 so the Approve/Discard buttons
+// know which entity_id to send to WF08.
+let lastBuiltDraftId = null;
+
 async function generateDraft() {
   try {
     const res = await fetch(WF07_URL, {
@@ -480,6 +484,9 @@ async function handleBuildDraft() {
     const score = Number(result.final_score) || 0;
     const passed = result.status === 'draft';
     const idShort = result.draft_id.slice(0, 8);
+
+    // Remember this draft so the Approve/Discard buttons can act on it
+    lastBuiltDraftId = result.draft_id;
 
     btn.innerHTML = passed
       ? `<i data-lucide="check" style="width:12px"></i> Score ${score} — queued`
@@ -523,6 +530,105 @@ function renderDraftIntoView(draft) {
   if (draft.title)      parts.push(draft.title);
   if (draft.draft_text) parts.push(draft.draft_text);
   bodyEl.textContent = parts.join('\n\n');
+}
+
+// ── WF08 Approval Handler ──────────────────────────────
+const WF08_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf08-approve';
+
+async function sendApprovalDecision(decision, notes = '') {
+  if (!lastBuiltDraftId) {
+    showToast('No draft to act on. Click "Build Draft" first.', 'error');
+    return null;
+  }
+  try {
+    const res = await fetch(WF08_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id: WF06_BRAND_ID,
+        entity_type: 'content_draft',
+        entity_id: lastBuiltDraftId,
+        decision,
+        notes
+      })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[WF08] Error:', err);
+    return null;
+  }
+}
+
+async function handleApproveQueue() {
+  const btn = document.getElementById('btn-approve-queue');
+  if (!btn) return;
+  if (!lastBuiltDraftId) {
+    showToast('Build a draft first (purple "Build Draft" button).', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Approving...';
+  lucide.createIcons();
+
+  let result = await sendApprovalDecision('approved', 'Approved from ContentBuilder UI');
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json) result = result.json;
+
+  if (result && result.ok) {
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Approved & queued';
+    btn.style.background = '#10B981';
+    showToast(`Draft ${lastBuiltDraftId.slice(0, 8)} approved. Creative render job queued.`);
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
+    btn.style.background = '#EF4444';
+    showToast('Approval failed. See console.', 'error');
+    console.warn('[WF08] response:', result);
+  }
+  lucide.createIcons();
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    btn.style.background = '';
+    lucide.createIcons();
+  }, 4000);
+}
+
+async function handleDiscardDraft() {
+  const btn = document.getElementById('btn-discard-draft');
+  if (!btn) return;
+  if (!lastBuiltDraftId) {
+    showToast('No draft to discard.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Rejecting...';
+  lucide.createIcons();
+
+  let result = await sendApprovalDecision('rejected', 'Discarded from ContentBuilder UI');
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json) result = result.json;
+
+  if (result && result.ok) {
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Rejected';
+    showToast(`Draft ${lastBuiltDraftId.slice(0, 8)} rejected.`);
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
+    showToast('Reject failed. See console.', 'error');
+    console.warn('[WF08] response:', result);
+  }
+  lucide.createIcons();
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    lucide.createIcons();
+  }, 4000);
 }
 
 // Render the brief returned by WF06 into the ContentBuilder preview card
@@ -4168,7 +4274,7 @@ If you're a VP of Engineering drowning in Looker tabs, start with a 30-day audit
 
 Ship faster. Debug less.</p>
             <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); align-items:center; flex-wrap:wrap;">
-              <button class="btn-sm btn-primary"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
+              <button class="btn-sm btn-primary" id="btn-approve-queue" onclick="handleApproveQueue()"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
               <select id="cb-channel" style="font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;">
                 <option value="LinkedIn">LinkedIn</option>
                 <option value="Blog">Blog</option>
@@ -4181,7 +4287,7 @@ Ship faster. Debug less.</p>
               <button class="btn-sm btn-ai" id="btn-regenerate" onclick="handleRegenerate()"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
               <button class="btn-sm btn-ai" id="btn-build-draft" onclick="handleBuildDraft()" style="background:#7C3AED;color:white;border:none;"><i data-lucide="wand-2" style="width:12px"></i> Build Draft</button>
               <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
-              <button class="btn-sm" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
+              <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
             </div>
           </div>
         </div>
