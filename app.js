@@ -321,6 +321,28 @@ async function syncResearchSources() {
   }
 }
 
+// ── Supabase helpers for queue-job creation ────────────
+const SUPABASE_URL = 'https://lvgqecbibzqkmemecskr.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Z3FlY2JpYnpxa21lbWVjc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Nzc2NjYsImV4cCI6MjA5MjM1MzY2Nn0.dFWq5rlelCyQ2Gdx1qQnKZo4s3x828fbC-EADX8D1G8';
+
+async function createQueueJob(job_type) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/workflow_jobs`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    },
+    body: JSON.stringify({ brand_id: BRAND_ID, job_type }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`createQueueJob failed: ${res.status} ${err}`);
+  }
+  return res.json();
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -328,13 +350,14 @@ async function runContentAnalysis() {
   const btn = document.getElementById('wf04-analyze-btn');
   if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
   try {
-    const res = await fetch(WF04_URL, {
+    await createQueueJob('content_analysis');
+    // fire-and-forget — WF04 takes ~2.5 min, don't await response
+    fetch(WF04_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
-    });
-    const data = await res.json();
+      body: JSON.stringify({ brand_id: BRAND_ID }),
+    }).catch(e => console.error('[WF04] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
-    showToast('Content analysis triggered.');
+    showToast('Content analysis queued — runs in background.');
     setTimeout(() => { if (btn) { btn.textContent = 'Run Analysis'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -349,13 +372,14 @@ async function runHookMiner() {
   const btn = document.getElementById('wf05-mine-btn');
   if (btn) { btn.textContent = 'Mining…'; btn.disabled = true; }
   try {
-    const res = await fetch(WF05_URL, {
+    await createQueueJob('hook_mining');
+    // fire-and-forget — WF05 runs multi-batch AI processing, don't await response
+    fetch(WF05_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
-    });
-    const data = await res.json();
-    if (btn) { btn.textContent = '✅ Hooks queued'; }
-    showToast('Hook mining triggered.');
+      body: JSON.stringify({ brand_id: BRAND_ID }),
+    }).catch(e => console.error('[WF05] webhook error:', e));
+    if (btn) { btn.textContent = '✅ Queued'; }
+    showToast('Hook mining queued — runs in background.');
     setTimeout(() => { if (btn) { btn.textContent = 'Mine Hooks'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -384,14 +408,24 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
 
 async function handleRegenerate() {
   const btn = document.getElementById('btn-regenerate');
-  if (!btn) return;
+  const btnHeader = document.getElementById('wf06-generate-btn');
+  if (!btn && !btnHeader) return;
 
   const channel = document.getElementById('cb-channel')?.value || 'LinkedIn';
   const persona = document.getElementById('cb-persona')?.value || 'VP Engineering';
 
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Generating...';
-  lucide.createIcons();
+  const setBtns = (html, bg = '', color = '', disabled = true) => {
+    [btn, btnHeader].forEach(b => {
+      if (!b) return;
+      b.disabled = disabled;
+      b.innerHTML = html;
+      b.style.background = bg;
+      b.style.color = color;
+    });
+    lucide.createIcons();
+  };
+
+  setBtns('<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Generating...');
 
   let result = await generateContentBrief(channel, persona);
   console.log('[WF06] raw response:', result);
@@ -407,9 +441,7 @@ async function handleRegenerate() {
   const success = result && (result.ok === true || !!result.brief_id);
 
   if (success) {
-    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Brief queued!';
-    btn.style.background = '#10B981';
-    btn.style.color = 'white';
+    setBtns('<i data-lucide="check" style="width:12px"></i> Brief ready!', '#10B981', 'white');
     const idShort = result.brief_id ? result.brief_id.slice(0, 8) : 'ok';
     showToast(`New brief generated — ID: ${idShort}...`);
 
@@ -421,18 +453,12 @@ async function handleRegenerate() {
     if (brief) renderBriefIntoView(brief, channel);
 
     setTimeout(() => {
-      btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="refresh-cw" style="width:12px"></i> Regenerate';
-      btn.style.background = '';
-      btn.style.color = '';
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw" style="width:12px"></i> Regenerate'; btn.style.background = ''; btn.style.color = ''; }
+      if (btnHeader) { btnHeader.disabled = false; btnHeader.innerHTML = '<i data-lucide="sparkles" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate Brief'; btnHeader.style.background = '#22C55E'; btnHeader.style.color = 'white'; }
       lucide.createIcons();
     }, 3000);
   } else {
-    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — retry';
-    btn.style.background = '#EF4444';
-    btn.style.color = 'white';
-    btn.disabled = false;
-    lucide.createIcons();
+    setBtns('<i data-lucide="alert-circle" style="width:12px"></i> Error — retry', '#EF4444', 'white', false);
     showToast('Could not generate brief. Try again.', 'error');
     console.warn('[WF06] response did not match expected shape:', result);
   }
@@ -4232,9 +4258,12 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 09:50 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Uses: BrandVoice rules · ContentEngine insights · HookMiner frameworks</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 09:50 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Uses: BrandVoice rules · ContentEngine insights · HookMiner frameworks</span>
+          </div>
+          <button id="wf06-generate-btn" onclick="handleRegenerate()" style="padding:8px 16px; background:#22C55E; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="sparkles" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate Brief</button>
         </div>
 
         <div class="agent-stats">
