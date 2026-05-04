@@ -438,6 +438,93 @@ async function handleRegenerate() {
   }
 }
 
+// ── WF07 Content Builder + QA ──────────────────────────
+const WF07_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder';
+// Reuses WF06_BRAND_ID
+
+async function generateDraft() {
+  try {
+    const res = await fetch(WF07_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: WF06_BRAND_ID })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[WF07] Error:', err);
+    return null;
+  }
+}
+
+async function handleBuildDraft() {
+  const btn = document.getElementById('btn-build-draft');
+  if (!btn) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Building draft...';
+  lucide.createIcons();
+
+  let result = await generateDraft();
+  console.log('[WF07] raw response:', result);
+
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json && typeof result.ok === 'undefined') result = result.json;
+  if (result && result.data && typeof result.ok === 'undefined') result = result.data;
+
+  console.log('[WF07] unwrapped:', result);
+
+  const success = result && result.ok === true && result.draft_id;
+
+  if (success) {
+    const score = Number(result.final_score) || 0;
+    const passed = result.status === 'draft';
+    const idShort = result.draft_id.slice(0, 8);
+
+    btn.innerHTML = passed
+      ? `<i data-lucide="check" style="width:12px"></i> Score ${score} — queued`
+      : `<i data-lucide="alert-triangle" style="width:12px"></i> QA ${score} (failed)`;
+    btn.style.background = passed ? '#10B981' : '#F59E0B';
+    btn.style.color = 'white';
+
+    showToast(passed
+      ? `Draft ${idShort} built (score ${score}/100) and queued for approval.`
+      : `Draft ${idShort} built but QA failed (${score}/100). Not queued.`);
+
+    // Render draft into the preview card
+    let draft = result.draft;
+    if (typeof draft === 'string') {
+      try { draft = JSON.parse(draft); } catch (e) { draft = null; }
+    }
+    if (draft) renderDraftIntoView(draft);
+
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="wand-2" style="width:12px"></i> Build Draft';
+      btn.style.background = '';
+      btn.style.color = '';
+      lucide.createIcons();
+    }, 4000);
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — retry';
+    btn.style.background = '#EF4444';
+    btn.style.color = 'white';
+    btn.disabled = false;
+    lucide.createIcons();
+    showToast('Could not build draft. Check that WF06 ran first (need a brief with status=ready).', 'error');
+    console.warn('[WF07] response did not match expected shape:', result);
+  }
+}
+
+function renderDraftIntoView(draft) {
+  const bodyEl = document.getElementById('cb-post-body');
+  if (!bodyEl) return;
+  const parts = [];
+  if (draft.title)      parts.push(draft.title);
+  if (draft.draft_text) parts.push(draft.draft_text);
+  bodyEl.textContent = parts.join('\n\n');
+}
+
 // Render the brief returned by WF06 into the ContentBuilder preview card
 function renderBriefIntoView(brief, channel) {
   const bodyEl = document.getElementById('cb-post-body');
@@ -4092,6 +4179,7 @@ Ship faster. Debug less.</p>
                 <option value="Senior Developer">Senior Developer</option>
               </select>
               <button class="btn-sm btn-ai" id="btn-regenerate" onclick="handleRegenerate()"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
+              <button class="btn-sm btn-ai" id="btn-build-draft" onclick="handleBuildDraft()" style="background:#7C3AED;color:white;border:none;"><i data-lucide="wand-2" style="width:12px"></i> Build Draft</button>
               <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
               <button class="btn-sm" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
             </div>
