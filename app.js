@@ -947,6 +947,52 @@ function showToast(message, type = 'success') {
 function updateBrandField(key, value) { brandKitData[key] = value; }
 
 function updateBrandTypography(key, value) { brandKitData.typography[key] = value; }
+
+// ── Font picker (Branding Bio Typography) ───────────────
+// All fonts here must also be imported in index.html
+const BRAND_FONTS_SANS = ['Inter','Outfit','Plus Jakarta Sans','Poppins','Montserrat','DM Sans','Manrope','Space Grotesk','IBM Plex Sans','Roboto','Open Sans','Lato','Nunito Sans','Work Sans','Sora','Bricolage Grotesque','Onest','Public Sans'];
+const BRAND_FONTS_SERIF = ['Playfair Display','Lora','Merriweather','EB Garamond'];
+const BRAND_FONTS_DISPLAY = ['Bebas Neue','Oswald','Anton'];
+const BRAND_FONTS_MONO = ['JetBrains Mono','Fira Code','IBM Plex Mono','Space Mono','Source Code Pro','Roboto Mono'];
+
+function renderFontChips(kind, currentValue) {
+  const list = (kind === 'mono')
+    ? BRAND_FONTS_MONO
+    : BRAND_FONTS_SANS.concat(BRAND_FONTS_SERIF, BRAND_FONTS_DISPLAY);
+  const fallback = (kind === 'mono') ? 'monospace' : 'sans-serif';
+  const chips = list.map(name => {
+    const active = name === currentValue;
+    return `<button type="button" onclick="pickBrandFont('${kind}', '${name.replace(/'/g, "&#39;")}')"
+      style="font-family:'${name}', ${fallback}; padding:6px 10px; border-radius:6px; border:1px solid ${active ? '#6366F1' : 'var(--border)'}; background:${active ? '#EEF2FF' : 'white'}; color:${active ? '#4338CA' : 'var(--text-main)'}; cursor:pointer; font-size:12px; font-weight:600; white-space:nowrap;">${name}</button>`;
+  }).join('');
+  return `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; max-height:120px; overflow-y:auto; padding:4px 0;">${chips}</div>`;
+}
+
+function pickBrandFont(kind, name) {
+  brandKitData.typography[kind] = name;
+  // Update input
+  const input = document.querySelector(`.bk-font-input[data-kind="${kind}"]`);
+  if (input) {
+    input.value = name;
+    input.style.fontFamily = `'${name}', ${kind === 'mono' ? 'monospace' : 'sans-serif'}`;
+  }
+  // Update preview line
+  const preview = document.querySelector(`.font-preview[data-kind="${kind}"]`);
+  if (preview) preview.style.fontFamily = `'${name}', ${kind === 'mono' ? 'monospace' : 'sans-serif'}`;
+  // Re-render chips so the active style updates
+  const card = input?.closest('div[style*="border:1px solid var(--border)"]');
+  const oldChips = card?.querySelector('div[style*="display:flex; gap:6px"]');
+  if (oldChips) oldChips.outerHTML = renderFontChips(kind, name);
+}
+
+// Wraps the original input handler so chips also reflect the change
+function updateBrandFontInput(inputEl, kind) {
+  const value = inputEl.value;
+  updateBrandTypography(kind, value);
+  inputEl.style.fontFamily = `'${value}', ${kind === 'mono' ? 'monospace' : 'sans-serif'}`;
+  const preview = inputEl.parentElement.querySelector('.font-preview');
+  if (preview) preview.style.fontFamily = `'${value}', ${kind === 'mono' ? 'monospace' : 'sans-serif'}`;
+}
 function updateBrandListItem(list, idx, key, value) {
   if (brandKitData[list] && brandKitData[list][idx]) brandKitData[list][idx][key] = value;
 }
@@ -3874,22 +3920,25 @@ function generateViewHTML(view) {
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Headings</label>
-              <input class="bk-input" type="text" value="${brandKitData.typography.heading}" oninput="updateBrandTypography('heading', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts" style="font-family:'${brandKitData.typography.heading}', sans-serif; font-size:20px; font-weight:700;">
-              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
+              <input class="bk-input bk-font-input" data-kind="heading" type="text" value="${brandKitData.typography.heading}" oninput="updateBrandFontInput(this, 'heading')" list="bk-fonts" style="font-family:'${brandKitData.typography.heading}', sans-serif; font-size:20px; font-weight:700;">
+              <div class="font-preview" data-kind="heading" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
+              ${renderFontChips('heading', brandKitData.typography.heading)}
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Body</label>
-              <input class="bk-input" type="text" value="${brandKitData.typography.body}" oninput="updateBrandTypography('body', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts" style="font-family:'${brandKitData.typography.body}', sans-serif; font-size:20px; font-weight:600;">
-              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.body}', sans-serif;">Fix production issues before your customers do.</div>
+              <input class="bk-input bk-font-input" data-kind="body" type="text" value="${brandKitData.typography.body}" oninput="updateBrandFontInput(this, 'body')" list="bk-fonts" style="font-family:'${brandKitData.typography.body}', sans-serif; font-size:20px; font-weight:600;">
+              <div class="font-preview" data-kind="body" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.body}', sans-serif;">Fix production issues before your customers do.</div>
+              ${renderFontChips('body', brandKitData.typography.body)}
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Mono / Code</label>
-              <input class="bk-input" type="text" value="${brandKitData.typography.mono}" oninput="updateBrandTypography('mono', this.value); this.parentElement.querySelector('.font-preview').style.fontFamily = this.value" list="bk-fonts-mono" style="font-family:'${brandKitData.typography.mono}', monospace; font-size:20px; font-weight:600;">
-              <div class="font-preview" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.mono}', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">${brandKitData.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.trace()</div>
+              <input class="bk-input bk-font-input" data-kind="mono" type="text" value="${brandKitData.typography.mono}" oninput="updateBrandFontInput(this, 'mono')" list="bk-fonts-mono" style="font-family:'${brandKitData.typography.mono}', monospace; font-size:20px; font-weight:600;">
+              <div class="font-preview" data-kind="mono" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.mono}', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">${brandKitData.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.trace()</div>
+              ${renderFontChips('mono', brandKitData.typography.mono)}
             </div>
           </div>
-          <datalist id="bk-fonts"><option value="Inter"><option value="Outfit"><option value="Plus Jakarta Sans"><option value="Poppins"><option value="Montserrat"><option value="DM Sans"><option value="Manrope"><option value="Space Grotesk"><option value="Satoshi"><option value="IBM Plex Sans"></datalist>
-          <datalist id="bk-fonts-mono"><option value="JetBrains Mono"><option value="Fira Code"><option value="IBM Plex Mono"><option value="Space Mono"><option value="Source Code Pro"><option value="Roboto Mono"></datalist>
+          <datalist id="bk-fonts">${BRAND_FONTS_SANS.concat(BRAND_FONTS_SERIF, BRAND_FONTS_DISPLAY).map(f => `<option value="${f}">`).join('')}</datalist>
+          <datalist id="bk-fonts-mono">${BRAND_FONTS_MONO.map(f => `<option value="${f}">`).join('')}</datalist>
         </div>
 
         <!-- 4. Values -->
