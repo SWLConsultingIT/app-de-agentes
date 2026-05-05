@@ -750,6 +750,62 @@ async function hydrateContentEngineView() {
       }
     }
 
+    // Competitor Landscape (from brand_profiles.data_json.competitors)
+    const competitors = Array.isArray(data.competitors) ? data.competitors : [];
+    const brandName   = data.identity?.company_name || profileRow?.brand?.name || 'Brand';
+    const sovContainer = document.getElementById('ce-sov-container');
+    if (sovContainer) {
+      const tierWidth = { Premium: 95, Mid: 60, Low: 35 };
+      const tierColor = { Premium: '#6366F1', Mid: '#06B6D4', Low: '#94A3B8' };
+      const youColor = '#10B981';
+      const rows = [
+        { name: brandName, tier: '—', positioning: data.identity?.tagline || data.identity?.mission?.slice(0, 90) || '', self: true, color: youColor, width: 50 },
+        ...competitors.map(c => ({
+          name: c.name || '—',
+          tier: c.tier || 'Mid',
+          positioning: c.positioning || '',
+          diff: c.diff || '',
+          self: false,
+          color: tierColor[c.tier] || '#94A3B8',
+          width: tierWidth[c.tier] || 50,
+        })),
+      ];
+
+      if (competitors.length === 0) {
+        sovContainer.innerHTML = `<div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No competitors mapped yet — add them in <strong>Branding Bio</strong>.
+        </div>`;
+      } else {
+        sovContainer.innerHTML = rows.map(r => `
+          <div style="display:grid; grid-template-columns:180px 1fr 70px; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border);">
+            <div style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:${r.self?'700':'500'};">
+              <span style="width:8px;height:8px;border-radius:50%;background:${r.color};flex-shrink:0;"></span>
+              <span>${escapeHtml(r.name)}${r.self?' <span style="font-size:10px; color:var(--ai-accent);">(you)</span>':''}</span>
+            </div>
+            <div>
+              <div style="height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden;">
+                <div style="height:100%; width:${r.width}%; background:${r.color};"></div>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${escapeHtml(r.positioning || '—')}</div>
+            </div>
+            <div style="font-size:11px; text-align:right; color:var(--text-muted); font-weight:600;">${escapeHtml(r.tier)}</div>
+          </div>
+        `).join('');
+      }
+    }
+
+    const sovInsight = document.getElementById('ce-sov-insight');
+    if (sovInsight) {
+      if (competitors.length) {
+        const premiumCount = competitors.filter(c => c.tier === 'Premium').length;
+        const firstDiff = competitors[0]?.diff || '';
+        const diffShort = firstDiff.length > 160 ? firstDiff.slice(0, 160) + '…' : firstDiff;
+        sovInsight.innerHTML = `<strong>💡 Insight:</strong> ${premiumCount} premium competitor${premiumCount===1?'':'s'} in the space. ${escapeHtml(diffShort)}`;
+      } else {
+        sovInsight.innerHTML = `<strong>💡 Insight:</strong> Map your competitors in Branding Bio to surface positioning gaps.`;
+      }
+    }
+
     // Research Sources cards
     const srcContainer = document.getElementById('ce-sources-container');
     if (srcContainer) {
@@ -4743,30 +4799,13 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <!-- Share of voice -->
+        <!-- Competitor landscape -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="radar"></i> Share of Voice — Top brands in your space (last 30 days)</h3>
-          <div style="margin-top:14px;">
-            ${[
-              {brand:'Datadog',     posts:42, share:22, engagement:4.1, color:'#632CA6'},
-              {brand:'Vercel',      posts:38, share:20, engagement:5.6, color:'#000000'},
-              {brand:'Linear',      posts:31, share:16, engagement:7.2, color:'#5E6AD2'},
-              {brand:'Acme Corp',   posts:12, share:6,  engagement:4.8, color:'#6366F1', self:true},
-              {brand:'Honeycomb',   posts:18, share:10, engagement:3.4, color:'#F97316'},
-              {brand:'New Relic',   posts:16, share:8,  engagement:2.1, color:'#00AC69'},
-              {brand:'Grafana',     posts:14, share:7,  engagement:2.8, color:'#F46800'},
-              {brand:'Others',      posts:22, share:11, engagement:3.2, color:'#94A3B8'},
-            ].map(b => `
-              <div style="display:grid; grid-template-columns:120px 1fr 60px 80px 80px; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid var(--border);">
-                <div style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:${b.self?'700':'500'};"><span style="width:8px;height:8px;border-radius:50%;background:${b.color};"></span>${b.brand}${b.self?' <span style="font-size:10px; color:var(--ai-accent);">(you)</span>':''}</div>
-                <div style="height:8px; background:#F3F4F6; border-radius:4px; overflow:hidden;"><div style="height:100%; width:${b.share*4}%; background:${b.color};"></div></div>
-                <div style="font-size:12px; text-align:right; color:var(--text-muted);">${b.posts} posts</div>
-                <div style="font-size:12px; text-align:right; color:var(--text-muted);">${b.share}% voice</div>
-                <div style="font-size:12px; text-align:right; color:${b.engagement >= 5 ? '#10B981' : '#374151'}; font-weight:600;">${b.engagement}x eng</div>
-              </div>
-            `).join('')}
+          <h3 class="card-title"><i data-lucide="radar"></i> Competitor Landscape — Brands in your space</h3>
+          <div style="margin-top:14px;" id="ce-sov-container">
+            <div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
-          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;"><strong>💡 Insight:</strong> Linear publishes less than Datadog but gets 1.8x the engagement — their post-mortem + contrarian-hook format is the one to study.</p>
+          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;" id="ce-sov-insight">Loading insights…</p>
         </div>
 
         <!-- Sources -->
