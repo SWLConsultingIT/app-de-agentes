@@ -297,6 +297,8 @@ async function runBrandVoiceOptimizer() {
     const data = await res.json();
     if (btn) { btn.textContent = '✅ Optimized'; }
     showToast('BrandVoice optimization triggered.');
+    // Re-hydrate after a short delay so the view picks up the new rules / profile
+    setTimeout(() => hydrateBrandVoiceView(), 1500);
     setTimeout(() => { if (btn) { btn.textContent = 'Run Optimizer'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -428,6 +430,150 @@ async function refreshContentQueue() {
   } catch (err) {
     console.error('[content-queue] refresh error:', err);
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#991B1B;padding:20px">Failed to load drafts. See console.</td></tr>';
+  }
+}
+
+// ── BrandVoice Optimizer hydration ─────────────────────
+async function fetchBrandProfile(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    select: 'data_json,completion_pct,updated_at,brand:brands(name,industry)'
+  });
+  const rows = await supabaseGet(`brand_profiles?${params}`);
+  return rows[0] || null;
+}
+
+async function fetchLatestVoiceRules(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'version.desc',
+    limit: '1',
+    select: 'version,rules_json,tone_dimensions_json,source_summary_json,created_at'
+  });
+  const rows = await supabaseGet(`brand_voice_rules?${params}`);
+  return rows[0] || null;
+}
+
+function fmtRelativeTime(iso) {
+  if (!iso) return '—';
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60)    return 'just now';
+  if (diff < 3600)  return `${Math.floor(diff/60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} h ago`;
+  return `${Math.floor(diff/86400)} d ago`;
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text ?? '—';
+}
+
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+async function hydrateBrandVoiceView() {
+  try {
+    const [profileRow, voiceRow] = await Promise.all([
+      fetchBrandProfile(BRAND_ID),
+      fetchLatestVoiceRules(BRAND_ID),
+    ]);
+
+    const data = profileRow?.data_json || {};
+    const brandName = data.identity?.company_name || profileRow?.brand?.name || 'Brand';
+    const industry  = data.identity?.industry || profileRow?.brand?.industry || '—';
+
+    setText('bvo-brand-tag', `Brand: ${brandName}`);
+    setText('bvo-brand-title-name', brandName);
+    setText('bvo-industry', industry);
+
+    // Personas → audience summary
+    const personas = Array.isArray(data.personas) ? data.personas : [];
+    const audienceLine = personas.length
+      ? personas.slice(0, 3).map(p => p.role).filter(Boolean).join(' · ') +
+        (personas.length > 3 ? ` · +${personas.length - 3} more` : '')
+      : '—';
+    setText('bvo-audience', audienceLine);
+
+    // Channels
+    const channels = Array.isArray(data.channels) ? data.channels : [];
+    setHTML('bvo-channels', channels.map(c => {
+      const name = escapeHtml(c.name || '—');
+      return `<span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8;margin-right:4px">${name}</span>`;
+    }).join('') || '—');
+
+    // Core values
+    const values = Array.isArray(data.values) ? data.values : [];
+    const coreLine = values.map(v => v.title).filter(Boolean).join(' · ') || '—';
+    setText('bvo-core-values', coreLine);
+
+    // Palette
+    const palette = Array.isArray(data.palette) ? data.palette : [];
+    setHTML('bvo-palette', palette.slice(0, 6).map(c => {
+      const hex = /^#[0-9A-Fa-f]{3,8}$/.test(c.hex || '') ? c.hex : '#E5E7EB';
+      return `<span title="${escapeHtml(c.role || '')}" style="width:28px;height:28px;background:${hex};border-radius:6px;display:inline-block;border:1px solid #E5E7EB;margin-right:6px"></span>`;
+    }).join('') || '—');
+
+    // ──── Voice rules side ────
+    const rules  = voiceRow?.rules_json || {};
+    const tone   = voiceRow?.tone_dimensions_json || {};
+    const srcSum = voiceRow?.source_summary_json || {};
+
+    const always = Array.isArray(rules.always_rules) ? rules.always_rules : [];
+    const never  = Array.isArray(rules.never_rules)  ? rules.never_rules  : [];
+    const banned = Array.isArray(rules.banned_terms) ? rules.banned_terms : [];
+
+    const totalRules = always.length + never.length + banned.length +
+                       (Array.isArray(rules.channel_rules) ? rules.channel_rules.length : 0) +
+                       (Array.isArray(rules.persona_rules) ? rules.persona_rules.length : 0) +
+                       (Array.isArray(rules.approved_cta_patterns) ? rules.approved_cta_patterns.length : 0);
+
+    setText('bvo-stat-rules', totalRules ? String(totalRules) : '—');
+    setText('bvo-stat-samples', String(data.content_samples?.length ?? '—'));
+    setText('bvo-stat-tone-dims', String(Object.keys(tone).length || '—'));
+    setText('bvo-rules-count', totalRules ? `(${totalRules} coded — excerpt)` : '(— coded)');
+
+    setHTML('bvo-always-list',
+      always.slice(0, 6).map(r => `<li>${escapeHtml(r)}</li>`).join('')
+      || '<li style="color:var(--text-muted)">No rules yet — click Run Optimizer.</li>');
+    setHTML('bvo-never-list',
+      never.slice(0, 6).map(r => `<li>${escapeHtml(r)}</li>`).join('')
+      || '<li style="color:var(--text-muted)">—</li>');
+
+    // Tone dimensions bars
+    const toneLabels = {
+      formal_vs_casual:        'Formal ↔ Casual',
+      technical_vs_accessible: 'Technical ↔ Accessible',
+      serious_vs_playful:      'Serious ↔ Playful',
+      humble_vs_bold:          'Humble ↔ Bold',
+      short_vs_expansive:      'Short ↔ Expansive',
+    };
+    const toneHTML = Object.entries(toneLabels).map(([key, label]) => {
+      const val = Number.isFinite(tone[key]) ? tone[key] : null;
+      const display = val == null ? '—' : `${val}%`;
+      const width = val == null ? 0 : val;
+      return `<div style="margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+          <span>${label}</span>
+          <span style="color:var(--ai-accent); font-weight:600;">${display}</span>
+        </div>
+        <div style="height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden;">
+          <div style="height:100%; width:${width}%; background:linear-gradient(90deg, #EC4899, #BE185D);"></div>
+        </div>
+      </div>`;
+    }).join('');
+    setHTML('bvo-tone-dims', toneHTML);
+
+    // Calibration timestamp + source line
+    const calib = voiceRow?.created_at ? fmtRelativeTime(voiceRow.created_at) : 'never run';
+    setText('bvo-last-calibration', `Last calibration: ${calib}`);
+
+    const sampleCount = Array.isArray(data.content_samples) ? data.content_samples.length : 0;
+    const fieldCount  = Array.isArray(srcSum.input_fields_used) ? srcSum.input_fields_used.length : 0;
+    setText('bvo-sources', `Sources: ${sampleCount} content samples · ${fieldCount} profile fields`);
+  } catch (err) {
+    console.error('[BVO hydrate] error:', err);
   }
 }
 
@@ -1391,6 +1537,10 @@ function switchView(viewId) {
 
   if (viewId === 'content-builder') {
     setTimeout(() => refreshContentQueue(), 80);
+  }
+
+  if (viewId === 'brandvoice-optimizer') {
+    setTimeout(() => hydrateBrandVoiceView(), 80);
   }
 }
 
@@ -4207,54 +4357,49 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Brand: Acme Corp</span>
+            <span class="agent-tag" id="bvo-brand-tag">Brand: —</span>
           </div>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
           <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last calibration: Today, 08:12 AM</span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: 42 sample posts · 6 landing pages · brand deck</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="bvo-last-calibration">Last calibration: —</span></span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="bvo-sources">Sources: —</span></span>
           </div>
           <button id="wf02-run-btn" onclick="runBrandVoiceOptimizer()" style="padding:8px 16px; background:#EC4899; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="sparkles" style="width:13px;vertical-align:middle;margin-right:6px"></i>Run Optimizer</button>
         </div>
 
         <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val">28</div><div class="agent-stat-lbl">Voice Rules Coded</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="bvo-stat-rules">—</div><div class="agent-stat-lbl">Voice Rules Coded</div></div>
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">96%</div><div class="agent-stat-lbl">Brand Consistency Score</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">42</div><div class="agent-stat-lbl">Sample Pieces Analyzed</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">5</div><div class="agent-stat-lbl">Tone Dimensions</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="bvo-stat-samples">—</div><div class="agent-stat-lbl">Sample Pieces Analyzed</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="bvo-stat-tone-dims">—</div><div class="agent-stat-lbl">Tone Dimensions</div></div>
         </div>
 
         <!-- Brand Profile -->
         <div class="kpi-grid" style="grid-template-columns:2fr 1fr; margin-top:24px;">
           <div class="card">
-            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — Acme Corp</h3>
+            <h3 class="card-title"><i data-lucide="sparkles"></i> Brand Profile — <span id="bvo-brand-title-name">—</span></h3>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px;">
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Industry</div>
-                <div style="font-size:14px; font-weight:600;">Enterprise SaaS · B2B</div>
+                <div style="font-size:14px; font-weight:600;" id="bvo-industry">—</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Target Audience</div>
-                <div style="font-size:14px; font-weight:600;">VPs of Engineering · CTOs · Tech Leaders</div>
+                <div style="font-size:14px; font-weight:600;" id="bvo-audience">—</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Primary Channels</div>
-                <div style="display:flex; gap:4px; margin-top:4px;"><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></div>
+                <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;" id="bvo-channels">—</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Core Values</div>
-                <div style="font-size:14px; font-weight:600;">Craft · Reliability · Developer-first</div>
+                <div style="font-size:14px; font-weight:600;" id="bvo-core-values">—</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Palette</div>
-                <div style="display:flex; gap:6px; margin-top:6px;">
-                  <span style="width:28px;height:28px;background:#6366F1;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
-                  <span style="width:28px;height:28px;background:#0F172A;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
-                  <span style="width:28px;height:28px;background:#F59E0B;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
-                  <span style="width:28px;height:28px;background:#F8FAFC;border-radius:6px;display:inline-block;border:1px solid #E5E7EB"></span>
-                </div>
+                <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;" id="bvo-palette">—</div>
               </div>
               <div>
                 <div style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Production Goal</div>
@@ -4265,24 +4410,18 @@ function generateViewHTML(view) {
 
           <div class="card">
             <h3 class="card-title"><i data-lucide="sliders"></i> Tone Dimensions</h3>
-            <div style="margin-top:16px;">
-              ${['Formal ↔ Casual|72', 'Technical ↔ Accessible|65', 'Serious ↔ Playful|40', 'Humble ↔ Bold|68', 'Short ↔ Expansive|55'].map(t => {
-                const [label, val] = t.split('|');
-                return `<div style="margin-bottom:14px;">
-                  <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${label}</span><span style="color:var(--ai-accent); font-weight:600;">${val}%</span></div>
-                  <div style="height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden;"><div style="height:100%; width:${val}%; background:linear-gradient(90deg, #EC4899, #BE185D);"></div></div>
-                </div>`;
-              }).join('')}
+            <div style="margin-top:16px;" id="bvo-tone-dims">
+              <div style="font-size:12px; color:var(--text-muted);">Loading…</div>
             </div>
           </div>
         </div>
 
         <!-- Voice Rules -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="check-circle-2"></i> Voice Rules (28 coded — excerpt)</h3>
+          <h3 class="card-title"><i data-lucide="check-circle-2"></i> Voice Rules <span id="bvo-rules-count">(— coded)</span></h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
-            <div style="padding:12px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:4px;"><strong style="font-size:13px;">Always:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#065F46;"><li>Reference concrete customer outcomes (not features)</li><li>Use active voice in openers</li><li>End posts with a specific CTA, not a generic one</li><li>Name the persona you're writing to</li></ul></div>
-            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Never:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#991B1B;"><li>Use marketing jargon ("synergy", "leverage", "disruption")</li><li>Open with "In today's fast-paced world…"</li><li>Use more than 2 adjectives in a row</li><li>Reference the customer's competitors by name</li></ul></div>
+            <div style="padding:12px; border-left:3px solid #10B981; background:#F0FDF4; border-radius:4px;"><strong style="font-size:13px;">Always:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#065F46;" id="bvo-always-list"><li style="color:var(--text-muted)">Loading…</li></ul></div>
+            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Never:</strong><ul style="font-size:12px; margin-top:6px; padding-left:16px; color:#991B1B;" id="bvo-never-list"><li style="color:var(--text-muted)">Loading…</li></ul></div>
           </div>
         </div>
 
