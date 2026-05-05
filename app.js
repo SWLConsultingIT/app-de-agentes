@@ -369,6 +369,7 @@ function statusBadge(status) {
   const map = {
     draft:     { bg: '#FEF3C7', fg: '#B45309', label: 'Draft' },
     approved:  { bg: '#D1FAE5', fg: '#065F46', label: 'Approved' },
+    published: { bg: '#DBEAFE', fg: '#1E40AF', label: 'Published' },
     rejected:  { bg: '#FEE2E2', fg: '#991B1B', label: 'Rejected' },
     qa_failed: { bg: '#F3F4F6', fg: '#374151', label: 'QA failed' }
   };
@@ -706,6 +707,165 @@ async function handleApproveQueue() {
     btn.disabled = false;
     btn.innerHTML = original;
     btn.style.background = '';
+    lucide.createIcons();
+  }, 4000);
+}
+
+// ── WF09 Creative Brain (MVP — visual brief only) ──────
+const WF09_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf09-creative-brain';
+
+async function generateVisualBrief(draftId) {
+  try {
+    const res = await fetch(WF09_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: WF06_BRAND_ID, draft_id: draftId })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[WF09] Error:', err);
+    return null;
+  }
+}
+
+async function handleGenerateVisual() {
+  const btn = document.getElementById('btn-generate-visual');
+  if (!btn) return;
+  if (!lastBuiltDraftId) {
+    showToast('Build (and ideally approve) a draft first.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Rendering brief...';
+  lucide.createIcons();
+
+  let result = await generateVisualBrief(lastBuiltDraftId);
+  console.log('[WF09] raw response:', result);
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json) result = result.json;
+
+  if (result && result.ok && result.asset_id) {
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Brief ready';
+    btn.style.background = '#10B981';
+    btn.style.color = 'white';
+
+    let asset = result.asset;
+    if (typeof asset === 'string') {
+      try { asset = JSON.parse(asset); } catch (e) { asset = null; }
+    }
+    if (asset) renderVisualBriefIntoView(asset);
+    showToast(`Visual brief generated (asset ${result.asset_id.slice(0, 8)}). See card below.`);
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
+    btn.style.background = '#EF4444';
+    btn.style.color = 'white';
+    showToast('Visual brief failed. See console.', 'error');
+    console.warn('[WF09] response:', result);
+  }
+  lucide.createIcons();
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    btn.style.background = '';
+    btn.style.color = '';
+    lucide.createIcons();
+  }, 4000);
+}
+
+function renderVisualBriefIntoView(asset) {
+  const card = document.getElementById('visual-brief-card');
+  const body = document.getElementById('visual-brief-body');
+  if (!card || !body) return;
+  card.style.display = 'block';
+  const colorChip = (hex) => `<span style="display:inline-block;width:14px;height:14px;background:${hex};border-radius:3px;vertical-align:middle;border:1px solid #00000020;margin-right:6px"></span><code style="font-size:11px">${hex}</code>`;
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;font-size:13px">
+      <div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Asset type</div>
+        <div style="font-weight:600;margin-bottom:14px">${escapeHtml(asset.asset_type || '—')}</div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Headline</div>
+        <div style="font-weight:600;font-size:18px;line-height:1.3;margin-bottom:14px">${escapeHtml(asset.headline || '—')}</div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Subheadline</div>
+        <div style="margin-bottom:14px">${escapeHtml(asset.subheadline || '—')}</div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Dimensions</div>
+        <div><code>${escapeHtml(asset.dimensions || '—')}</code></div>
+      </div>
+      <div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Visual direction</div>
+        <div style="margin-bottom:14px;line-height:1.5">${escapeHtml(asset.visual_direction || '—')}</div>
+        <div style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">Brand elements</div>
+        <div style="margin-bottom:6px">${colorChip(asset.brand_elements?.primary_color || '#888')}primary</div>
+        <div>Heading font: <strong>${escapeHtml(asset.brand_elements?.font_heading || '—')}</strong></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── WF10 Auto Publisher (simulation) ───────────────────
+const WF10_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf10-auto-publish';
+
+async function simulatePublish(draftId) {
+  try {
+    const res = await fetch(WF10_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: WF06_BRAND_ID, draft_id: draftId })
+    });
+    return { httpOk: res.ok, body: await res.json() };
+  } catch (err) {
+    console.error('[WF10] Error:', err);
+    return null;
+  }
+}
+
+async function handlePublish() {
+  const btn = document.getElementById('btn-publish');
+  if (!btn) return;
+  if (!lastBuiltDraftId) {
+    showToast('Build and approve a draft first.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  const original = btn.innerHTML;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Publishing...';
+  lucide.createIcons();
+
+  const result = await simulatePublish(lastBuiltDraftId);
+  console.log('[WF10] response:', result);
+
+  let body = result?.body;
+  if (Array.isArray(body)) body = body[0];
+  if (body && body.json) body = body.json;
+
+  if (result && result.httpOk && body && body.ok) {
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Published';
+    btn.style.background = '#10B981';
+    btn.style.color = 'white';
+    showToast(`Draft ${lastBuiltDraftId.slice(0, 8)} published to ${body.channel} (simulation).`);
+    refreshContentQueue();
+  } else if (body && body.reason === 'draft_not_approved') {
+    btn.innerHTML = '<i data-lucide="alert-triangle" style="width:12px"></i> Not approved';
+    btn.style.background = '#F59E0B';
+    btn.style.color = 'white';
+    showToast('Draft must be approved first. Click "Approve & queue" before publishing.', 'error');
+  } else {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
+    btn.style.background = '#EF4444';
+    btn.style.color = 'white';
+    showToast('Publish failed. See console.', 'error');
+  }
+  lucide.createIcons();
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = original;
+    btn.style.background = '';
+    btn.style.color = '';
     lucide.createIcons();
   }, 4000);
 }
@@ -4407,10 +4567,18 @@ Ship faster. Debug less.</p>
               </select>
               <button class="btn-sm btn-ai" id="btn-regenerate" onclick="handleRegenerate()"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
               <button class="btn-sm btn-ai" id="btn-build-draft" onclick="handleBuildDraft()" style="background:#7C3AED;color:white;border:none;"><i data-lucide="wand-2" style="width:12px"></i> Build Draft</button>
+              <button class="btn-sm btn-ai" id="btn-generate-visual" onclick="handleGenerateVisual()" style="background:#0EA5E9;color:white;border:none;"><i data-lucide="image" style="width:12px"></i> Generate Visual</button>
+              <button class="btn-sm btn-ai" id="btn-publish" onclick="handlePublish()" style="background:#059669;color:white;border:none;"><i data-lucide="send" style="width:12px"></i> Publish</button>
               <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
               <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
             </div>
           </div>
+        </div>
+
+        <!-- Visual Brief (rendered when WF09 runs) -->
+        <div class="card" id="visual-brief-card" style="margin-top:24px; display:none; border:1px solid #0EA5E9; background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 60%);">
+          <h3 class="card-title"><i data-lucide="image"></i> Latest Visual Brief — generated by CreativeBrain</h3>
+          <div id="visual-brief-body" style="margin-top:14px;"></div>
         </div>
 
         <!-- Content queue + channel split -->
