@@ -320,6 +320,7 @@ async function syncResearchSources() {
     }).catch(e => console.error('[WF03] webhook error:', e));
     if (btn) { btn.textContent = '✅ Synced'; }
     showToast('Research sync triggered — runs in background.');
+    setTimeout(() => hydrateContentEngineView(), 1500);
     setTimeout(() => { if (btn) { btn.textContent = '↻ Sync Sources'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -577,6 +578,201 @@ async function hydrateBrandVoiceView() {
   }
 }
 
+// ── ContentEngine hydration ────────────────────────────
+async function fetchContentInsights(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'score.desc',
+    select: 'insight_type,title,channel,score,payload_json,created_at'
+  });
+  return supabaseGet(`content_insights?${params}`);
+}
+
+async function fetchTopCompetitorContent(brandId, limit = 8) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'scraped_at.desc',
+    limit: String(limit),
+    select: 'title,competitor_name,channel,url,metrics_json,analysis_json,scraped_at'
+  });
+  return supabaseGet(`competitor_content?${params}`);
+}
+
+async function fetchResearchSources(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    active: 'eq.true',
+    order: 'source_type.asc',
+    select: 'source_type,source_url,source_handle,competitor_name,channel,config_json'
+  });
+  return supabaseGet(`research_sources?${params}`);
+}
+
+async function fetchLatestResearchRun(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'started_at.desc.nullslast',
+    limit: '1',
+    select: 'run_type,status,started_at,finished_at'
+  });
+  const rows = await supabaseGet(`research_runs?${params}`);
+  return rows[0] || null;
+}
+
+function channelTagStyle(channel) {
+  const map = {
+    LinkedIn:  'background:#EFF6FF;color:#1D4ED8',
+    Blog:      'background:#F3F4F6;color:#374151',
+    Email:     'background:#FEF3C7;color:#B45309',
+    YouTube:   'background:#FEE2E2;color:#991B1B',
+    Instagram: 'background:#FCE7F3;color:#9D174D',
+    WhatsApp:  'background:#D1FAE5;color:#065F46',
+    'X/Twitter': 'background:#F1F5F9;color:#0F172A',
+  };
+  return map[channel] || 'background:#F3F4F6;color:#374151';
+}
+
+function totalEngagement(metrics) {
+  if (!metrics || typeof metrics !== 'object') return 0;
+  const likes    = Number(metrics.likes)    || 0;
+  const comments = Number(metrics.comments) || 0;
+  const views    = Number(metrics.views)    || 0;
+  return likes + comments + Math.round(views / 100);
+}
+
+function fmtCompactNumber(n) {
+  if (n == null || !Number.isFinite(n)) return '—';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+async function hydrateContentEngineView() {
+  try {
+    const [profileRow, insights, topPieces, sources, latestRun] = await Promise.all([
+      fetchBrandProfile(BRAND_ID),
+      fetchContentInsights(BRAND_ID),
+      fetchTopCompetitorContent(BRAND_ID),
+      fetchResearchSources(BRAND_ID),
+      fetchLatestResearchRun(BRAND_ID),
+    ]);
+
+    const data = profileRow?.data_json || {};
+    const industry = data.identity?.industry || profileRow?.brand?.industry || '—';
+
+    // Header tag — "<industry> · N pieces analyzed"
+    setText('ce-brand-tag', `${industry} · ${topPieces.length} pieces analyzed`);
+
+    // Sub-header — last sync + sources line
+    const lastSync = latestRun?.finished_at || latestRun?.started_at;
+    setText('ce-last-sync', `Last sync: ${lastSync ? fmtRelativeTime(lastSync) : 'never'}`);
+
+    const channelSet = new Set(sources.map(s => s.channel || s.source_type).filter(Boolean));
+    setText('ce-sources-line',
+      channelSet.size ? `Sources: ${[...channelSet].join(', ')}` : 'Sources: none configured');
+
+    // Stats
+    const insightsByType = insights.reduce((acc, i) => {
+      (acc[i.insight_type] = acc[i.insight_type] || []).push(i);
+      return acc;
+    }, {});
+    const formatsCount = (insightsByType.top_formats || []).length;
+    const gapsCount    = (insightsByType.content_gaps || []).length;
+
+    // Avg engagement vs baseline — pick top_hooks insight payload.data.vs_baseline
+    const hookInsight = (insightsByType.top_hooks || [])[0];
+    const vsBaseline = hookInsight?.payload_json?.data?.vs_baseline;
+    const vsBaselineDisplay = Number.isFinite(vsBaseline) ? `+${vsBaseline}x` : '—';
+
+    setText('ce-stat-pieces',  topPieces.length ? String(topPieces.length) : '—');
+    setText('ce-stat-formats', formatsCount     ? String(formatsCount)     : '—');
+    setText('ce-stat-vs-baseline', vsBaselineDisplay);
+    setText('ce-stat-gaps',    gapsCount        ? String(gapsCount)        : '—');
+
+    // Top-Performing Pieces table
+    const topTbody = document.getElementById('ce-top-pieces-tbody');
+    if (topTbody) {
+      if (!topPieces.length) {
+        topTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">
+          No top-performing pieces analyzed yet — click <strong>Sync Sources</strong> then <strong>Run Analysis</strong> to populate.
+        </td></tr>`;
+      } else {
+        const sorted = [...topPieces].sort((a, b) =>
+          totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json));
+        topTbody.innerHTML = sorted.slice(0, 5).map(p => {
+          const eng = totalEngagement(p.metrics_json);
+          const rawAnalysis = p.analysis_json;
+          let analysis = rawAnalysis;
+          if (typeof rawAnalysis === 'string') {
+            try { analysis = JSON.parse(rawAnalysis); } catch (_) { analysis = {}; }
+          }
+          analysis = analysis || {};
+          const why = analysis.probable_performance_reason
+                   || analysis.relevance_to_brand
+                   || analysis.hook_type
+                   || '—';
+          const whyShort = String(why).slice(0, 120) + (String(why).length > 120 ? '…' : '');
+          const channel = p.channel || '—';
+          return `<tr>
+            <td><strong>${escapeHtml(p.title || '(untitled)')}</strong></td>
+            <td>${escapeHtml(p.competitor_name || '—')}</td>
+            <td><span class="lm-tag" style="${channelTagStyle(channel)}">${escapeHtml(channel)}</span></td>
+            <td><strong style="color:#10B981">${fmtCompactNumber(eng)}</strong></td>
+            <td style="font-size:12px; color:var(--text-muted)">${escapeHtml(whyShort)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // Content Gaps cards
+    const gapsContainer = document.getElementById('ce-gaps-container');
+    if (gapsContainer) {
+      const gaps = insightsByType.content_gaps || [];
+      if (!gaps.length) {
+        gapsContainer.innerHTML = `<div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No content gaps surfaced yet. Run Analysis to identify themes your audience engages with but you haven't covered.
+        </div>`;
+      } else {
+        gapsContainer.innerHTML = gaps.slice(0, 6).map(g => {
+          const p = g.payload_json || {};
+          const dataObj = p.data || {};
+          const gapTopic = dataObj.gap_topic || g.title || 'Gap';
+          const insightText = p.insight || '';
+          const stats = [];
+          if (dataObj.our_posts != null)        stats.push(`Your posts: ${dataObj.our_posts}`);
+          if (dataObj.competitor_posts != null) stats.push(`Competitor posts: ${dataObj.competitor_posts}`);
+          if (dataObj.sample_size != null)      stats.push(`Sample: ${dataObj.sample_size}`);
+          return `<div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;">
+            <strong style="font-size:13px;">${escapeHtml(gapTopic)}</strong>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">${escapeHtml(insightText)}</p>
+            ${stats.length ? `<p style="font-size:11px; color:#9A3412; margin-top:6px;">${stats.join(' · ')}</p>` : ''}
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // Research Sources cards
+    const srcContainer = document.getElementById('ce-sources-container');
+    if (srcContainer) {
+      if (!sources.length) {
+        srcContainer.innerHTML = `<div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No research sources configured yet. Add competitor accounts, blogs or channels to start monitoring.
+        </div>`;
+      } else {
+        srcContainer.innerHTML = sources.map(s => {
+          const label = s.competitor_name || s.source_handle || s.source_url || s.source_type;
+          const sub = [s.source_type, s.channel].filter(Boolean).join(' · ') || '—';
+          return `<div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;">
+            <div style="font-size:12px; font-weight:700;">${escapeHtml(label || '—')}</div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${escapeHtml(sub)}</div>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('[CE hydrate] error:', err);
+  }
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -592,6 +788,7 @@ async function runContentAnalysis() {
     }).catch(e => console.error('[WF04] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Content analysis queued — runs in background.');
+    setTimeout(() => hydrateContentEngineView(), 1500);
     setTimeout(() => { if (btn) { btn.textContent = 'Run Analysis'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -1541,6 +1738,10 @@ function switchView(viewId) {
 
   if (viewId === 'brandvoice-optimizer') {
     setTimeout(() => hydrateBrandVoiceView(), 80);
+  }
+
+  if (viewId === 'content-engine') {
+    setTimeout(() => hydrateContentEngineView(), 80);
   }
 }
 
@@ -4489,14 +4690,14 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">Enterprise SaaS · 142 pieces analyzed</span>
+            <span class="agent-tag" id="ce-brand-tag">— · 0 pieces analyzed</span>
           </div>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
           <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last sync: Today, 09:40 AM</span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Sources: LinkedIn, Substack, Medium, YouTube, X/Twitter</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="ce-last-sync">Last sync: —</span></span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="ce-sources-line">Sources: —</span></span>
           </div>
           <div style="display:flex; gap:8px;">
             <button id="wf03-sync-btn" onclick="syncResearchSources()" style="padding:8px 14px; background:white; color:#0369A1; border:1px solid #BAE6FD; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Sources</button>
@@ -4505,10 +4706,10 @@ function generateViewHTML(view) {
         </div>
 
         <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val">142</div><div class="agent-stat-lbl">Top Pieces Analyzed (30d)</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">7</div><div class="agent-stat-lbl">Formats Identified</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">+4.2x</div><div class="agent-stat-lbl">Avg Engagement vs Baseline</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Content Gaps Surfaced</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ce-stat-pieces">—</div><div class="agent-stat-lbl">Top Pieces Analyzed (30d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ce-stat-formats">—</div><div class="agent-stat-lbl">Formats Identified</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981" id="ce-stat-vs-baseline">—</div><div class="agent-stat-lbl">Avg Engagement vs Baseline</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ce-stat-gaps">—</div><div class="agent-stat-lbl">Content Gaps Surfaced</div></div>
         </div>
 
         <!-- Top formats by engagement -->
@@ -4525,15 +4726,11 @@ function generateViewHTML(view) {
 
         <!-- Top pieces table -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="flame"></i> Top-Performing Pieces — Enterprise SaaS (last 30 days)</h3>
+          <h3 class="card-title"><i data-lucide="flame"></i> Top-Performing Pieces (last 30 days)</h3>
           <table class="lm-table" style="margin-top:14px;">
             <thead><tr><th>Piece</th><th>Author / Brand</th><th>Format</th><th>Engagement</th><th>Why it worked</th></tr></thead>
-            <tbody>
-              <tr><td><strong>"We killed 40% of our features — here's what happened"</strong></td><td>Linear · Karri Saarinen</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="color:#10B981">18.4K</strong></td><td style="font-size:12px; color:var(--text-muted)">Contrarian hook · specific number · founder POV</td></tr>
-              <tr><td><strong>"Stop building dashboards nobody looks at"</strong></td><td>Amplitude Blog</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">12.1K</strong></td><td style="font-size:12px; color:var(--text-muted)">Imperative headline · real anti-pattern · actionable</td></tr>
-              <tr><td><strong>"The 5-minute daily standup we replaced with one Slack thread"</strong></td><td>Notion Team</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="color:#10B981">9.8K</strong></td><td style="font-size:12px; color:var(--text-muted)">Specific process · time-to-value in headline</td></tr>
-              <tr><td><strong>"How we debugged a 2ms latency spike — full post-mortem"</strong></td><td>Vercel Engineering</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td><strong style="color:#10B981">7.2K</strong></td><td style="font-size:12px; color:var(--text-muted)">Technical depth · post-mortem format · visual</td></tr>
-              <tr><td><strong>"3 onboarding emails that tripled our activation rate"</strong></td><td>Intercom Blog</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="color:#10B981">6.5K</strong></td><td style="font-size:12px; color:var(--text-muted)">List format · measurable outcome · vertical-specific</td></tr>
+            <tbody id="ce-top-pieces-tbody">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
             </tbody>
           </table>
         </div>
@@ -4541,10 +4738,8 @@ function generateViewHTML(view) {
         <!-- Content gaps -->
         <div class="card" style="margin-top:24px;">
           <h3 class="card-title"><i data-lucide="zap"></i> Content Gaps — Themes your audience engages with but you haven't covered</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Engineering post-mortems</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">18 top pieces in the last 30d. You've published 0. High affinity with your VP Engineering persona.</p></div>
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Hiring & team-scaling</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">14 top pieces. 2x avg engagement. Natural fit for your "Craft" value.</p></div>
-            <div style="padding:12px; border-left:3px solid #F97316; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">Cost-to-debug narratives</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">11 top pieces. Direct overlap with your product outcome ("Ship faster. Debug less.").</p></div>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;" id="ce-gaps-container">
+            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
 
@@ -4577,13 +4772,8 @@ function generateViewHTML(view) {
         <!-- Sources -->
         <div class="card" style="margin-top:24px;">
           <h3 class="card-title"><i data-lucide="database"></i> Research Sources Monitored</h3>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:14px;">
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">LinkedIn — B2B SaaS</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">312 accounts tracked · refreshed daily</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Substack — Engineering</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">48 newsletters · weekly sync</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">YouTube — Tech channels</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">26 channels · weekly sync</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Hacker News</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Front page + /show · daily</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">X / Twitter — Eng leaders</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">184 profiles · real-time</div></div>
-            <div style="padding:10px 12px; border:1px solid var(--border); border-radius:6px;"><div style="font-size:12px; font-weight:700;">Dev.to · Medium</div><div style="font-size:11px; color:var(--text-muted); margin-top:2px;">Top 500 eng tags · weekly</div></div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:14px;" id="ce-sources-container">
+            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
       </div>
