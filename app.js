@@ -6226,3 +6226,467 @@ function processCommand(text) {
   // ─── HELP / FALLBACK ───
   addBotMessage(`I can help with these commands:\n\n• <strong>"Draft an email for [Name]"</strong> — writes & fills email\n• <strong>"Draft a LinkedIn message for [Name]"</strong> — writes & fills LI msg\n• <strong>"Draft a message for [Name]"</strong> — writes both\n• <strong>"Edit the email subject to [text]"</strong>\n• <strong>"Make the email shorter"</strong>\n• <strong>"Show profile for [Name]"</strong>\n\nTry it now! 🚀`);
 }
+
+
+// ══════════════════════════════════════════════════════════
+//  AI COMMAND SEARCH BAR + ⌘K PALETTE
+// ══════════════════════════════════════════════════════════
+
+const cmdInput = document.querySelector('.cmd-input');
+const cmdBarEl = document.querySelector('.cmd-bar');
+
+// ⌘K / Ctrl+K — focus search bar
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    cmdInput.focus();
+    cmdInput.select();
+    showCmdResults('');
+  }
+  if (e.key === 'Escape') {
+    hideCmdResults();
+    closeAllPanels();
+  }
+});
+
+cmdInput.addEventListener('focus', () => showCmdResults(cmdInput.value));
+cmdInput.addEventListener('input', () => showCmdResults(cmdInput.value));
+cmdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const q = cmdInput.value.trim();
+    if (q) { executeCmdQuery(q); }
+  }
+});
+
+document.addEventListener('click', (e) => {
+  const panel = document.getElementById('cmd-results-panel');
+  if (panel && !cmdBarEl.contains(e.target) && !panel.contains(e.target)) {
+    hideCmdResults();
+  }
+});
+
+function showCmdResults(query) {
+  let panel = document.getElementById('cmd-results-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'cmd-results-panel';
+    panel.style.cssText = 'position:fixed;z-index:9999;display:none;';
+    document.body.appendChild(panel);
+  }
+  const rect = cmdBarEl.getBoundingClientRect();
+  panel.style.top = `${rect.bottom + 6}px`;
+  panel.style.left = `${rect.left}px`;
+  panel.style.width = `${rect.width}px`;
+  panel.style.display = 'block';
+
+  const q = query.toLowerCase().trim();
+  panel.innerHTML = q ? renderCmdResponse(q, query) : renderCmdSuggestions();
+  lucide.createIcons({ nodes: [panel] });
+}
+
+function hideCmdResults() {
+  const panel = document.getElementById('cmd-results-panel');
+  if (panel) panel.style.display = 'none';
+}
+
+function renderCmdSuggestions() {
+  const suggestions = [
+    { icon: 'flame',         label: 'Which leads should I contact today?', color: '#EF4444' },
+    { icon: 'trophy',        label: 'Show me top ICP prospects',           color: '#F59E0B' },
+    { icon: 'mail-question', label: "Who hasn't been contacted yet?",      color: '#3B82F6' },
+    { icon: 'bar-chart-2',   label: 'Pipeline summary',                    color: '#8B5CF6' },
+    { icon: 'message-square-plus', label: 'Draft an email for [Name]',     color: '#10B981' },
+  ];
+  return `<div class="cmd-results-panel">
+    <div class="cmd-results-header">Suggested queries</div>
+    ${suggestions.map(s => `
+      <div class="cmd-result-item" onclick="executeCmdQuery(${JSON.stringify(s.label)})">
+        <div class="cmd-result-icon" style="background:${s.color}22;color:${s.color}">
+          <i data-lucide="${s.icon}" style="width:13px;height:13px"></i>
+        </div>
+        <span>${s.label}</span>
+      </div>`).join('')}
+    <div class="cmd-results-hint">Press <kbd style="background:#F1F1F5;border:1px solid #E4E4EB;padding:1px 5px;border-radius:4px;font-size:10px">Enter</kbd> to search &nbsp;·&nbsp; <kbd style="background:#F1F1F5;border:1px solid #E4E4EB;padding:1px 5px;border-radius:4px;font-size:10px">Esc</kbd> to close</div>
+  </div>`;
+}
+
+function renderCmdResponse(q, originalQuery) {
+  const statusColors = { hot:'#EF4444', active:'#F59E0B', 'in-sequence':'#3B82F6', dormant:'#94A3B8' };
+
+  // ── Navigation shortcuts ──
+  const navMap = [
+    ['leadminer','lead','leads'],
+    ['icp-scorer','icp','scorer'],
+    ['message-tailor','message tailor','message'],
+    ['outreach-flow','outreach'],
+    ['smart-nurture','nurture'],
+    ['analytics','analytics','metrics'],
+    ['company-bio','company bio','bio scanner'],
+    ['branding-kit','branding','brand kit'],
+    ['brandvoice-optimizer','brandvoice','brand voice'],
+    ['content-engine','content engine'],
+    ['hook-miner','hook miner','hooks'],
+    ['content-builder','content builder','builder'],
+    ['creative-brain','creative brain','creative'],
+    ['auto-publisher','auto publisher','publisher'],
+    ['dashboard','dashboard','home'],
+  ];
+  for (const [view, ...keys] of navMap) {
+    if (keys.some(k => q.includes(`go to ${k}`) || q.includes(`open ${k}`) || q.includes(`show ${k}`) || q.includes(`navigate to ${k}`))) {
+      const label = view.replace(/-/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+      return `<div class="cmd-results-panel">
+        <div class="cmd-result-item" onclick="switchView('${view}');hideCmdResults();cmdInput.value='';">
+          <div class="cmd-result-icon" style="background:#8E54E922;color:#8E54E9"><i data-lucide="navigation" style="width:13px;height:13px"></i></div>
+          <div><div style="font-size:13px;font-weight:600">Navigate to ${label}</div></div>
+        </div>
+      </div>`;
+    }
+  }
+
+  // ── Today's contacts ──
+  if (q.includes('contact today') || q.includes('should i contact') || q.includes('who to contact') || q.includes('contact now')) {
+    const leads = leadsData.filter(l => l.status === 'hot').slice(0, 3);
+    return renderCmdLeadList(leads, 'Contact Today', 'Highest priority — active engagement signals', statusColors);
+  }
+
+  // ── Top ICP ──
+  if (q.includes('top icp') || q.includes('top prospect') || q.includes('best lead') || q.includes('highest icp') || q.includes('best prospect')) {
+    const leads = [...leadsData].sort((a,b) => b.icpScore - a.icpScore).slice(0, 3);
+    return renderCmdLeadList(leads, 'Top ICP Prospects', 'Sorted by ICP match score', statusColors);
+  }
+
+  // ── Not contacted ──
+  if (q.includes('not contact') || q.includes("hasn't been") || q.includes('no contact') || q.includes('uncontacted') || q.includes('zero touch')) {
+    const leads = leadsData.filter(l => !l.mailSent && !l.liSent).slice(0, 4);
+    if (!leads.length) return renderCmdInfo('All leads contacted ✅', 'Every lead has at least one touchpoint.');
+    return renderCmdLeadList(leads, 'Not Yet Contacted', 'Zero touchpoints — start outreach', statusColors);
+  }
+
+  // ── Pipeline summary ──
+  if (q.includes('pipeline') || q.includes('summary') || q.includes('overview') || q.includes('stats') || q.includes('how many')) {
+    return renderCmdPipelineSummary();
+  }
+
+  // ── Highest closing prob ──
+  if (q.includes('closing') || q.includes('close') || q.includes('probability') || q.includes('convert') || q.includes('win')) {
+    const leads = [...leadsData].sort((a,b) => b.closingProb - a.closingProb).slice(0, 3);
+    return renderCmdLeadList(leads, 'Highest Closing Probability', 'Most likely to convert this month', statusColors);
+  }
+
+  // ── Dormant ──
+  if (q.includes('dormant') || q.includes('inactive') || q.includes('cold lead') || q.includes('stale')) {
+    const leads = leadsData.filter(l => l.status === 'dormant');
+    return renderCmdLeadList(leads, 'Dormant Leads', 'No recent activity — need re-engagement', statusColors);
+  }
+
+  // ── Draft / email — forward to chatbot ──
+  if (q.includes('draft') || q.includes('write email') || q.includes('write message') || q.includes('linkedin message')) {
+    return renderCmdChatForward(originalQuery);
+  }
+
+  // ── Lead name / org search ──
+  const matched = leadsData.filter(l =>
+    l.name.toLowerCase().includes(q) || l.org.toLowerCase().includes(q) || l.title.toLowerCase().includes(q)
+  ).slice(0, 3);
+  if (matched.length) return renderCmdLeadList(matched, `Results for "${originalQuery}"`, 'Matching leads from your pipeline', statusColors);
+
+  return renderCmdChatForward(originalQuery);
+}
+
+function renderCmdLeadList(leads, title, subtitle, statusColors) {
+  return `<div class="cmd-results-panel">
+    <div class="cmd-results-header">${title} <span style="font-weight:400;opacity:.7;font-size:10px">${subtitle}</span></div>
+    ${leads.map(l => {
+      const idx = leadsData.indexOf(l);
+      const initials = l.name.split(' ').map(n=>n[0]).join('').slice(0,2);
+      return `<div class="cmd-result-item cmd-result-lead" onclick="openLeadFromCmd(${idx})">
+        <div class="cmd-result-avatar">${initials}</div>
+        <div class="cmd-result-lead-info">
+          <div class="cmd-result-lead-name">${l.name} <span style="color:var(--text-muted);font-weight:400">· ${l.org}</span></div>
+          <div class="cmd-result-lead-sub">${l.title.split('·')[0].trim()} · ICP ${l.icpScore} · Close ${l.closingProb}%</div>
+        </div>
+        <span class="cmd-result-status" style="background:${(statusColors[l.status]||'#94A3B8')}22;color:${statusColors[l.status]||'#94A3B8'}">${l.status}</span>
+      </div>`;
+    }).join('')}
+    <div class="cmd-results-action" onclick="switchView('leadminer');hideCmdResults();cmdInput.value='';">
+      <i data-lucide="arrow-right" style="width:12px;height:12px"></i> View all in LeadMiner™
+    </div>
+  </div>`;
+}
+
+function renderCmdPipelineSummary() {
+  const hot    = leadsData.filter(l => l.status === 'hot').length;
+  const active = leadsData.filter(l => l.status === 'active').length;
+  const inSeq  = leadsData.filter(l => l.status === 'in-sequence').length;
+  const avgICP   = Math.round(leadsData.reduce((a,l) => a + l.icpScore, 0) / leadsData.length);
+  const avgClose = Math.round(leadsData.reduce((a,l) => a + l.closingProb, 0) / leadsData.length);
+  return `<div class="cmd-results-panel">
+    <div class="cmd-results-header">Pipeline Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px">
+      <div class="cmd-stat-box" style="border-color:#EF444433;background:#EF44440A">
+        <div class="cmd-stat-val" style="color:#EF4444">${hot}</div><div class="cmd-stat-lbl">Hot</div>
+      </div>
+      <div class="cmd-stat-box" style="border-color:#F59E0B33;background:#F59E0B0A">
+        <div class="cmd-stat-val" style="color:#F59E0B">${active}</div><div class="cmd-stat-lbl">Active</div>
+      </div>
+      <div class="cmd-stat-box" style="border-color:#3B82F633;background:#3B82F60A">
+        <div class="cmd-stat-val" style="color:#3B82F6">${inSeq}</div><div class="cmd-stat-lbl">In Sequence</div>
+      </div>
+    </div>
+    <div style="padding:0 12px 12px;display:flex;gap:16px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text-muted)">Avg ICP: <strong style="color:var(--text-main)">${avgICP}</strong></span>
+      <span style="font-size:12px;color:var(--text-muted)">Avg Close: <strong style="color:var(--text-main)">${avgClose}%</strong></span>
+      <span style="font-size:12px;color:var(--text-muted)">Total: <strong style="color:var(--text-main)">${leadsData.length} leads</strong></span>
+    </div>
+    <div class="cmd-results-action" onclick="switchView('dashboard');hideCmdResults();cmdInput.value='';">
+      <i data-lucide="arrow-right" style="width:12px;height:12px"></i> Open Dashboard
+    </div>
+  </div>`;
+}
+
+function renderCmdInfo(title, subtitle) {
+  return `<div class="cmd-results-panel">
+    <div style="padding:16px;text-align:center">
+      <div style="font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:4px">${title}</div>
+      <div style="font-size:12px;color:var(--text-muted)">${subtitle}</div>
+    </div>
+  </div>`;
+}
+
+function renderCmdChatForward(query) {
+  return `<div class="cmd-results-panel">
+    <div class="cmd-result-item" onclick="openChatWithQuery(${JSON.stringify(query)});hideCmdResults();cmdInput.value='';">
+      <div class="cmd-result-icon" style="background:#8E54E922;color:#8E54E9"><i data-lucide="bot" style="width:13px;height:13px"></i></div>
+      <div>
+        <div style="font-size:13px;font-weight:600">Ask GrowthAI Assistant</div>
+        <div style="font-size:11px;color:var(--text-muted)">"${query}"</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function executeCmdQuery(query) {
+  cmdInput.value = query;
+  showCmdResults(query);
+}
+
+function openLeadFromCmd(idx) {
+  hideCmdResults();
+  cmdInput.value = '';
+  if (state.currentView !== 'leadminer') {
+    switchView('leadminer');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    const nav = document.querySelector('[data-view="leadminer"]');
+    if (nav) nav.classList.add('active');
+    setTimeout(() => openLeadPanel(idx), 120);
+  } else {
+    openLeadPanel(idx);
+  }
+}
+
+function openChatWithQuery(query) {
+  if (!chatbotOpen) toggleChatbot();
+  const input = document.getElementById('chatbot-input');
+  if (input) {
+    input.value = query;
+    setTimeout(handleChatSend, 150);
+  }
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  NOTIFICATION BELL
+// ══════════════════════════════════════════════════════════
+
+const notifData = [
+  { icon: 'flame',       color: '#EF4444', title: 'John Mitchell is hot!',       desc: 'Requested pricing for 500-seat deployment — meeting booked Apr 22', time: '2m ago',  view: 'leadminer'    },
+  { icon: 'trending-up', color: '#F59E0B', title: 'ICP Score updated',           desc: "Sarah Chen's score jumped to 92 — now your #2 ranked prospect",     time: '18m ago', view: 'icp-scorer'   },
+  { icon: 'mail',        color: '#3B82F6', title: 'Sequence completed',          desc: 'Michael Rodriguez replied to your outreach sequence',                time: '1h ago',  view: 'outreach-flow' },
+];
+
+let notifPanelOpen = false;
+
+document.getElementById('notif-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeAllPanels('notif');
+  notifPanelOpen = !notifPanelOpen;
+  if (notifPanelOpen) openNotifPanel();
+});
+
+function openNotifPanel() {
+  let panel = document.getElementById('notif-panel');
+  if (!panel) { panel = buildNotifPanel(); document.body.appendChild(panel); }
+
+  const btn = document.getElementById('notif-btn');
+  const rect = btn.getBoundingClientRect();
+  panel.style.top   = `${rect.bottom + 8}px`;
+  panel.style.right = `${window.innerWidth - rect.right}px`;
+  panel.style.display = 'block';
+
+  // Clear badge
+  const badge = document.getElementById('notif-badge');
+  if (badge) badge.style.display = 'none';
+
+  lucide.createIcons({ nodes: [panel] });
+}
+
+function buildNotifPanel() {
+  const panel = document.createElement('div');
+  panel.id = 'notif-panel';
+  panel.className = 'notif-panel';
+  panel.style.display = 'none';
+  panel.innerHTML = `
+    <div class="notif-panel-header">
+      <span>Notifications</span>
+      <button class="notif-mark-read" onclick="closeAllPanels()">Mark all read</button>
+    </div>
+    ${notifData.map(n => `
+      <div class="notif-item" onclick="handleNotifClick('${n.view}')">
+        <div class="notif-icon" style="background:${n.color}22;color:${n.color}">
+          <i data-lucide="${n.icon}" style="width:14px;height:14px"></i>
+        </div>
+        <div class="notif-content">
+          <div class="notif-title">${n.title}</div>
+          <div class="notif-desc">${n.desc}</div>
+          <div class="notif-time">${n.time}</div>
+        </div>
+        <div class="notif-dot"></div>
+      </div>`).join('')}
+    <div class="notif-footer" onclick="closeAllPanels()">All caught up — mark as read</div>
+  `;
+  return panel;
+}
+
+function handleNotifClick(view) {
+  closeAllPanels();
+  switchView(view);
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const nav = document.querySelector(`[data-view="${view}"]`);
+  if (nav) nav.classList.add('active');
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  USER PROFILE DROPDOWN
+// ══════════════════════════════════════════════════════════
+
+let userMenuOpen = false;
+
+document.getElementById('user-profile-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeAllPanels('user');
+  userMenuOpen = !userMenuOpen;
+  if (userMenuOpen) openUserMenu();
+});
+
+function openUserMenu() {
+  let panel = document.getElementById('user-menu-panel');
+  if (!panel) { panel = buildUserMenu(); document.body.appendChild(panel); }
+
+  const btn = document.getElementById('user-profile-btn');
+  const rect = btn.getBoundingClientRect();
+  panel.style.top   = `${rect.bottom + 8}px`;
+  panel.style.right = `${window.innerWidth - rect.right}px`;
+  panel.style.display = 'block';
+  lucide.createIcons({ nodes: [panel] });
+}
+
+function buildUserMenu() {
+  const panel = document.createElement('div');
+  panel.id = 'user-menu-panel';
+  panel.className = 'user-menu-panel';
+  panel.style.display = 'none';
+  panel.innerHTML = `
+    <div class="user-menu-header">
+      <div class="user-menu-name">Valeria Arzenton</div>
+      <div class="user-menu-email">Commercial Director · SWL Consulting</div>
+    </div>
+    <div class="user-menu-item" onclick="switchView('analytics');closeAllPanels();">
+      <i data-lucide="bar-chart-2"></i> My Analytics
+    </div>
+    <div class="user-menu-item" onclick="showToast('Settings panel coming soon.');closeAllPanels();">
+      <i data-lucide="settings"></i> Settings
+    </div>
+    <div class="user-menu-item" onclick="openChatWithQuery('Show me a quick summary of my pipeline');closeAllPanels();">
+      <i data-lucide="bot"></i> Ask AI Assistant
+    </div>
+    <div class="user-menu-item danger" onclick="showToast('Signed out (demo mode — no auth needed).');closeAllPanels();">
+      <i data-lucide="log-out"></i> Sign out
+    </div>
+  `;
+  return panel;
+}
+
+
+// ══════════════════════════════════════════════════════════
+//  HELP BUTTON
+// ══════════════════════════════════════════════════════════
+
+let helpPanelOpen = false;
+
+document.getElementById('help-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeAllPanels('help');
+  helpPanelOpen = !helpPanelOpen;
+  if (helpPanelOpen) openHelpPanel();
+});
+
+function openHelpPanel() {
+  let panel = document.getElementById('help-panel');
+  if (!panel) { panel = buildHelpPanel(); document.body.appendChild(panel); }
+
+  const btn = document.getElementById('help-btn');
+  const rect = btn.getBoundingClientRect();
+  panel.style.top   = `${rect.bottom + 8}px`;
+  panel.style.right = `${window.innerWidth - rect.right}px`;
+  panel.style.display = 'block';
+  lucide.createIcons({ nodes: [panel] });
+}
+
+function buildHelpPanel() {
+  const helps = [
+    { icon: 'search',         label: 'AI Command Search',    sub: 'Press ⌘K or click the top bar — ask anything in natural language' },
+    { icon: 'bot',            label: 'AI Assistant',         sub: 'Click the chat bubble (bottom-right) to draft emails and messages' },
+    { icon: 'user-check',     label: 'Lead Profiles',        sub: 'Click any lead row to open the full profile and outreach panel' },
+    { icon: 'globe',          label: 'Company Bio Scanner',  sub: 'Enter any domain to scan company info, leads, and signals' },
+    { icon: 'megaphone',      label: 'Marketing Pilot',      sub: 'Generate brand-voice content, hooks, visuals, and schedule posts' },
+  ];
+  const panel = document.createElement('div');
+  panel.id = 'help-panel';
+  panel.className = 'help-panel';
+  panel.style.display = 'none';
+  panel.innerHTML = `
+    <div class="help-panel-header">Quick Help</div>
+    ${helps.map(h => `
+      <div class="help-item">
+        <i data-lucide="${h.icon}"></i>
+        <div>
+          <div class="help-item-label">${h.label}</div>
+          <div class="help-item-sub">${h.sub}</div>
+        </div>
+      </div>`).join('')}
+  `;
+  return panel;
+}
+
+
+// ── Close all dropdown panels when clicking outside ──
+document.addEventListener('click', () => closeAllPanels());
+
+function closeAllPanels(except) {
+  if (except !== 'notif') {
+    notifPanelOpen = false;
+    const p = document.getElementById('notif-panel');
+    if (p) p.style.display = 'none';
+  }
+  if (except !== 'user') {
+    userMenuOpen = false;
+    const p = document.getElementById('user-menu-panel');
+    if (p) p.style.display = 'none';
+  }
+  if (except !== 'help') {
+    helpPanelOpen = false;
+    const p = document.getElementById('help-panel');
+    if (p) p.style.display = 'none';
+  }
+}
