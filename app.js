@@ -235,7 +235,7 @@ function updatePaletteColor(idx, hex) {
 
 
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
-const BRAND_ID = '00000000-0000-0000-0000-000000000002';
+const BRAND_ID = '20000000-0000-0000-0000-000000000002';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
 
 async function saveBrandProfile() {
@@ -285,10 +285,10 @@ async function runBrandVoiceOptimizer() {
   const btn = document.getElementById('wf02-run-btn');
   if (btn) { btn.textContent = 'Running…'; btn.disabled = true; }
   try {
-    // WF01 creates the brandvoice_rebuild job then calls WF02 internally
+    // WF01 queues the brandvoice_rebuild job in Supabase then calls WF02 directly
     const res = await fetch(WF01_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, profile_payload: {}, changed_fields: [] }),
+      body: JSON.stringify({ brand_id: BRAND_ID, profile_payload: {}, changed_fields: ['brandvoice_rebuild'] }),
     });
     const data = await res.json();
     if (btn) { btn.textContent = '✅ Optimized'; }
@@ -296,7 +296,7 @@ async function runBrandVoiceOptimizer() {
     setTimeout(() => { if (btn) { btn.textContent = 'Run Optimizer'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
-    console.error('[WF01→WF02] error:', e);
+    console.error('[WF01->WF02] error:', e);
   }
 }
 
@@ -307,13 +307,13 @@ async function syncResearchSources() {
   const btn = document.getElementById('wf03-sync-btn');
   if (btn) { btn.textContent = 'Syncing…'; btn.disabled = true; }
   try {
-    const res = await fetch(WF03_URL, {
+    // fire-and-forget — WF03 processes all sources in batches, no respondToWebhook
+    fetch(WF03_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
-    });
-    const data = await res.json();
+    }).catch(e => console.error('[WF03] webhook error:', e));
     if (btn) { btn.textContent = '✅ Synced'; }
-    showToast('Research sources sync triggered.');
+    showToast('Research sync triggered — runs in background.');
     setTimeout(() => { if (btn) { btn.textContent = '↻ Sync Sources'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -401,7 +401,7 @@ async function refreshContentQueue() {
   const tbody = document.getElementById('content-queue-tbody');
   if (!tbody) return;
   try {
-    const rows = await fetchContentDrafts(WF06_BRAND_ID);
+    const rows = await fetchContentDrafts(BRAND_ID);
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No drafts yet — click "Build Draft" to generate one.</td></tr>';
       return;
@@ -473,14 +473,13 @@ async function runHookMiner() {
 
 // ── WF06 Brief Generator (ContentBuilder) ──────────────
 const WF06_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator';
-const WF06_BRAND_ID = '20000000-0000-0000-0000-000000000002';
 
 async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineering') {
   try {
     const res = await fetch(WF06_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: WF06_BRAND_ID, channel, persona })
+      body: JSON.stringify({ brand_id: BRAND_ID, channel, persona })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -550,7 +549,7 @@ async function handleRegenerate() {
 
 // ── WF07 Content Builder + QA ──────────────────────────
 const WF07_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder';
-// Reuses WF06_BRAND_ID
+// Reuses BRAND_ID
 
 // Tracks the most recent draft built by WF07 so the Approve/Discard buttons
 // know which entity_id to send to WF08.
@@ -561,7 +560,7 @@ async function generateDraft() {
     const res = await fetch(WF07_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: WF06_BRAND_ID })
+      body: JSON.stringify({ brand_id: BRAND_ID })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -658,7 +657,7 @@ async function sendApprovalDecision(decision, notes = '') {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        brand_id: WF06_BRAND_ID,
+        brand_id: BRAND_ID,
         entity_type: 'content_draft',
         entity_id: lastBuiltDraftId,
         decision,
@@ -719,7 +718,7 @@ async function generateVisualBrief(draftId) {
     const res = await fetch(WF09_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: WF06_BRAND_ID, draft_id: draftId })
+      body: JSON.stringify({ brand_id: BRAND_ID, draft_id: draftId })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -813,7 +812,7 @@ async function simulatePublish(draftId) {
     const res = await fetch(WF10_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: WF06_BRAND_ID, draft_id: draftId })
+      body: JSON.stringify({ brand_id: BRAND_ID, draft_id: draftId })
     });
     return { httpOk: res.ok, body: await res.json() };
   } catch (err) {
@@ -4555,7 +4554,6 @@ If you're a VP of Engineering drowning in Looker tabs, start with a 30-day audit
 
 Ship faster. Debug less.</p>
             <div style="display:flex; gap:10px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); align-items:center; flex-wrap:wrap;">
-              <button class="btn-sm btn-primary" id="btn-approve-queue" onclick="handleApproveQueue()"><i data-lucide="send" style="width:12px"></i> Approve & queue</button>
               <select id="cb-channel" style="font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:6px;">
                 <option value="LinkedIn">LinkedIn</option>
                 <option value="Blog">Blog</option>
@@ -4567,8 +4565,9 @@ Ship faster. Debug less.</p>
               </select>
               <button class="btn-sm btn-ai" id="btn-regenerate" onclick="handleRegenerate()"><i data-lucide="refresh-cw" style="width:12px"></i> Regenerate</button>
               <button class="btn-sm btn-ai" id="btn-build-draft" onclick="handleBuildDraft()" style="background:#7C3AED;color:white;border:none;"><i data-lucide="wand-2" style="width:12px"></i> Build Draft</button>
-              <button class="btn-sm btn-ai" id="btn-generate-visual" onclick="handleGenerateVisual()" style="background:#0EA5E9;color:white;border:none;"><i data-lucide="image" style="width:12px"></i> Generate Visual</button>
+              <button class="btn-sm btn-primary" id="btn-approve-queue" onclick="handleApproveQueue()"><i data-lucide="check" style="width:12px"></i> Approve & queue</button>
               <button class="btn-sm btn-ai" id="btn-publish" onclick="handlePublish()" style="background:#059669;color:white;border:none;"><i data-lucide="send" style="width:12px"></i> Publish</button>
+              <button class="btn-sm btn-ai" id="btn-generate-visual" onclick="handleGenerateVisual()" style="background:#0EA5E9;color:white;border:none;"><i data-lucide="image" style="width:12px"></i> Generate Visual</button>
               <button class="btn-sm" style="border:1px solid var(--border);"><i data-lucide="edit-3" style="width:12px"></i> Edit</button>
               <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
             </div>
@@ -4669,9 +4668,12 @@ Ship faster. Debug less.</p>
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+          </div>
+          <button onclick="switchView('content-builder')" style="padding:8px 16px; background:#A855F7; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate New Visual</button>
         </div>
 
         <div class="agent-stats">
@@ -4811,9 +4813,12 @@ Ship faster. Debug less.</p>
           </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:12px; gap:12px;">
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last publish: Today, 09:15 AM</span>
-          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Source: ContentBuilder approved queue</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
+          <div style="display:flex; gap:12px;">
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last publish: Today, 09:15 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Source: ContentBuilder approved queue</span>
+          </div>
+          <button onclick="switchView('content-builder')" style="padding:8px 16px; background:#0EA5E9; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="send" style="width:13px;vertical-align:middle;margin-right:6px"></i>Publish Next Draft</button>
         </div>
 
         <div class="agent-stats">
