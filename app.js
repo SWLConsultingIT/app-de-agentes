@@ -1324,6 +1324,67 @@ async function hydrateCreativeBrainView() {
   }
 }
 
+async function handleGenerateVisualFromCB() {
+  const btn = document.getElementById('cb-generate-visual-btn');
+  if (!btn) return;
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:13px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px"></i> Picking latest draft…';
+  lucide.createIcons();
+
+  try {
+    // Find the most recent draft for this brand
+    const params = new URLSearchParams({
+      brand_id: `eq.${BRAND_ID}`,
+      order: 'created_at.desc',
+      limit: '1',
+      select: 'id,title,status'
+    });
+    const drafts = await supabaseGet(`content_drafts?${params}`);
+
+    if (!drafts.length) {
+      btn.innerHTML = '<i data-lucide="alert-circle" style="width:13px;vertical-align:middle;margin-right:6px"></i> No drafts yet';
+      btn.style.background = '#EF4444';
+      showToast('No drafts available. Build a draft in ContentBuilder first.', 'error');
+      setTimeout(() => { btn.innerHTML = original; btn.style.background = '#A855F7'; btn.disabled = false; lucide.createIcons(); }, 3500);
+      return;
+    }
+
+    const draft = drafts[0];
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:13px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px"></i> Rendering image…';
+    lucide.createIcons();
+
+    let result = await generateVisualBrief(draft.id);
+    if (Array.isArray(result)) result = result[0];
+    if (result && result.json) result = result.json;
+
+    if (result && result.ok && result.asset_id) {
+      btn.innerHTML = `<i data-lucide="check" style="width:13px;vertical-align:middle;margin-right:6px"></i> Asset ${result.asset_id.slice(0, 8)} ready`;
+      btn.style.background = '#10B981';
+      showToast(`Visual generated for draft "${(draft.title || '').slice(0, 40)}…".`);
+      // Refresh gallery to show the new asset
+      hydrateCreativeBrainView();
+    } else {
+      btn.innerHTML = '<i data-lucide="alert-circle" style="width:13px;vertical-align:middle;margin-right:6px"></i> Error — retry';
+      btn.style.background = '#EF4444';
+      showToast('Visual generation failed. See console.', 'error');
+      console.warn('[CB Generate Visual] response:', result);
+    }
+  } catch (err) {
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:13px;vertical-align:middle;margin-right:6px"></i> Error';
+    btn.style.background = '#EF4444';
+    showToast('Visual generation error. See console.', 'error');
+    console.error('[CB Generate Visual] error:', err);
+  }
+
+  setTimeout(() => {
+    btn.innerHTML = original;
+    btn.style.background = '#A855F7';
+    btn.disabled = false;
+    lucide.createIcons();
+  }, 4500);
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -5596,7 +5657,7 @@ Ship faster. Debug less.</p>
             <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-last-batch">Last batch: —</span></span>
             <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-brand-guide">Brand guide: —</span></span>
           </div>
-          <button onclick="switchView('content-builder')" style="padding:8px 16px; background:#A855F7; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate New Visual</button>
+          <button id="cb-generate-visual-btn" onclick="handleGenerateVisualFromCB()" style="padding:8px 16px; background:#A855F7; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate New Visual</button>
         </div>
 
         <div class="agent-stats">
