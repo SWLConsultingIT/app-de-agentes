@@ -1324,6 +1324,210 @@ async function hydrateCreativeBrainView() {
   }
 }
 
+// ── AutoPublisher hydration ────────────────────────────
+async function fetchPublishingDrafts(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'scheduled_at.desc.nullslast',
+    limit: '50',
+    select: 'id,title,channel,status,scheduled_at,published_at,reach,engagement_pct,qa_json'
+  });
+  return supabaseGet(`content_drafts?${params}`);
+}
+
+const CHANNEL_TAG_STYLE = {
+  LinkedIn:  { bg: '#EFF6FF', fg: '#1D4ED8', dot: '#0A66C2' },
+  Email:     { bg: '#FEF3C7', fg: '#B45309', dot: '#F59E0B' },
+  Blog:      { bg: '#F3F4F6', fg: '#374151', dot: '#374151' },
+  Instagram: { bg: '#FCE7F3', fg: '#9D174D', dot: '#E4405F' },
+  WhatsApp:  { bg: '#D1FAE5', fg: '#065F46', dot: '#25D366' },
+  YouTube:   { bg: '#FEE2E2', fg: '#991B1B', dot: '#EF4444' },
+};
+function channelStyle(ch) {
+  return CHANNEL_TAG_STYLE[ch] || { bg: '#F3F4F6', fg: '#374151', dot: '#94A3B8' };
+}
+
+const STATUS_TAG_STYLE = {
+  published: { bg: '#D1FAE5', fg: '#065F46', label: 'Live' },
+  approved:  { bg: '#EEF2FF', fg: '#4338CA', label: 'Scheduled' },
+  draft:     { bg: '#FEF3C7', fg: '#B45309', label: 'Queue' },
+  qa_failed: { bg: '#FEE2E2', fg: '#991B1B', label: 'QA fail' },
+  rejected:  { bg: '#FEE2E2', fg: '#991B1B', label: 'Rejected' },
+};
+function statusTagPub(s) {
+  const t = STATUS_TAG_STYLE[s] || { bg: '#F3F4F6', fg: '#374151', label: s || '—' };
+  return `<span class="lm-tag" style="background:${t.bg};color:${t.fg}">${t.label}</span>`;
+}
+
+function fmtRelativeFuture(iso) {
+  if (!iso) return '—';
+  const diffSec = (new Date(iso).getTime() - Date.now()) / 1000;
+  if (diffSec < -86400) return `${Math.floor(-diffSec/86400)} d ago`;
+  if (diffSec < 0)      return `${Math.floor(-diffSec/3600)} h ago`;
+  if (diffSec < 60)     return 'now';
+  if (diffSec < 3600)   return `in ${Math.floor(diffSec/60)} min`;
+  if (diffSec < 86400)  return `in ${Math.floor(diffSec/3600)}h ${Math.floor((diffSec%3600)/60)}m`;
+  const days = Math.floor(diffSec/86400);
+  return days === 1 ? 'Tomorrow' : `in ${days} days`;
+}
+
+function fmtCompact(n) {
+  if (n == null || !Number.isFinite(Number(n))) return '—';
+  const x = Number(n);
+  if (x >= 1000) return (x/1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(x);
+}
+
+function fmtDayHeader(d) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  return { day: days[d.getDay()], date: String(d.getDate()) };
+}
+
+function fmtMonthName(d) {
+  return d.toLocaleString('en-US', { month: 'short' });
+}
+
+async function hydrateAutoPublisherView() {
+  try {
+    const allDrafts = await fetchPublishingDrafts(BRAND_ID);
+
+    const now = Date.now();
+    const oneWeekMs = 7 * 24 * 3600 * 1000;
+    const startOfWeek = new Date(now); // Monday-anchored week
+    const dayOfWeek = startOfWeek.getDay() || 7; // Sunday=7
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - (dayOfWeek - 1));
+    const endOfWeek = new Date(startOfWeek.getTime() + oneWeekMs);
+
+    // ─── Buckets ───
+    const published = allDrafts.filter(d => d.status === 'published' && d.published_at);
+    const upcoming  = allDrafts.filter(d => d.status === 'approved' && d.scheduled_at && new Date(d.scheduled_at).getTime() > now);
+    const publishedThisWeek = published.filter(d => {
+      const t = new Date(d.published_at).getTime();
+      return t >= startOfWeek.getTime() && t < endOfWeek.getTime();
+    });
+    const scheduledNext7d = upcoming.filter(d => new Date(d.scheduled_at).getTime() <= now + oneWeekMs);
+    const channelsActive = new Set(allDrafts.map(d => d.channel).filter(Boolean));
+
+    // ─── Header tag + sub-header ───
+    const nextItem = upcoming.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))[0];
+    const nextWhen = nextItem ? fmtRelativeFuture(nextItem.scheduled_at) : 'no items queued';
+    setText('ap-brand-tag', `${channelsActive.size} channel${channelsActive.size === 1 ? '' : 's'} · next publish ${nextWhen}`);
+
+    const lastPub = published.sort((a, b) => new Date(b.published_at) - new Date(a.published_at))[0];
+    setText('ap-last-publish', lastPub ? `Last publish: ${fmtRelativeFuture(lastPub.published_at)}` : 'Last publish: never');
+
+    // ─── Stats ───
+    const avgEng = publishedThisWeek.length
+      ? publishedThisWeek.reduce((s, d) => s + (Number(d.engagement_pct) || 0), 0) / publishedThisWeek.length
+      : 0;
+    setText('ap-stat-scheduled', scheduledNext7d.length ? String(scheduledNext7d.length) : '—');
+    setText('ap-stat-published', publishedThisWeek.length ? String(publishedThisWeek.length) : '—');
+    setText('ap-stat-engagement', avgEng > 0 ? `+${avgEng.toFixed(1)}%` : '—');
+
+    // ─── Week range header ───
+    const endLabel = new Date(endOfWeek.getTime() - 1);
+    const sameMonth = startOfWeek.getMonth() === endLabel.getMonth();
+    setText('ap-week-range',
+      sameMonth
+        ? `${fmtMonthName(startOfWeek)} ${startOfWeek.getDate()} – ${endLabel.getDate()}, ${endLabel.getFullYear()}`
+        : `${fmtMonthName(startOfWeek)} ${startOfWeek.getDate()} – ${fmtMonthName(endLabel)} ${endLabel.getDate()}, ${endLabel.getFullYear()}`);
+
+    // ─── Calendar (Mon–Sun this week) ───
+    const calendar = document.getElementById('ap-calendar');
+    if (calendar) {
+      const buckets = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(startOfWeek.getTime() + i * 86400000);
+        return { date: d, items: [] };
+      });
+      [...published, ...upcoming].forEach(d => {
+        const t = d.published_at || d.scheduled_at;
+        if (!t) return;
+        const ts = new Date(t).getTime();
+        const idx = Math.floor((ts - startOfWeek.getTime()) / 86400000);
+        if (idx >= 0 && idx < 7) {
+          buckets[idx].items.push({
+            channel: d.channel,
+            time: new Date(t).toISOString().slice(11, 16),
+            title: d.title,
+            status: d.status,
+          });
+        }
+      });
+
+      calendar.innerHTML = buckets.map(b => {
+        const head = fmtDayHeader(b.date);
+        b.items.sort((a, b) => a.time.localeCompare(b.time));
+        const itemsHTML = b.items.length
+          ? b.items.map(it => {
+              const cs = channelStyle(it.channel);
+              const ss = STATUS_TAG_STYLE[it.status] || STATUS_TAG_STYLE.draft;
+              const titleShort = (it.title || '').slice(0, 36) + ((it.title || '').length > 36 ? '…' : '');
+              return `<div style="padding:6px 8px; background:${ss.bg}; border-radius:4px; margin-bottom:4px; font-size:10px;">
+                <div style="display:flex; gap:4px; align-items:center; font-weight:700; color:${ss.fg};">
+                  <span style="width:6px;height:6px;border-radius:50%;background:${cs.dot};"></span>${escapeHtml(it.channel || '—')} · ${it.time}
+                </div>
+                <div style="color:${ss.fg}; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(titleShort)}</div>
+              </div>`;
+            }).join('')
+          : '<div style="font-size:10px; color:var(--text-muted); text-align:center; padding:20px 0;">—</div>';
+        return `<div style="border:1px solid var(--border); border-radius:8px; padding:10px; min-height:140px; background:${b.items.length === 0 ? '#F9FAFB' : 'white'};">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+            <strong style="font-size:12px; color:var(--text-muted);">${head.day}</strong>
+            <span style="font-size:16px; font-weight:700;">${head.date}</span>
+          </div>
+          ${itemsHTML}
+        </div>`;
+      }).join('');
+    }
+
+    // ─── Next-up queue ───
+    const queueTbody = document.getElementById('ap-queue-tbody');
+    if (queueTbody) {
+      const sorted = upcoming.sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at)).slice(0, 6);
+      if (!sorted.length) {
+        queueTbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">No items scheduled. Approve a draft in ContentBuilder to queue it.</td></tr>';
+      } else {
+        queueTbody.innerHTML = sorted.map(d => {
+          const cs = channelStyle(d.channel);
+          const titleShort = (d.title || '').slice(0, 60) + ((d.title || '').length > 60 ? '…' : '');
+          return `<tr>
+            <td style="font-size:12px; color:var(--text-muted);">${fmtRelativeFuture(d.scheduled_at)}</td>
+            <td><span class="lm-tag" style="background:${cs.bg};color:${cs.fg}">${escapeHtml(d.channel || '—')}</span></td>
+            <td style="font-size:12px;"><strong>${escapeHtml(titleShort)}</strong></td>
+            <td>${statusTagPub(d.status)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // ─── Publish log ───
+    const logTbody = document.getElementById('ap-log-tbody');
+    if (logTbody) {
+      const sorted = published.sort((a, b) => new Date(b.published_at) - new Date(a.published_at)).slice(0, 6);
+      if (!sorted.length) {
+        logTbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">No publish history yet.</td></tr>';
+      } else {
+        logTbody.innerHTML = sorted.map(d => {
+          const cs = channelStyle(d.channel);
+          const titleShort = (d.title || '').slice(0, 60) + ((d.title || '').length > 60 ? '…' : '');
+          const eng = d.engagement_pct != null ? `+${Number(d.engagement_pct).toFixed(1)}%` : '—';
+          return `<tr>
+            <td style="font-size:12px;">${fmtRelativeFuture(d.published_at)}</td>
+            <td><span class="lm-tag" style="background:${cs.bg};color:${cs.fg}">${escapeHtml(d.channel || '—')}</span></td>
+            <td><strong style="font-size:13px;">${escapeHtml(titleShort)}</strong></td>
+            <td><strong>${fmtCompact(d.reach)}</strong></td>
+            <td style="color:#10B981;font-weight:600;">${eng}</td>
+            <td>${statusTagPub(d.status)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('[AP hydrate] error:', err);
+  }
+}
+
 async function handleGenerateVisualFromCB() {
   const btn = document.getElementById('cb-generate-visual-btn');
   if (!btn) return;
@@ -2364,6 +2568,10 @@ function switchView(viewId) {
 
   if (viewId === 'creative-brain') {
     setTimeout(() => hydrateCreativeBrainView(), 80);
+  }
+
+  if (viewId === 'auto-publisher') {
+    setTimeout(() => hydrateAutoPublisherView(), 80);
   }
 }
 
@@ -5776,61 +5984,34 @@ Ship faster. Debug less.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Publishing</div><br>
-            <span class="agent-tag">4 channels · next publish in 1h 22m</span>
+            <span class="agent-tag" id="ap-brand-tag">— channels · next publish —</span>
           </div>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
           <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last publish: Today, 09:15 AM</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="ap-last-publish">Last publish: —</span></span>
             <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Source: ContentBuilder approved queue</span>
           </div>
           <button onclick="switchView('content-builder')" style="padding:8px 16px; background:#0EA5E9; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="send" style="width:13px;vertical-align:middle;margin-right:6px"></i>Publish Next Draft</button>
         </div>
 
         <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val">34</div><div class="agent-stat-lbl">Scheduled (next 7d)</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Published this week</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">+23%</div><div class="agent-stat-lbl">Engagement vs manual baseline</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">98.6%</div><div class="agent-stat-lbl">Publish success rate</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ap-stat-scheduled">—</div><div class="agent-stat-lbl">Scheduled (next 7d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ap-stat-published">—</div><div class="agent-stat-lbl">Published this week</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981" id="ap-stat-engagement">—</div><div class="agent-stat-lbl">Avg engagement (published)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="ap-stat-success">98.6%</div><div class="agent-stat-lbl">Publish success rate</div></div>
         </div>
 
         <!-- Week calendar -->
         <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="calendar"></i> Publishing Calendar — This Week</h3>
-            <div style="display:flex; gap:8px;">
-              <button class="lm-btn-outline" style="padding:4px 10px; font-size:12px;"><i data-lucide="chevron-left" style="width:12px"></i></button>
-              <span style="font-size:12px; padding:4px 10px; color:var(--text-muted);">Apr 14 – 20, 2026</span>
-              <button class="lm-btn-outline" style="padding:4px 10px; font-size:12px;"><i data-lucide="chevron-right" style="width:12px"></i></button>
-            </div>
+            <span id="ap-week-range" style="font-size:12px; padding:4px 10px; color:var(--text-muted);">—</span>
           </div>
 
-          <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;">
-            ${[
-              {day:'Mon', date:'14', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:15',title:'We killed 40% of dashboards…',status:'published'}]},
-              {day:'Tue', date:'15', items:[{t:'Blog',c:'#374151',when:'10:30',title:'How we cut CI from 47 to 6 min',status:'scheduled'},{t:'Email',c:'#F59E0B',when:'07:00',title:'Weekly Eng Brief #42',status:'scheduled'}]},
-              {day:'Wed', date:'16', items:[{t:'LinkedIn',c:'#0A66C2',when:'08:45',title:'Stop writing runbooks…',status:'queue'},{t:'X',c:'#0F172A',when:'14:00',title:'Debugging thread · 8 tweets',status:'queue'}]},
-              {day:'Thu', date:'17', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:10',title:'The 3-line Slack msg…',status:'queue'},{t:'YouTube',c:'#EF4444',when:'16:00',title:'Post-mortem: 2ms latency',status:'queue'}]},
-              {day:'Fri', date:'18', items:[{t:'LinkedIn',c:'#0A66C2',when:'09:00',title:'Every VP Eng has the same 3 complaints',status:'queue'},{t:'Blog',c:'#374151',when:'11:15',title:'Handling on-call at 12 engineers',status:'queue'}]},
-              {day:'Sat', date:'19', items:[]},
-              {day:'Sun', date:'20', items:[{t:'X',c:'#0F172A',when:'18:30',title:'Weekly roundup thread',status:'queue'}]},
-            ].map(d => `
-              <div style="border:1px solid var(--border); border-radius:8px; padding:10px; min-height:140px; background:${d.items.length===0?'#F9FAFB':'white'};">
-                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-                  <strong style="font-size:12px; color:var(--text-muted);">${d.day}</strong>
-                  <span style="font-size:16px; font-weight:700;">${d.date}</span>
-                </div>
-                ${d.items.map(it => {
-                  const bg = it.status==='published' ? '#D1FAE5' : it.status==='scheduled' ? '#EEF2FF' : '#FEF3C7';
-                  const fg = it.status==='published' ? '#065F46' : it.status==='scheduled' ? '#4338CA' : '#B45309';
-                  return `<div style="padding:6px 8px; background:${bg}; border-radius:4px; margin-bottom:4px; font-size:10px;">
-                    <div style="display:flex; gap:4px; align-items:center; font-weight:700; color:${fg};"><span style="width:6px;height:6px;border-radius:50%;background:${it.c};"></span>${it.t} · ${it.when}</div>
-                    <div style="color:${fg}; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${it.title}</div>
-                  </div>`;
-                }).join('') || '<div style="font-size:10px; color:var(--text-muted); text-align:center; padding:20px 0;">—</div>'}
-              </div>
-            `).join('')}
+          <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px;" id="ap-calendar">
+            <div style="grid-column: 1 / -1; padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
 
@@ -5844,13 +6025,8 @@ Ship faster. Debug less.</p>
             <h3 class="card-title"><i data-lucide="list-ordered"></i> Next-up Queue</h3>
             <table class="lm-table" style="margin-top:10px;">
               <thead><tr><th>When</th><th>Channel</th><th>Piece</th><th>Status</th></tr></thead>
-              <tbody>
-                <tr><td style="font-size:12px; color:var(--text-muted);">in 1h 22m</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td style="font-size:12px;"><strong>How we cut CI from 47 to 6 min</strong></td><td><span class="lm-tag" style="background:#EEF2FF;color:#4338CA">Scheduled</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 08:45</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Stop writing runbooks…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Tomorrow · 14:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td style="font-size:12px;"><strong>Debugging thread · 8 tweets</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>The 3-line Slack msg…</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Thu · 16:00</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">YouTube</span></td><td style="font-size:12px;"><strong>Post-mortem: 2ms latency</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
-                <tr><td style="font-size:12px; color:var(--text-muted);">Fri · 09:00</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td style="font-size:12px;"><strong>Every VP Eng has 3 complaints</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Queue</span></td></tr>
+              <tbody id="ap-queue-tbody">
+                <tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
               </tbody>
             </table>
           </div>
@@ -5860,13 +6036,9 @@ Ship faster. Debug less.</p>
         <div class="card" style="margin-top:24px;">
           <h3 class="card-title"><i data-lucide="check-circle"></i> Recent Publish Log</h3>
           <table class="lm-table" style="margin-top:10px;">
-            <thead><tr><th>Published</th><th>Channel</th><th>Piece</th><th>Reach (1h)</th><th>Engagement</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td style="font-size:12px;">Today · 09:15</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">We killed 40% of dashboards…</strong></td><td><strong>2.4K</strong></td><td style="color:#10B981;font-weight:600;">+18%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Mon · 09:10</td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span></td><td><strong style="font-size:13px;">The 3-line Slack msg replaces standup</strong></td><td><strong>3.1K</strong></td><td style="color:#10B981;font-weight:600;">+24%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Sun · 18:30</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">X</span></td><td><strong style="font-size:13px;">Weekly roundup thread · 7 tweets</strong></td><td><strong>1.8K</strong></td><td style="color:#10B981;font-weight:600;">+12%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Fri · 11:00</td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><strong style="font-size:13px;">How we handle on-call at 12 engineers</strong></td><td><strong>1.2K</strong></td><td style="color:#10B981;font-weight:600;">+9%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Live</span></td></tr>
-              <tr><td style="font-size:12px;">Thu · 07:00</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span></td><td><strong style="font-size:13px;">Weekly Eng Brief #41</strong></td><td><strong>4.1K sent</strong></td><td style="color:#10B981;font-weight:600;">52% open</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Delivered</span></td></tr>
+            <thead><tr><th>Published</th><th>Channel</th><th>Piece</th><th>Reach</th><th>Engagement</th><th>Status</th></tr></thead>
+            <tbody id="ap-log-tbody">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
             </tbody>
           </table>
         </div>
