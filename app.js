@@ -140,7 +140,7 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 //  Editable at runtime; every Marketing Pilot agent reads from here
 // ══════════════════════════════════════════════════
 const brandKitData = {
-  name: 'Arqui',
+  name: 'Arqy',
   industry: 'PropTech · Real Estate Operating System · B2B & B2C',
   tagline: 'Del caos al control profesional.',
   mission: 'Transformamos el caos operativo del real estate en control profesional mediante una plataforma única que conecta constructoras, inversores, compradores, residentes y administradores. Centralizamos la información dispersa entre Excel, WhatsApp y correos, eliminando la incertidumbre que cuesta márgenes, confianza y tiempo.',
@@ -177,10 +177,10 @@ const brandKitData = {
     { name: 'Lebane',                      positioning: 'AI-native PropTech LATAM con WhatsApp',                            tier: 'Mid',     diff: 'Único competidor regional con IA + WhatsApp · $4M funding · enfoque solo en gestión, no es ecosistema completo' },
   ],
   channels: [
-    { name: 'LinkedIn',           icon: 'linkedin',       color: '#0A66C2', handle: '@arqui',           audience: 'Constructoras + inversores institucionales · canal #1 B2B (Build · Capital · PM)' },
-    { name: 'Instagram',          icon: 'instagram',      color: '#E4405F', handle: '@arqui.app',       audience: 'Compradores en pozo + residentes · canal visual (State · Home)' },
+    { name: 'LinkedIn',           icon: 'linkedin',       color: '#0A66C2', handle: '@arqy',           audience: 'Constructoras + inversores institucionales · canal #1 B2B (Build · Capital · PM)' },
+    { name: 'Instagram',          icon: 'instagram',      color: '#E4405F', handle: '@arqy.app',       audience: 'Compradores en pozo + residentes · canal visual (State · Home)' },
     { name: 'WhatsApp Business',  icon: 'message-circle', color: '#25D366', handle: '+54 9 11 ...',     audience: 'Operativo + outbound LATAM (Build · PM · leads regionales)' },
-    { name: 'Email / Newsletter', icon: 'mail',           color: '#F59E0B', handle: 'hola@arqui.app',   audience: 'Nurturing post-demo + thought leadership ecosistema' },
+    { name: 'Email / Newsletter', icon: 'mail',           color: '#F59E0B', handle: 'hola@arqy.app',   audience: 'Nurturing post-demo + thought leadership ecosistema' },
   ],
   toneByChannel: [
     { channel: 'LinkedIn',  tone: 'Competente · directo · thought-leadership',  formality: 'Mid-formal', formalityColor: '#FEF3C7,#B45309', pattern: 'Power phrases del ecosistema. Posts founder POV. "La infraestructura digital del real estate". Voseo siempre. Cero corporate blah.' },
@@ -190,10 +190,10 @@ const brandKitData = {
   ],
   samples: [
     { title: '"Del caos al control profesional." — Hero ecosistema',                channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: 'Power phrase #1',     voiceFit: 98 },
-    { title: '"No renders. Obra real." — Arqui State',                              channel: 'Instagram', channelColor: '#FCE7F3,#9D174D', perf: 'Power phrase',        voiceFit: 96 },
-    { title: '"Tu rentabilidad no puede esperar al cierre del mes." — Arqui Build', channel: 'Email',     channelColor: '#FEF3C7,#B45309', perf: 'Cold outbound',       voiceFit: 95 },
+    { title: '"No renders. Obra real." — Arqy State',                              channel: 'Instagram', channelColor: '#FCE7F3,#9D174D', perf: 'Power phrase',        voiceFit: 96 },
+    { title: '"Tu rentabilidad no puede esperar al cierre del mes." — Arqy Build', channel: 'Email',     channelColor: '#FEF3C7,#B45309', perf: 'Cold outbound',       voiceFit: 95 },
     { title: '"Por primera vez, el pozo no es un acto de fe." — Capital · State',   channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: 'Thought leadership',  voiceFit: 94 },
-    { title: '"Menos llamadas, menos papel. Todo en un lugar." — Arqui PM',         channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: 'Cold outreach Carlos',voiceFit: 92 },
+    { title: '"Menos llamadas, menos papel. Todo en un lugar." — Arqy PM',         channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: 'Cold outreach Carlos',voiceFit: 92 },
     { title: '"Optimizá tus flujos operativos con IA predictiva" (anti-ejemplo)',   channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Corporate blah · prohibido', voiceFit: 12 },
   ],
 };
@@ -1039,6 +1039,185 @@ async function hydrateContentEngineView() {
   }
 }
 
+// ── HookMiner hydration ────────────────────────────────
+async function fetchHookLibrary(brandId, channelFilter) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'score.desc',
+    select: 'hook_text,framework,channel,score,evidence_json,created_at'
+  });
+  if (channelFilter) params.set('channel', `eq.${channelFilter}`);
+  return supabaseGet(`hook_library?${params}`);
+}
+
+const FRAMEWORK_STYLES = {
+  'Contrarian':      { bg: '#FEE2E2', fg: '#991B1B', border: '#EF4444', surface: '#FEF2F8',
+                       desc: 'Cuestiona la práctica común. Patrón: "Dejá de [X]" / "No, [thing] no funciona"' },
+  'Specific Number': { bg: '#EFF6FF', fg: '#1D4ED8', border: '#3B82F6', surface: '#EFF6FF',
+                       desc: 'Cifras concretas. Patrón: "X bajó de Y% a Z%" / "$N invertidos en M"' },
+  'Persona-Aware':   { bg: '#DBEAFE', fg: '#1E40AF', border: '#1D4ED8', surface: '#DBEAFE',
+                       desc: 'Llama al lector por rol. Patrón: "Si dirigís X..." / "Hola Martín..."' },
+  'How-We-Do-X':     { bg: '#FEF3C7', fg: '#B45309', border: '#F59E0B', surface: '#FFF7ED',
+                       desc: 'Operacional transparente. Patrón: "Cómo [cliente] hizo [X] en [tiempo]"' },
+  'Open-Loop':       { bg: '#F3E8FF', fg: '#6B21A8', border: '#6B21A8', surface: '#F3E8FF',
+                       desc: 'Curiosity gap. Patrón: "La pregunta que..." / "El error que..."' },
+  'Imperative':      { bg: '#F3F4F6', fg: '#374151', border: '#374151', surface: '#F3F4F6',
+                       desc: 'Verbo de acción directo. Patrón: "Cerrá X" / "Mostrale Y"' },
+};
+
+function frameworkStyle(name) {
+  return FRAMEWORK_STYLES[name] || { bg: '#F3F4F6', fg: '#374151', border: '#94A3B8', surface: '#F8FAFC', desc: '' };
+}
+
+function frameworkTag(name) {
+  const s = frameworkStyle(name);
+  return `<span class="lm-tag" style="background:${s.bg};color:${s.fg}">${escapeHtml(name)}</span>`;
+}
+
+async function hydrateHookMinerView() {
+  try {
+    const filterEl = document.getElementById('hm-channel-filter');
+    const channelFilter = filterEl?.value || '';
+
+    // Always fetch the full set for stats; filtered set just for the table
+    const [allHooks, filteredHooks] = await Promise.all([
+      fetchHookLibrary(BRAND_ID, ''),
+      channelFilter ? fetchHookLibrary(BRAND_ID, channelFilter) : Promise.resolve(null),
+    ]);
+    const tableHooks = filteredHooks || allHooks;
+
+    // Stats
+    const totalHooks = allHooks.length;
+    const frameworkCounts = allHooks.reduce((acc, h) => {
+      acc[h.framework] = (acc[h.framework] || 0) + 1;
+      return acc;
+    }, {});
+    const frameworks = Object.keys(frameworkCounts);
+    const avgScore = totalHooks
+      ? Math.round(allHooks.reduce((s, h) => s + (Number(h.score) || 0), 0) / totalHooks)
+      : 0;
+    const channelCounts = allHooks.reduce((acc, h) => {
+      if (h.channel) acc[h.channel] = (acc[h.channel] || 0) + 1;
+      return acc;
+    }, {});
+    const topChannel = Object.entries(channelCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+
+    setText('hm-brand-tag', totalHooks ? `${totalHooks} hooks · ${frameworks.length} frameworks` : 'No hooks yet');
+    setText('hm-stat-hooks',      totalHooks ? String(totalHooks) : '—');
+    setText('hm-stat-frameworks', frameworks.length ? String(frameworks.length) : '—');
+    setText('hm-stat-avg-score',  totalHooks ? String(avgScore) : '—');
+    setText('hm-stat-top-channel', topChannel);
+
+    // Sub-header
+    const latestCreatedAt = allHooks.reduce((max, h) => {
+      const t = h.created_at ? new Date(h.created_at).getTime() : 0;
+      return t > max ? t : max;
+    }, 0);
+    setText('hm-last-refresh', latestCreatedAt ? `Last refresh: ${fmtRelativeTime(new Date(latestCreatedAt).toISOString())}` : 'Last refresh: never');
+    setText('hm-corpus-line', totalHooks
+      ? `Derived from ${totalHooks} mined hooks across ${Object.keys(channelCounts).length} channels`
+      : 'No corpus yet — click Mine Hooks to start');
+
+    // Library table
+    setText('hm-library-title', `Hook Library — Top ${Math.min(tableHooks.length, 10)} of ${totalHooks}`);
+    const tbody = document.getElementById('hm-library-tbody');
+    if (tbody) {
+      if (!tableHooks.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">
+          No hooks ${channelFilter ? `for ${escapeHtml(channelFilter)}` : 'yet'} — click <strong>Mine Hooks</strong> to populate.
+        </td></tr>`;
+      } else {
+        tbody.innerHTML = tableHooks.slice(0, 10).map(h => {
+          const evidence = h.evidence_json || {};
+          const persona = evidence.persona ? String(evidence.persona).split(' ').slice(0, 2).join(' ') : '—';
+          return `<tr>
+            <td style="max-width:380px;"><strong>"${escapeHtml(h.hook_text || '')}"</strong></td>
+            <td>${frameworkTag(h.framework)}</td>
+            <td>${escapeHtml(h.channel || '—')}</td>
+            <td><strong style="color:#10B981">${Number(h.score) || '—'}</strong></td>
+            <td style="font-size:11px; color:var(--text-muted)">${escapeHtml(persona)}</td>
+          </tr>`;
+        }).join('');
+      }
+    }
+
+    // Frameworks cards
+    setText('hm-frameworks-title', `${frameworks.length} Frameworks Identified`);
+    const fwContainer = document.getElementById('hm-frameworks-container');
+    if (fwContainer) {
+      if (!frameworks.length) {
+        fwContainer.innerHTML = `<div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No frameworks yet. Mine hooks to identify recurring patterns.
+        </div>`;
+      } else {
+        const sortedFw = Object.entries(frameworkCounts).sort((a, b) => b[1] - a[1]);
+        fwContainer.innerHTML = sortedFw.map(([name, count]) => {
+          const s = frameworkStyle(name);
+          return `<div style="padding:12px; border-left:3px solid ${s.border}; background:${s.surface}; border-radius:4px;">
+            <strong style="font-size:13px;">${escapeHtml(name)} <span style="color:var(--text-muted); font-weight:400;">(${count} hook${count === 1 ? '' : 's'})</span></strong>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">${escapeHtml(s.desc)}</p>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    // Recommended hooks — top 4 by score with diversified frameworks
+    const recContainer = document.getElementById('hm-recommended-container');
+    if (recContainer) {
+      if (!allHooks.length) {
+        recContainer.innerHTML = `<div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No recommendations yet — mine hooks to populate this week's queue.
+        </div>`;
+      } else {
+        const seenFw = new Set();
+        const picks = [];
+        for (const h of allHooks) {
+          if (picks.length >= 4) break;
+          if (seenFw.has(h.framework)) continue;
+          picks.push(h);
+          seenFw.add(h.framework);
+        }
+        // If fewer than 4 distinct frameworks, fill with next best regardless
+        for (const h of allHooks) {
+          if (picks.length >= 4) break;
+          if (!picks.includes(h)) picks.push(h);
+        }
+
+        const channelTagBg = {
+          LinkedIn:  'background:#EFF6FF;color:#1D4ED8',
+          WhatsApp:  'background:#D1FAE5;color:#065F46',
+          Email:     'background:#FEF3C7;color:#B45309',
+          Instagram: 'background:#FCE7F3;color:#9D174D',
+          Blog:      'background:#F3F4F6;color:#374151',
+        };
+
+        recContainer.innerHTML = picks.map(h => {
+          const ev = h.evidence_json || {};
+          const forecast = ev.forecast || ev.forecast_engagement || '';
+          const reasoning = ev.reasoning || '';
+          const reasoningShort = reasoning.length > 110 ? reasoning.slice(0, 110) + '…' : reasoning;
+          const channelStyle = channelTagBg[h.channel] || 'background:#F3F4F6;color:#374151';
+          return `<div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+            <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+              ${frameworkTag(h.framework)}
+              <span class="lm-tag" style="${channelStyle}">${escapeHtml(h.channel || '—')}</span>
+              <span class="lm-tag" style="background:#F0FDF4;color:#166534">Score ${Number(h.score) || '—'}</span>
+            </div>
+            <strong style="font-size:14px;">"${escapeHtml(h.hook_text || '')}"</strong>
+            <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">
+              ${forecast ? `Engagement forecast: <strong style="color:#10B981;">${escapeHtml(forecast)}</strong>` : ''}
+              ${forecast && reasoningShort ? ' · ' : ''}
+              ${escapeHtml(reasoningShort)}
+            </p>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('[HM hydrate] error:', err);
+  }
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -1077,6 +1256,7 @@ async function runHookMiner() {
     }).catch(e => console.error('[WF05] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Hook mining queued — runs in background.');
+    setTimeout(() => hydrateHookMinerView(), 1500);
     setTimeout(() => { if (btn) { btn.textContent = 'Mine Hooks'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -2008,6 +2188,10 @@ function switchView(viewId) {
 
   if (viewId === 'content-engine') {
     setTimeout(() => hydrateContentEngineView(), 80);
+  }
+
+  if (viewId === 'hook-miner') {
+    setTimeout(() => hydrateHookMinerView(), 80);
   }
 }
 
@@ -5038,23 +5222,23 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag">187 hooks · 6 frameworks</span>
+            <span class="agent-tag" id="hm-brand-tag">— hooks · — frameworks</span>
           </div>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
           <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last refresh: Today, 09:40 AM</span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Derived from ContentEngine's top-142 corpus</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="hm-last-refresh">Last refresh: —</span></span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="hm-corpus-line">Derived from ContentEngine corpus</span></span>
           </div>
           <button id="wf05-mine-btn" onclick="runHookMiner()" style="padding:8px 16px; background:#F97316; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Mine Hooks</button>
         </div>
 
         <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val">187</div><div class="agent-stat-lbl">Hooks Mined</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">6</div><div class="agent-stat-lbl">Frameworks Identified</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">82</div><div class="agent-stat-lbl">Avg Hook Score</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">LinkedIn</div><div class="agent-stat-lbl">Top Channel</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-hooks">—</div><div class="agent-stat-lbl">Hooks Mined</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-frameworks">—</div><div class="agent-stat-lbl">Frameworks Identified</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981" id="hm-stat-avg-score">—</div><div class="agent-stat-lbl">Avg Hook Score</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-top-channel">—</div><div class="agent-stat-lbl">Top Channel</div></div>
         </div>
 
         <!-- Framework distribution + top categories -->
@@ -5072,61 +5256,37 @@ function generateViewHTML(view) {
         <!-- Hook library -->
         <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="book-open"></i> Hook Library — Top 8 of 187</h3>
-            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;"><option>All channels</option><option>LinkedIn</option><option>Email</option><option>Blog</option><option>YouTube</option></select>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="book-open"></i> <span id="hm-library-title">Hook Library</span></h3>
+            <select id="hm-channel-filter" onchange="hydrateHookMinerView()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              <option value="">All channels</option>
+              <option>LinkedIn</option>
+              <option>WhatsApp</option>
+              <option>Email</option>
+              <option>Instagram</option>
+              <option>Blog</option>
+            </select>
           </div>
           <table class="lm-table">
-            <thead><tr><th>Hook</th><th>Framework</th><th>Channel</th><th>Score</th><th>Use Count</th></tr></thead>
-            <tbody>
-              <tr><td style="max-width:340px;"><strong>"We killed 40% of our features — here's what happened."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>LinkedIn</td><td><strong style="color:#10B981">96</strong></td><td>—</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Stop building dashboards nobody looks at."</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Imperative</span></td><td>Blog</td><td><strong style="color:#10B981">92</strong></td><td>12</td></tr>
-              <tr><td style="max-width:340px;"><strong>"The 3-line Slack message that replaced our daily standup."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">89</strong></td><td>8</td></tr>
-              <tr><td style="max-width:340px;"><strong>"I cut our CI pipeline from 47 to 6 minutes. Here's exactly how."</strong></td><td><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span></td><td>LinkedIn</td><td><strong style="color:#10B981">87</strong></td><td>14</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Every VP Engineering I talk to has the same 3 complaints."</strong></td><td><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona Aware</span></td><td>LinkedIn</td><td><strong style="color:#10B981">85</strong></td><td>6</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Why we moved off [category-leader] — and what changed."</strong></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span></td><td>Blog</td><td><strong style="color:#10B981">83</strong></td><td>3</td></tr>
-              <tr><td style="max-width:340px;"><strong>"How we handle on-call at 12 engineers."</strong></td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">How-We Do X</span></td><td>Email</td><td><strong style="color:#10B981">80</strong></td><td>9</td></tr>
-              <tr><td style="max-width:340px;"><strong>"Here's the question I ask in every engineering interview."</strong></td><td><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span></td><td>LinkedIn</td><td><strong style="color:#10B981">78</strong></td><td>11</td></tr>
+            <thead><tr><th>Hook</th><th>Framework</th><th>Channel</th><th>Score</th><th>Persona</th></tr></thead>
+            <tbody id="hm-library-tbody">
+              <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
             </tbody>
           </table>
         </div>
 
         <!-- Frameworks breakdown -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="layout-grid"></i> 6 Frameworks Identified</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;">
-            <div style="padding:12px; border-left:3px solid #EF4444; background:#FEF2F8; border-radius:4px;"><strong style="font-size:13px;">Contrarian (32 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Challenges conventional wisdom. Pattern: "Stop [common practice]" / "We killed [expected thing]"</p></div>
-            <div style="padding:12px; border-left:3px solid #3B82F6; background:#EFF6FF; border-radius:4px;"><strong style="font-size:13px;">Specific Number (41 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Includes measurable outcomes. Pattern: "I cut X from Y to Z" / "We 3x'd [metric] in [time]"</p></div>
-            <div style="padding:12px; border-left:3px solid #6B21A8; background:#F3E8FF; border-radius:4px;"><strong style="font-size:13px;">Open-Loop (28 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Creates curiosity gap. Pattern: "The question I ask every…" / "Here's the mistake most…"</p></div>
-            <div style="padding:12px; border-left:3px solid #F59E0B; background:#FFF7ED; border-radius:4px;"><strong style="font-size:13px;">How-We-Do-X (34 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Transparent operational narrative. Pattern: "How we [do internal process] at [scale]"</p></div>
-            <div style="padding:12px; border-left:3px solid #1D4ED8; background:#DBEAFE; border-radius:4px;"><strong style="font-size:13px;">Persona-Aware (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Names the reader directly. Pattern: "Every [persona] I talk to…" / "If you're a [role]…"</p></div>
-            <div style="padding:12px; border-left:3px solid #374151; background:#F3F4F6; border-radius:4px;"><strong style="font-size:13px;">Imperative (26 hooks)</strong><p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Strong action verb opener. Pattern: "Stop [X]" / "Start [Y]" / "Ship [Z]"</p></div>
+          <h3 class="card-title"><i data-lucide="layout-grid"></i> <span id="hm-frameworks-title">Frameworks Identified</span></h3>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;" id="hm-frameworks-container">
+            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
 
         <!-- Recommended hooks for this week -->
         <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.3); background:linear-gradient(180deg, white, #FFF7ED);">
           <h3 class="card-title"><i data-lucide="target"></i> Recommended Hooks This Week — auto-queued for ContentBuilder</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;">
-            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
-              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 94</span></div>
-              <strong style="font-size:14px;">"We stopped doing daily standups. Here's what replaced them."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">3.2x baseline</strong> · trending theme in your industry</p>
-            </div>
-            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
-              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">Specific Number</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 92</span></div>
-              <strong style="font-size:14px;">"I cut our on-call burden by 73% in 6 weeks — here's exactly how."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.9x baseline</strong> · aligns with "Reliability" brand value</p>
-            </div>
-            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
-              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#DBEAFE;color:#1E40AF">Persona-Aware</span><span class="lm-tag" style="background:#EFF6FF;color:#1D4ED8">LinkedIn</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 88</span></div>
-              <strong style="font-size:14px;">"Every VP of Engineering I've talked to this quarter asked the same question."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.5x baseline</strong> · targets your P1 persona directly</p>
-            </div>
-            <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
-              <div style="display:flex; gap:6px; margin-bottom:8px;"><span class="lm-tag" style="background:#F3E8FF;color:#6B21A8">Open-Loop</span><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Email</span><span class="lm-tag" style="background:#F0FDF4;color:#166534">Score 86</span></div>
-              <strong style="font-size:14px;">"The one question I ask every engineering hire before we extend an offer."</strong>
-              <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">Engagement forecast: <strong style="color:#10B981;">2.3x baseline</strong> · fits newsletter format</p>
-            </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;" id="hm-recommended-container">
+            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
 
