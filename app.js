@@ -1218,6 +1218,112 @@ async function hydrateHookMinerView() {
   }
 }
 
+// ── CreativeBrain hydration ────────────────────────────
+async function fetchCreativeAssets(brandId, assetTypeFilter) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    order: 'created_at.desc',
+    limit: '12',
+    select: 'id,asset_type,file_url,prompt_json,qa_json,status,created_at'
+  });
+  if (assetTypeFilter) params.set('asset_type', `eq.${assetTypeFilter}`);
+  return supabaseGet(`creative_assets?${params}`);
+}
+
+function prettyAssetType(t) {
+  if (!t) return '—';
+  return t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+async function hydrateCreativeBrainView() {
+  try {
+    const filterEl = document.getElementById('cb-format-filter');
+    const filter = filterEl?.value || '';
+
+    const [profileRow, allAssets, filteredAssets] = await Promise.all([
+      fetchBrandProfile(BRAND_ID),
+      fetchCreativeAssets(BRAND_ID, ''),
+      filter ? fetchCreativeAssets(BRAND_ID, filter) : Promise.resolve(null),
+    ]);
+    const galleryAssets = filteredAssets || allAssets;
+
+    const data = profileRow?.data_json || {};
+    const brandName = data.identity?.company_name || profileRow?.brand?.name || 'Brand';
+
+    // Header tag + sub-header
+    setText('cb-brand-tag', `${brandName} · auto brand-compliance ON`);
+    const latestCreated = allAssets[0]?.created_at;
+    setText('cb-last-batch', latestCreated ? `Last batch: ${fmtRelativeTime(latestCreated)}` : 'Last batch: never');
+    setText('cb-brand-guide', `Brand guide: ${brandName} · v1`);
+
+    // Stats
+    const formatSet = new Set(allAssets.map(a => a.asset_type).filter(Boolean));
+    setText('cb-stat-assets',  allAssets.length ? String(allAssets.length) : '—');
+    setText('cb-stat-formats', formatSet.size  ? String(formatSet.size)   : '—');
+
+    // Format filter dropdown — populate with distinct asset_types
+    if (filterEl) {
+      const currentValue = filter;
+      const options = ['<option value="">All formats</option>']
+        .concat([...formatSet].sort().map(t => {
+          const sel = t === currentValue ? ' selected' : '';
+          return `<option value="${escapeHtml(t)}"${sel}>${escapeHtml(prettyAssetType(t))}</option>`;
+        }));
+      filterEl.innerHTML = options.join('');
+    }
+
+    // Gallery
+    setText('cb-gallery-title', allAssets.length
+      ? `Asset Library — ${galleryAssets.length} of ${allAssets.length}${filter ? ` (${prettyAssetType(filter)})` : ''}`
+      : 'Asset Library');
+
+    const gallery = document.getElementById('cb-gallery');
+    if (gallery) {
+      if (!galleryAssets.length) {
+        gallery.innerHTML = `<div style="grid-column: 1 / -1; padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">
+          No assets ${filter ? `for ${escapeHtml(prettyAssetType(filter))}` : 'yet'} — go to <strong>ContentBuilder</strong>, build a draft, and click <strong>Generate Visual</strong>.
+        </div>`;
+      } else {
+        gallery.innerHTML = galleryAssets.map(a => {
+          let prompt = a.prompt_json;
+          if (typeof prompt === 'string') {
+            try { prompt = JSON.parse(prompt); } catch (_) { prompt = {}; }
+          }
+          prompt = prompt || {};
+          const headline    = prompt.headline    || '(no headline)';
+          const subheadline = prompt.subheadline || '';
+          const label       = prettyAssetType(a.asset_type);
+          const hasImg      = a.file_url && a.file_url.startsWith('data:') && a.file_url.length > 100;
+          const visualBlock = hasImg
+            ? `<div style="aspect-ratio:16/9; background:#0F172A url('${a.file_url.replace(/'/g, "\\'")}') center/cover no-repeat;"></div>`
+            : `<div style="aspect-ratio:16/9; background:linear-gradient(135deg, #6366F1 0%, #0F172A 100%); display:flex; align-items:center; justify-content:center; padding:14px; text-align:center;">
+                 <span style="color:white; font-weight:700; font-size:13px; line-height:1.4;">${escapeHtml(headline)}</span>
+               </div>`;
+          const statusTag = (a.status === 'pending_design')
+            ? '<span class="lm-tag" style="background:#FEF3C7;color:#B45309">Pending</span>'
+            : (a.status === 'approved')
+              ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">Approved</span>'
+              : `<span class="lm-tag" style="background:#F3F4F6;color:#374151">${escapeHtml(a.status || '—')}</span>`;
+          return `<div style="border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+            ${visualBlock}
+            <div style="padding:10px 12px; background:white;">
+              <div style="font-size:12px; font-weight:600; line-height:1.3; min-height:32px;">${escapeHtml(headline)}</div>
+              ${subheadline ? `<div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${escapeHtml(subheadline)}</div>` : ''}
+              <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">${escapeHtml(label)}</div>
+              <div style="display:flex; gap:6px; margin-top:6px; flex-wrap:wrap;">
+                <span class="lm-tag" style="background:#F0FDF4;color:#166534">On-brand</span>
+                ${statusTag}
+              </div>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+  } catch (err) {
+    console.error('[CB hydrate] error:', err);
+  }
+}
+
 // ── WF04 Content Analyzer ──────────────────────────────
 const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/content-analysis';
 
@@ -1554,6 +1660,7 @@ async function handleGenerateVisual() {
     const imageUrl = result.image_url || null;
     if (asset || imageUrl) renderVisualBriefIntoView(asset, imageUrl);
     showToast(`Image generated (asset ${result.asset_id.slice(0, 8)}). See card below.`);
+    setTimeout(() => hydrateCreativeBrainView(), 500);
   } else {
     btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
     btn.style.background = '#EF4444';
@@ -2192,6 +2299,10 @@ function switchView(viewId) {
 
   if (viewId === 'hook-miner') {
     setTimeout(() => hydrateHookMinerView(), 80);
+  }
+
+  if (viewId === 'creative-brain') {
+    setTimeout(() => hydrateCreativeBrainView(), 80);
   }
 }
 
@@ -5476,21 +5587,21 @@ Ship faster. Debug less.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Rendering</div><br>
-            <span class="agent-tag">Auto brand-compliance ON</span>
+            <span class="agent-tag" id="cb-brand-tag">Auto brand-compliance ON</span>
           </div>
         </div>
 
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
           <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>Last batch: Today, 10:05 AM</span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Brand guide: Acme Corp · v3.1</span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-last-batch">Last batch: —</span></span>
+            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-brand-guide">Brand guide: —</span></span>
           </div>
           <button onclick="switchView('content-builder')" style="padding:8px 16px; background:#A855F7; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate New Visual</button>
         </div>
 
         <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val">186</div><div class="agent-stat-lbl">Assets Produced (30d)</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">5</div><div class="agent-stat-lbl">Formats</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="cb-stat-assets">—</div><div class="agent-stat-lbl">Assets Produced (30d)</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="cb-stat-formats">—</div><div class="agent-stat-lbl">Formats</div></div>
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">98%</div><div class="agent-stat-lbl">Brand Compliance</div></div>
           <div class="agent-stat"><div class="agent-stat-val">2.4 min</div><div class="agent-stat-lbl">Avg Render Time</div></div>
         </div>
@@ -5498,30 +5609,13 @@ Ship faster. Debug less.</p>
         <!-- Asset gallery -->
         <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> Asset Library — last batch</h3>
-            <select style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;"><option>All formats</option><option>LinkedIn Banner</option><option>Email Header</option><option>Ad Variant</option><option>Video Cover</option><option>Blog Hero</option></select>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> <span id="cb-gallery-title">Asset Library</span></h3>
+            <select id="cb-format-filter" onchange="hydrateCreativeBrainView()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              <option value="">All formats</option>
+            </select>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:14px;">
-            ${[
-              {grad:'linear-gradient(135deg, #6366F1 0%, #0F172A 100%)', label:'LinkedIn Banner', title:'Ship faster. Debug less.'},
-              {grad:'linear-gradient(135deg, #F59E0B 0%, #DC2626 100%)', label:'Email Header', title:'We killed 40% of dashboards'},
-              {grad:'linear-gradient(135deg, #0F172A 0%, #6366F1 100%)', label:'Ad Variant · A', title:'Stop building dashboards nobody looks at'},
-              {grad:'linear-gradient(135deg, #22C55E 0%, #0F172A 100%)', label:'Ad Variant · B', title:'From 47 min CI to 6 min'},
-              {grad:'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)', label:'YouTube Cover', title:'How we handle on-call at 12 engineers'},
-              {grad:'linear-gradient(135deg, #F59E0B 0%, #F97316 100%)', label:'Blog Hero', title:'Engineering post-mortem: the 2ms spike'},
-              {grad:'linear-gradient(135deg, #0F172A 0%, #F59E0B 100%)', label:'Email Header', title:'Your weekly engineering brief'},
-              {grad:'linear-gradient(135deg, #A855F7 0%, #EC4899 100%)', label:'Social Story', title:'3 questions every VP Eng should ask'},
-            ].map(a => `
-              <div style="border-radius:10px; overflow:hidden; border:1px solid var(--border); cursor:pointer; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                <div style="aspect-ratio:16/9; background:${a.grad}; display:flex; align-items:center; justify-content:center; padding:14px; text-align:center;">
-                  <span style="color:white; font-weight:700; font-size:13px; line-height:1.4; font-family:var(--font-heading,inherit);">${a.title}</span>
-                </div>
-                <div style="padding:10px 12px; background:white;">
-                  <div style="font-size:11px; color:var(--text-muted);">${a.label}</div>
-                  <div style="display:flex; gap:6px; margin-top:6px;"><span class="lm-tag" style="background:#F0FDF4;color:#166534">On-brand</span><span class="lm-tag" style="background:#F3F4F6;color:#374151">Ready</span></div>
-                </div>
-              </div>
-            `).join('')}
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:14px;" id="cb-gallery">
+            <div style="grid-column: 1 / -1; padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
         </div>
 
