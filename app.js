@@ -281,6 +281,11 @@ async function saveBrandProfile() {
     if (btn) { btn.textContent = data.brandvoice_queued ? '✅ Saved & queued' : '✅ Saved'; }
     showToast('Brand profile saved. ContentEngine now derives from this Branding Bio.');
     setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
+
+    // Sync brand context to social media app (fire-and-forget — app may be offline)
+    syncBrandToSocialMediaApp(profile_payload)
+      .then(() => showToast('Brand synced to social media pipeline — config updated.'))
+      .catch(e => console.warn('[sync] social-media app offline, skipping config sync:', e));
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
     console.error('saveBrandProfile error:', e);
@@ -1614,6 +1619,36 @@ async function runContentAnalysis() {
 
 // ── WF05 Hook Miner ────────────────────────────────────
 const WF05_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/hook-mining';
+const SOCIAL_MEDIA_API_URL = 'http://localhost:3000';
+
+// Standard Gemini video analysis prompt (reused across all brand configs)
+const STANDARD_ANALYSIS_INSTRUCTION = `# CONCEPT
+Overall description of the concept of this video, and what makes it valuable and interesting (1-3 sentences).
+-> Clarify the core tension: what belief is challenged, what mistake is exposed, or what outcome is promised.
+-> One clear idea only. No subtopics.
+
+# HOOK
+Detailed description of the first 5 seconds of the video, what makes it scroll-stopping and attention-grabbing (1-3 sentences).
+-> Break it down into:
+- VISUAL (what is seen in the first 1-2 seconds: movement, facial expression, contrast, pattern break)
+- TEXT (short on-screen statement: danger, promise, or contradiction, max 6-8 words)
+- AUDIO (first spoken words: confident, direct, no intro, no context)
+-> The hook must create either fear of loss, strong curiosity, or identity relevance.
+
+# RETENTION MECHANISMS
+Detailed description of how the creator manages to retain viewers throughout the video (1-7 sentences).
+-> Open loops, delayed payoff, micro-escalations, pattern interrupts, forward momentum.
+
+# REWARD
+Describe the ultimate value that the viewer gets by watching this video (1-3 sentences).
+-> Education (clarity), Entertainment (emotional release), or Inspiration (self-belief / action).
+
+# SCRIPT
+Describe the full script of the video (1-20 sentences, as many as needed).
+-> Structure: immediate hook → problem framing → why it matters → main insight → clean close.
+-> Include scenes, actions, voiceover, exact wording if possible.
+
+OVERALL RULE: THE SHORTER THE ANALYSIS - THE BETTER. Clarity > cleverness.`;
 
 async function runHookMiner() {
   const btn = document.getElementById('wf05-mine-btn');
@@ -1632,6 +1667,351 @@ async function runHookMiner() {
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
     console.error('[WF05] error:', e);
+  }
+}
+
+// ── Social Media App — competitor video integration ─────
+async function fetchCompetitorVideos() {
+  const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+function classifyHook(text) {
+  const t = (text || '').toLowerCase();
+  if (/most people think|stop |we killed|never |wrong|myth/.test(t)) return 'Contrarian';
+  if (/\d+%|\d+ (to|in|from) \d+|\d+x/.test(t))                     return 'Specific Number';
+  if (/how we |how i |the way we /.test(t))                           return 'How-We-Do-X';
+  if (/here's|question i ask|mistake most|secret/.test(t))            return 'Open-Loop';
+  if (/every (vp|ceo|founder|engineer|agent|client|investor)/.test(t)) return 'Persona-Aware';
+  return 'Visual-Led';
+}
+
+function calcHookScore(views) {
+  if (views > 500000) return 95;
+  if (views > 100000) return 88;
+  if (views > 50000)  return 82;
+  if (views > 10000)  return 75;
+  return 68;
+}
+
+function parseHooksFromVideos(videos) {
+  const hooks = [];
+  const FW_COLORS = {
+    'Contrarian':      'background:#FEE2E2;color:#991B1B',
+    'Specific Number': 'background:#EFF6FF;color:#1D4ED8',
+    'How-We-Do-X':     'background:#FEF3C7;color:#B45309',
+    'Open-Loop':       'background:#F3E8FF;color:#6B21A8',
+    'Persona-Aware':   'background:#DBEAFE;color:#1E40AF',
+    'Visual-Led':      'background:#F0FDF4;color:#166534',
+  };
+
+  videos.forEach(video => {
+    // Extract hook from Gemini analysis — "-> This creates..." lines reveal the hook mechanic
+    if (video.analysis) {
+      const visualMatch = video.analysis.match(/\*\*VISUAL:\*\*\s*(.+?)(?:\n|$)/);
+      const arrowMatch  = video.analysis.match(/->\s*(.+?)(?:\n|$)/);
+      const hookText    = (visualMatch ? visualMatch[1] : '') || (arrowMatch ? arrowMatch[1] : '');
+      if (hookText.length > 10) {
+        const fw = classifyHook(hookText);
+        hooks.push({ text: hookText.trim(), creator: video.creator, views: video.views,
+          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views),
+          thumbnail: video.thumbnail, link: video.link, isConcept: false });
+      }
+    }
+    // Extract spoken hooks from Claude-generated concepts — these are ready-to-adapt lines
+    if (video.newConcepts) {
+      const spokenMatches = [...video.newConcepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
+      spokenMatches.forEach(m => {
+        const fw = classifyHook(m[1]);
+        hooks.push({ text: m[1].trim(), creator: video.creator, views: video.views,
+          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views),
+          thumbnail: video.thumbnail, link: video.link, isConcept: true });
+      });
+    }
+  });
+
+  return hooks.sort((a, b) => b.score - a.score || b.views - a.views);
+}
+
+async function hydrateHookMinerView() {
+  const tbody     = document.getElementById('hm-hook-tbody');
+  const tableTitle = document.getElementById('hm-table-title');
+  const statHooks = document.getElementById('hm-stat-hooks');
+  const statVideos = document.getElementById('hm-stat-videos');
+  const recEl     = document.getElementById('hm-recommended');
+
+  // Load config selector in parallel
+  loadSocialMediaConfigs();
+
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">
+      <i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px"></i>
+      Connecting to social media app...</td></tr>`;
+    lucide.createIcons({ nodes: [tbody] });
+  }
+
+  try {
+    const videos = await fetchCompetitorVideos();
+
+    if (!videos.length) {
+      if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">
+        No competitor videos analyzed yet. Run the pipeline first.</td></tr>`;
+      return;
+    }
+
+    const hooks = parseHooksFromVideos(videos);
+    if (statHooks)  statHooks.textContent  = hooks.length;
+    if (statVideos) statVideos.textContent = videos.length;
+    if (tableTitle) tableTitle.textContent = `Top ${Math.min(10, hooks.length)} de ${hooks.length} (${videos.length} videos)`;
+    const headerTag = document.getElementById('hm-header-tag');
+    if (headerTag) headerTag.textContent = `${hooks.length} hooks · ${videos.length} videos`;
+
+    if (tbody) {
+      tbody.innerHTML = hooks.slice(0, 10).map(h => {
+        const sc = h.score >= 85 ? '#10B981' : h.score >= 75 ? '#F59E0B' : '#9CA3AF';
+        const thumb = h.thumbnail
+          ? `<img src="${escapeHtml(h.thumbnail)}" style="width:48px;height:28px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:8px;border:1px solid var(--border);" onerror="this.style.display='none'">`
+          : '';
+        return `<tr>
+          <td style="max-width:340px;">${thumb}
+            <strong>${escapeHtml(h.text.slice(0, 100))}${h.text.length > 100 ? '…' : ''}</strong>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">@${escapeHtml(h.creator)} · ${(h.views/1000).toFixed(0)}K views${h.isConcept ? ' · AI concept' : ''}</div>
+          </td>
+          <td><span class="lm-tag" style="${h.fwStyle}">${h.framework}</span></td>
+          <td>Instagram</td>
+          <td><strong style="color:${sc}">${h.score}</strong></td>
+          <td><a href="${escapeHtml(h.link)}" target="_blank" style="font-size:11px;color:#3B82F6;">Ver ↗</a></td>
+        </tr>`;
+      }).join('');
+    }
+
+    if (recEl) {
+      recEl.innerHTML = hooks.slice(0, 4).map(h => `
+        <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
+          <div style="display:flex; gap:6px; margin-bottom:8px;">
+            <span class="lm-tag" style="${h.fwStyle}">${h.framework}</span>
+            <span class="lm-tag" style="background:#FEF3C7;color:#B45309">Instagram</span>
+            <span class="lm-tag" style="background:#F0FDF4;color:#166534">Score ${h.score}</span>
+          </div>
+          <strong style="font-size:13px;">"${escapeHtml(h.text.slice(0, 120))}${h.text.length > 120 ? '…' : ''}"</strong>
+          <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">@${escapeHtml(h.creator)} · ${(h.views/1000).toFixed(0)}K views · <a href="${escapeHtml(h.link)}" target="_blank" style="color:#3B82F6;">ver video ↗</a></p>
+        </div>
+      `).join('');
+    }
+
+  } catch (err) {
+    console.error('[HookMiner] social-media app error:', err);
+    const errHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;">
+      <strong style="color:#EF4444;">No se pudo conectar al social media app.</strong><br>
+      <span style="font-size:11px;color:var(--text-muted);">Asegurate de que esté corriendo:
+        <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">npm run dev</code>
+        en <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">content creation/social-media/app/</code>
+      </span></td></tr>`;
+    if (tbody) tbody.innerHTML = errHTML;
+    if (recEl) recEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:12px;">
+      <i data-lucide="wifi-off" style="width:12px;vertical-align:middle;margin-right:4px"></i>
+      Social media app offline.</p>`;
+    lucide.createIcons();
+  }
+}
+
+async function hydrateContentBuilderInsights() {
+  const el = document.getElementById('cb-competitor-insights-body');
+  if (!el) return;
+
+  el.innerHTML = `<div style="text-align:center;color:var(--text-muted);padding:16px">
+    <i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px"></i>
+    Cargando insights de competidores...</div>`;
+  lucide.createIcons({ nodes: [el] });
+
+  try {
+    const videos = await fetchCompetitorVideos();
+    if (!videos.length) {
+      el.innerHTML = `<p style="color:var(--text-muted);font-size:13px;text-align:center;padding:16px;">
+        No hay videos analizados. Corré el pipeline primero.</p>`;
+      return;
+    }
+
+    const hooks = parseHooksFromVideos(videos);
+    el.innerHTML = hooks.slice(0, 3).map(h => `
+      <div style="display:flex;gap:12px;padding:12px;border:1px solid var(--border);border-radius:8px;background:white;align-items:flex-start;">
+        ${h.thumbnail ? `<img src="${escapeHtml(h.thumbnail)}" style="width:64px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;border:1px solid var(--border);" onerror="this.style.display='none'">` : ''}
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;">
+            <span class="lm-tag" style="${h.fwStyle};font-size:10px;">${h.framework}</span>
+            <span style="font-size:10px;color:var(--text-muted);">@${escapeHtml(h.creator)} · ${(h.views/1000).toFixed(0)}K views${h.isConcept ? ' · concepto AI' : ''}</span>
+          </div>
+          <p style="font-size:13px;font-weight:600;margin:0;line-height:1.4;">"${escapeHtml(h.text.slice(0, 110))}${h.text.length > 110 ? '…' : ''}"</p>
+        </div>
+        <a href="${escapeHtml(h.link)}" target="_blank" style="font-size:11px;color:#3B82F6;white-space:nowrap;flex-shrink:0;">Ver ↗</a>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    el.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:12px;">
+      <i data-lucide="wifi-off" style="width:12px;vertical-align:middle;margin-right:4px"></i>
+      Social media app offline. Iniciá: <code style="background:#F3F4F6;padding:2px 4px;border-radius:3px;">npm run dev</code>
+    </p>`;
+    lucide.createIcons({ nodes: [el] });
+    console.warn('[ContentBuilder] social-media app error:', err);
+  }
+}
+
+// ── Brand → Social Media App sync ──────────────────────
+
+function buildNewConceptsInstruction(profilePayload) {
+  const id       = profilePayload.identity || {};
+  const personas = Array.isArray(profilePayload.personas) ? profilePayload.personas : [];
+  const tones    = Array.isArray(profilePayload.tone_by_channel) ? profilePayload.tone_by_channel : [];
+  const samples  = Array.isArray(profilePayload.content_samples) ? profilePayload.content_samples : [];
+
+  const personaList = personas.length
+    ? personas.map(p => `- ${p.role || p.label}: ${[p.pains, p.triggers].filter(Boolean).join('. ')}`).join('\n')
+    : '- General business audience';
+
+  const toneList = tones.length
+    ? tones.map(t => `- ${t.channel}: ${t.tone || ''} (${t.formality || ''}). ${t.pattern || ''}`).join('\n')
+    : '- Professional and direct';
+
+  const sampleRef = samples.length
+    ? `\nExisting content references (voice & style to match):\n${samples.slice(0, 3).map(s => `- "${s.title}" on ${s.channel} (voice fit ${s.voiceFit}%)`).join('\n')}`
+    : '';
+
+  return `Adapt this video for ${id.company_name || 'the brand'}.
+
+About the brand: ${id.mission || id.tagline || ''}
+Industry: ${id.industry || ''}
+
+Target audience:
+${personaList}
+
+Brand tone by channel:
+${toneList}${sampleRef}
+
+Task:
+Give us 3 NEW video concepts inspired by the ORIGINAL reference.
+Do not copy the original. Translate the core idea into the ${id.industry || 'brand'} context.
+MAINLY iterate and sharpen the HOOKS.
+
+Focus:
+- First 3 seconds must stop the target audience from scrolling
+- Hooks should challenge a belief, fear, or misconception the audience has
+- Match the brand tone per channel (listed above)
+- No buzzwords, no exaggeration, no hype
+
+Output format:
+
+# CONCEPT 1
+Text description (1-3 sentences)
+
+## HOOK
+- VISUAL: what is seen in the first 2 seconds
+- SPOKEN: first line said (quote it)
+- WHY IT WORKS: why this hook stops a ${personas[0]?.role || 'professional'} from scrolling
+
+## SCRIPT
+Scene flow and spoken text (1-20 sentences)
+
+# CONCEPT 2
+...
+
+# CONCEPT 3
+...`;
+}
+
+async function syncBrandToSocialMediaApp(profilePayload) {
+  const companyName = (profilePayload.identity?.company_name || 'BRAND').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  const creatorsCategory = companyName.toLowerCase();
+  const newConceptsInstruction = buildNewConceptsInstruction(profilePayload);
+
+  // Get existing configs
+  const configsRes = await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`);
+  const configs = configsRes.ok ? await configsRes.json() : [];
+  const existing = configs.find(c => c.configName === companyName);
+
+  const payload = {
+    configName: companyName,
+    creatorsCategory,
+    analysisInstruction: STANDARD_ANALYSIS_INSTRUCTION,
+    newConceptsInstruction,
+  };
+
+  if (existing) {
+    await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, id: existing.id }),
+    });
+    console.log(`[sync] Updated social media config "${companyName}"`);
+  } else {
+    await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    console.log(`[sync] Created social media config "${companyName}"`);
+  }
+
+  // Re-load config selector in Hook Miner if visible
+  const sel = document.getElementById('hm-config-select');
+  if (sel) loadSocialMediaConfigs();
+}
+
+async function loadSocialMediaConfigs() {
+  const sel = document.getElementById('hm-config-select');
+  if (!sel) return;
+  try {
+    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const configs = await res.json();
+    if (!configs.length) {
+      sel.innerHTML = '<option value="">No configs — save Branding Bio first</option>';
+      return;
+    }
+    sel.innerHTML = configs.map(c =>
+      `<option value="${escapeHtml(c.configName)}">${escapeHtml(c.configName)} · ${escapeHtml(c.creatorsCategory)}</option>`
+    ).join('');
+  } catch (e) {
+    sel.innerHTML = '<option value="">Social media app offline</option>';
+  }
+}
+
+async function runCompetitorPipeline() {
+  const configName = document.getElementById('hm-config-select')?.value;
+  const btn = document.getElementById('hm-run-pipeline-btn');
+  const statusEl = document.getElementById('hm-pipeline-status');
+
+  if (!configName) { showToast('Seleccioná un config primero.', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
+  if (statusEl) statusEl.textContent = 'Pipeline iniciado — analizando videos de competidores...';
+
+  try {
+    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/pipeline/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ configName, maxVideos: 10, topK: 3, nDays: 30 }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    if (data.started) {
+      showToast(`Pipeline corriendo en background para config "${configName}". Los hooks se actualizarán cuando termine (puede tardar varios minutos).`);
+      if (statusEl) statusEl.textContent = '⏳ Pipeline corriendo — los hooks se actualizarán automáticamente...';
+      if (btn) { btn.innerHTML = '<i data-lucide="clock" style="width:12px;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
+
+      // Poll for new videos after 2 min
+      setTimeout(async () => {
+        await hydrateHookMinerView();
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
+        if (statusEl) statusEl.textContent = '✅ Pipeline completado — hooks actualizados.';
+      }, 120000);
+    }
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
+    if (statusEl) statusEl.textContent = '❌ Error — ¿social media app corriendo?';
+    showToast('No se pudo iniciar el pipeline. Asegurate que el social media app esté corriendo en localhost:3000.', 'error');
+    console.error('[runCompetitorPipeline]', err);
   }
 }
 
@@ -2552,6 +2932,11 @@ function switchView(viewId) {
 
   if (viewId === 'content-builder') {
     setTimeout(() => refreshContentQueue(), 80);
+    setTimeout(() => hydrateContentBuilderInsights(), 120);
+  }
+
+  if (viewId === 'hook-miner') {
+    setTimeout(() => hydrateHookMinerView(), 80);
   }
 
   if (viewId === 'brandvoice-optimizer') {
@@ -5602,16 +5987,25 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag" id="hm-brand-tag">— hooks · — frameworks</span>
+            <span class="agent-tag" id="hm-header-tag">conectando…</span>
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
-          <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="hm-last-refresh">Last refresh: —</span></span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="hm-corpus-line">Derived from ContentEngine corpus</span></span>
+        <!-- Pipeline control bar -->
+        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; padding:12px 14px; background:#FFF7ED; border:1px solid rgba(249,115,22,0.2); border-radius:10px;">
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span style="font-size:12px; font-weight:600; color:#92400E;">Pipeline config:</span>
+            <select id="hm-config-select" style="padding:5px 10px; border:1px solid #FCD34D; border-radius:6px; font-size:12px; background:white; color:var(--text-main);">
+              <option>Cargando configs…</option>
+            </select>
+            <button id="hm-run-pipeline-btn" onclick="runCompetitorPipeline()" style="padding:6px 14px; background:#F97316; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+              <i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline
+            </button>
+            <span id="hm-pipeline-status" style="font-size:11px; color:var(--text-muted);">Guardá Branding Bio para auto-generar config →</span>
           </div>
-          <button id="wf05-mine-btn" onclick="runHookMiner()" style="padding:8px 16px; background:#F97316; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Mine Hooks</button>
+          <button id="wf05-mine-btn" onclick="runHookMiner()" style="padding:7px 14px; background:#DC2626; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+            <i data-lucide="zap" style="width:12px;vertical-align:middle;margin-right:4px"></i>Mine Hooks (WF05)
+          </button>
         </div>
 
         <div class="agent-stats">
@@ -5662,7 +6056,7 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <!-- Recommended hooks for this week -->
+        <!-- Recommended hooks — populated from social media app -->
         <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.3); background:linear-gradient(180deg, white, #FFF7ED);">
           <h3 class="card-title"><i data-lucide="target"></i> Recommended Hooks This Week — auto-queued for ContentBuilder</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;" id="hm-recommended-container">
@@ -5714,6 +6108,17 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">89%</div><div class="agent-stat-lbl">First-Draft Approval Rate</div></div>
           <div class="agent-stat"><div class="agent-stat-val">4</div><div class="agent-stat-lbl">Active Channels</div></div>
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">86 hrs</div><div class="agent-stat-lbl">Team Hours Saved (30d)</div></div>
+        </div>
+
+        <!-- Competitor Insights from Social Media App -->
+        <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.25); background:linear-gradient(180deg,white,#FFF7ED);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="video"></i> Hooks de Competidores — inspiración de videos virales analizados</h3>
+            <span onclick="switchView('hook-miner')" style="font-size:12px;color:#F97316;cursor:pointer;white-space:nowrap;">Ver todos en HookMiner →</span>
+          </div>
+          <div id="cb-competitor-insights-body" style="display:flex; flex-direction:column; gap:10px;">
+            <div style="text-align:center;color:var(--text-muted);padding:16px;">Cargando…</div>
+          </div>
         </div>
 
         <!-- Generated content preview -->
