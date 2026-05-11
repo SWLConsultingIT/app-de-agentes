@@ -141,6 +141,8 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 // ══════════════════════════════════════════════════
 const brandKitData = {
   name: 'Arqy',
+  websiteUrl: '',
+  logoSvg:    '',
   industry: 'PropTech · Real Estate Operating System · B2B & B2C',
   tagline: 'Del caos al control profesional.',
   mission: 'Transformamos el caos operativo del real estate en control profesional mediante una plataforma única que conecta constructoras, inversores, compradores, residentes y administradores. Centralizamos la información dispersa entre Excel, WhatsApp y correos, eliminando la incertidumbre que cuesta márgenes, confianza y tiempo.',
@@ -171,10 +173,10 @@ const brandKitData = {
     { code: 'P6', role: 'Administrador de Consorcio',         label: 'Operational buyer (PM)',             size: '1–10 edificios bajo administración',                  pains: 'Coordinar reclamos por WhatsApp, papeles físicos, asambleas con baja participación, expensas atrasadas perseguidas a mano',                                                              triggers: 'Sumar nuevo edificio a la cartera, reclamo masivo no resuelto, exigencia del consorcio de digitalización' },
   ],
   competitors: [
-    { name: 'Procore',                     positioning: 'All-in-one construction management — "estándar de la industria"', tier: 'Premium', diff: '$9B+ valuación · 1M+ usuarios · ecosystem global pero genérico, no LATAM, sin componente inversor/residente' },
-    { name: 'Autodesk Construction Cloud', positioning: 'BIM + construction handoff (CAD-native)',                          tier: 'Premium', diff: '40+ años en CAD · fortaleza técnica BIM · débil en finanzas, comunidad y módulos no-construcción' },
-    { name: 'CMiC',                        positioning: 'ERP financiero para grandes constructoras',                        tier: 'Premium', diff: 'Single database (50 años) · fuerte en CFO · pesado, lento de implementar, sin LATAM ni mobile-first' },
-    { name: 'Lebane',                      positioning: 'AI-native PropTech LATAM con WhatsApp',                            tier: 'Mid',     diff: 'Único competidor regional con IA + WhatsApp · $4M funding · enfoque solo en gestión, no es ecosistema completo' },
+    { name: 'Procore',                     url: 'https://www.procore.com',       positioning: 'All-in-one construction management — "estándar de la industria"', tier: 'Premium', diff: '$9B+ valuación · 1M+ usuarios · ecosystem global pero genérico, no LATAM, sin componente inversor/residente' },
+    { name: 'Autodesk Construction Cloud', url: 'https://construction.autodesk.com', positioning: 'BIM + construction handoff (CAD-native)',                          tier: 'Premium', diff: '40+ años en CAD · fortaleza técnica BIM · débil en finanzas, comunidad y módulos no-construcción' },
+    { name: 'CMiC',                        url: 'https://www.cmic.net',          positioning: 'ERP financiero para grandes constructoras',                        tier: 'Premium', diff: 'Single database (50 años) · fuerte en CFO · pesado, lento de implementar, sin LATAM ni mobile-first' },
+    { name: 'Lebane',                      url: 'https://www.lebane.com',        positioning: 'AI-native PropTech LATAM con WhatsApp',                            tier: 'Mid',     diff: 'Único competidor regional con IA + WhatsApp · $4M funding · enfoque solo en gestión, no es ecosistema completo' },
   ],
   channels: [
     { name: 'LinkedIn',           icon: 'linkedin',       color: '#0A66C2', handle: '@arqy',           audience: 'Constructoras + inversores institucionales · canal #1 B2B (Build · Capital · PM)' },
@@ -196,6 +198,7 @@ const brandKitData = {
     { title: '"Menos llamadas, menos papel. Todo en un lugar." — Arqy PM',         channel: 'LinkedIn',  channelColor: '#EFF6FF,#1D4ED8', perf: 'Cold outreach Carlos',voiceFit: 92 },
     { title: '"Optimizá tus flujos operativos con IA predictiva" (anti-ejemplo)',   channel: 'Blog',      channelColor: '#F3F4F6,#374151', perf: 'Corporate blah · prohibido', voiceFit: 12 },
   ],
+  marketingPrompt: '',
 };
 
 // Preset color palettes the user can pick in one click
@@ -240,24 +243,27 @@ function updatePaletteColor(idx, hex) {
 
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
 const BRAND_ID = '20000000-0000-0000-0000-000000000002';
+const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
 
 function buildBrandProfilePayloadFromKit() {
   return {
     identity: {
       company_name: brandKitData.name,
+      website_url:  brandKitData.websiteUrl,
       industry:     brandKitData.industry,
       tagline:      brandKitData.tagline,
       mission:      brandKitData.mission,
     },
-    palette:        brandKitData.palette.map(c => ({ role: c.role, hex: c.hex })),
-    typography:     brandKitData.typography,
-    values:         brandKitData.values,
-    personas:       brandKitData.personas,
-    competitors:    brandKitData.competitors,
-    channels:       brandKitData.channels,
-    tone_by_channel: brandKitData.toneByChannel,
-    content_samples: brandKitData.samples,
+    palette:          brandKitData.palette.map(c => ({ role: c.role, hex: c.hex })),
+    typography:       brandKitData.typography,
+    values:           brandKitData.values,
+    personas:         brandKitData.personas,
+    competitors:      brandKitData.competitors,
+    channels:         brandKitData.channels,
+    tone_by_channel:  brandKitData.toneByChannel,
+    content_samples:  brandKitData.samples,
+    marketing_prompt: brandKitData.marketingPrompt,
   };
 }
 
@@ -290,6 +296,71 @@ async function saveBrandProfile() {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
     console.error('saveBrandProfile error:', e);
   }
+}
+
+// ── WF00 Website Scrapper ──────────────────────────────
+async function scanBrandingBio() {
+  const urlInput = document.getElementById('bk-scrape-url');
+  const btn = document.getElementById('bk-scrape-btn');
+  const statusEl = document.getElementById('bk-scrape-status');
+
+  const url = urlInput?.value?.trim();
+  if (!url) { showToast('Enter a website URL first.'); return; }
+
+  if (btn) { btn.textContent = 'Scanning…'; btn.disabled = true; }
+  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Scanning website — this may take 15–30 seconds…</span>'; }
+
+  try {
+    const res = await fetch(WF00_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    applyScrapedBrandData(data);
+    if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ Website scraped — fields updated below. Review and adjust.</span>'; }
+    showToast('Website scraped. Review and save when ready.');
+  } catch (e) {
+    if (statusEl) { statusEl.innerHTML = '<span style="color:#EF4444">❌ Scan failed — check URL or n8n workflow is active.</span>'; }
+    console.error('[WF00] scan error:', e);
+  } finally {
+    if (btn) { btn.textContent = 'Scan Website'; btn.disabled = false; }
+  }
+}
+
+function applyScrapedBrandData(data) {
+  if (data.name)            brandKitData.name = data.name;
+  if (data.websiteUrl)      brandKitData.websiteUrl = data.websiteUrl;
+  if (data.industry)        brandKitData.industry = data.industry;
+  if (data.tagline)         brandKitData.tagline = data.tagline;
+  if (data.mission)         brandKitData.mission = data.mission;
+  if (data.values?.length)  brandKitData.values = data.values.map((v, i) => ({
+    title: v.title || v.name || 'Value',
+    desc:  v.desc || v.description || '',
+    color: v.color || ['#6366F1','#10B981','#F59E0B','#EC4899','#14B8A6'][i % 5],
+  }));
+  if (data.personas?.length) brandKitData.personas = data.personas.map((p, i) => ({
+    code:     p.code || `P${i + 1}`,
+    role:     p.role || 'Audience',
+    label:    p.label || '',
+    size:     p.size || '',
+    pains:    p.pains || '',
+    triggers: p.triggers || '',
+  }));
+  if (data.palette?.length) brandKitData.palette = data.palette.slice(0, 6).map((c, i) => ({
+    hex:  c.hex || brandKitData.palette[i]?.hex || '#6366F1',
+    name: c.name || (c.hex || '').toUpperCase(),
+    role: paletteRoles[i] || 'Custom',
+  }));
+  if (data.typography) {
+    if (data.typography.heading) brandKitData.typography.heading = data.typography.heading;
+    if (data.typography.body)    brandKitData.typography.body    = data.typography.body;
+    if (data.typography.mono)    brandKitData.typography.mono    = data.typography.mono;
+  }
+  if (data.channels?.length)  brandKitData.channels = data.channels;
+  if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  switchView(state.currentView);
 }
 
 // ── WF02 BrandVoice Optimizer ──────────────────────────
@@ -5437,8 +5508,22 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Content Samples Linked</div></div>
         </div>
 
+        <!-- 0. Website Scrapper -->
+        <div class="card" style="margin-top:24px; border:1px solid #C7D2FE; background:linear-gradient(135deg,#EEF2FF 0%,#F5F3FF 100%);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="globe"></i> Website Scrapper</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">AI auto-fill</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Enter your website URL and the AI will automatically extract company bio, mission, vision, core values, color palette and target audience — then pre-fill all fields below.</p>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input type="text" id="bk-scrape-url" value="${brandKitData.websiteUrl}" oninput="updateBrandField('websiteUrl', this.value)" placeholder="https://www.yourcompany.com" style="flex:1; padding:10px 12px; border:1px solid #C7D2FE; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
+            <button id="bk-scrape-btn" onclick="scanBrandingBio()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;"><i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan Website</button>
+          </div>
+          <div id="bk-scrape-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+        </div>
+
         <!-- 1. Brand Identity -->
-        <div class="card" style="margin-top:24px;">
+        <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="award"></i> 1. Brand Identity</h3>
             <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
@@ -5586,11 +5671,12 @@ function generateViewHTML(view) {
             <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>
           </div>
           <table class="lm-table">
-            <thead><tr><th style="width:22%;">Competitor</th><th style="width:28%;">Positioning</th><th style="width:16%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:40px;"></th></tr></thead>
+            <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:40px;"></th></tr></thead>
             <tbody>
               ${brandKitData.competitors.map((c, i) => `
                 <tr>
                   <td><input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('competitors', ${i}, 'name', this.value)" style="padding:6px 8px; font-size:13px;"></td>
+                  <td><input class="bk-input" type="text" value="${c.url||''}" oninput="updateBrandListItem('competitors', ${i}, 'url', this.value)" placeholder="https://…" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
                   <td><input class="bk-input" type="text" value="${c.positioning}" oninput="updateBrandListItem('competitors', ${i}, 'positioning', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
                   <td>
                     <select class="bk-input" onchange="updateBrandListItem('competitors', ${i}, 'tier', this.value)" style="padding:6px 8px; font-size:12px; font-weight:600;">
@@ -5605,7 +5691,7 @@ function generateViewHTML(view) {
               `).join('')}
             </tbody>
           </table>
-          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different' })" style="margin-top:12px;">+ Add competitor</button>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different' })" style="margin-top:12px;">+ Add competitor</button>
         </div>
 
         <!-- 7. Logos -->
@@ -5627,10 +5713,15 @@ function generateViewHTML(view) {
               <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:42px; color:white;">${(brandKitData.name[0] || 'A').toUpperCase()}.</span></div>
               <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon · App</div>
             </div>
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+            ${brandKitData.logoSvg
+              ? `<div style="border:2px solid #6366F1; border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:12px; overflow:hidden;">${brandKitData.logoSvg}</div>
+              <div style="padding:8px 10px; font-size:11px; color:#6366F1; font-weight:600;">✓ Extracted from website</div>
+            </div>`
+              : `<div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
               <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload variant</div>
               <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Social avatar · 512×512</div>
-            </div>
+            </div>`}
           </div>
           <p style="margin-top:12px; font-size:11px; color:var(--text-muted);">💡 These previews update automatically as you change brand name, colors and typography.</p>
         </div>
@@ -5748,6 +5839,19 @@ function generateViewHTML(view) {
               <tr><td><strong>"Old blog draft — Transform your workflow"</strong></td><td><span class="lm-tag" style="background:#F3F4F6;color:#374151">Blog</span></td><td><span style="color:var(--text-muted);font-size:12px;">Archived</span></td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">42% · flagged</span></td></tr>
             </tbody>
           </table>
+        </div>
+
+        <!-- 11. Marketing Content Prompt -->
+        <div class="card" style="margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="sparkles"></i> 11. Marketing Content Prompt</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Custom AI instructions</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px 0;">Custom instructions injected into every Marketing Pilot agent. Define tone rules, forbidden words, format preferences, campaign focus, and language constraints. All downstream AI (ContentEngine, HookMiner, ContentBuilder, CreativeBrain) will follow these instructions.</p>
+          <textarea class="bk-input area"
+            oninput="updateBrandField('marketingPrompt', this.value)"
+            placeholder="E.g.: Always write in Spanish using voseo. Never use corporate buzzwords like 'sinergia', 'disruptivo' or 'innovador'. Focus on pain points of construction directors. Each LinkedIn post must start with a provocative hook in the first line. Format posts with a line break every 2 sentences. Always end with one concrete CTA..."
+            style="min-height:130px; font-size:13px; font-weight:400; line-height:1.6;">${brandKitData.marketingPrompt || ''}</textarea>
         </div>
 
         <!-- Next step CTA -->

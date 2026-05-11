@@ -1,0 +1,222 @@
+{
+  "name": "WF07 — Content Builder (draft from brief + hooks)",
+  "nodes": [
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 300],
+      "parameters": {
+        "path": "wf07-content-builder",
+        "httpMethod": "POST",
+        "responseMode": "responseNode"
+      },
+      "webhookId": "wf07-content-builder"
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000002",
+      "name": "Fetch Latest Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [320, 200],
+      "parameters": {
+        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_briefs",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
+            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "brand_id", "value": "=eq.{{$json.brand_id}}" },
+            { "name": "status", "value": "eq.ready" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000003",
+      "name": "Fetch Voice Rules",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [320, 400],
+      "parameters": {
+        "url": "={{$vars.SUPABASE_URL}}/rest/v1/brand_voice_rules",
+        "method": "GET",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
+            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "brand_id", "value": "=eq.{{$('Webhook').item.json.brand_id}}" },
+            { "name": "order", "value": "created_at.desc" },
+            { "name": "limit", "value": "1" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000004",
+      "name": "Fetch Competitor Videos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [320, 600],
+      "parameters": {
+        "url": "={{$vars.SOCIAL_MEDIA_APP_URL}}/api/videos",
+        "method": "GET"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000005",
+      "name": "Build Draft Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 400],
+      "parameters": {
+        "jsCode": "const briefRow = $('Fetch Latest Brief').all()[0]?.json;\nif (!briefRow) throw new Error('No ready brief found. Run WF06 first.');\n\nconst brief = briefRow.brief_json || {};\nconst channel = briefRow.channel || 'LinkedIn';\n\nconst voiceRow = $('Fetch Voice Rules').all()[0]?.json || {};\nconst rules = voiceRow.rules_json || {};\nconst alwaysRules = (rules.always_rules || []).join('; ');\nconst neverRules = (rules.never_rules || []).join('; ');\nconst bannedTerms = (rules.banned_terms || []).join(', ');\n\n// Get top competitor concepts as style references\nconst videos = $('Fetch Competitor Videos').all().map(i => i.json).slice(0, 10);\nconst conceptExamples = [];\nvideos.forEach(v => {\n  if (v.newConcepts) {\n    const scriptMatch = v.newConcepts.match(/## SCRIPT\\n([\\s\\S]{50,400}?)(?=\\n# CONCEPT|$)/);\n    if (scriptMatch) {\n      conceptExamples.push(`[Style ref from @${v.creator}, ${Math.round(v.views/1000)}K views]:\\n${scriptMatch[1].slice(0, 300)}`);\n    }\n  }\n});\nconst styleContext = conceptExamples.slice(0, 3).join('\\n\\n') || 'No style references yet.';\n\nconst draftPrompt = `You are writing a complete, publish-ready ${channel} post for a brand.\n\nCONTENT BRIEF:\nHook: ${brief.hook}\nOpening: ${brief.opening}\nKey points: ${(brief.body || []).join(' | ')}\nCTA: ${brief.cta}\nHook type: ${brief.hook_type}\n\nVOICE RULES:\nALWAYS: ${alwaysRules || 'Be direct, specific, value-first'}\nNEVER: ${neverRules || 'Use jargon, hype, or vague claims'}\nBANNED TERMS: ${bannedTerms || 'none'}\n\nSTYLE REFERENCES (proven formats from competitor analysis — adapt tone, NOT content):\n${styleContext}\n\nWrite the complete ${channel} post. Requirements:\n- Start with the exact hook from the brief (verbatim or sharper)\n- Follow with the opening, then key points (each as its own short paragraph)\n- End with the CTA\n- Match voice rules strictly — flag any banned terms\n- ${channel === 'LinkedIn' ? 'No hashtag spam. Max 3 relevant hashtags at the end.' : ''}\n- ${channel === 'Email' ? 'Subject line first, then body.' : ''}\n- ${channel === 'Blog' ? 'Include H2 subheadings. 400-600 words.' : 'Max 1200 characters for social.'}\n\nRespond with JSON:\n{\n  \"title\": \"short title\",\n  \"draft_text\": \"complete post text\",\n  \"char_count\": number,\n  \"hook_used\": \"exact hook opening\",\n  \"qa_flags\": [\"list any voice rule violations\"]\n}`;\n\nreturn [{ json: {\n  draftPrompt,\n  brief_id: briefRow.id,\n  channel,\n  brand_id: $('Webhook').item.json.brand_id,\n} }];"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000006",
+      "name": "Call Claude — Generate Draft",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [780, 400],
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{$vars.ANTHROPIC_API_KEY}}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6-20251001\",\n  \"max_tokens\": 2048,\n  \"system\": \"You are a brand content writer. Respond with valid JSON only.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.draftPrompt}}\"\n    }\n  ]\n}"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000007",
+      "name": "QA Score + Save",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1000, 400],
+      "parameters": {
+        "jsCode": "const claudeResponse = $input.first().json;\nconst rawText = claudeResponse.content?.[0]?.text || '{}';\n\nlet draft;\ntry {\n  const jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n  draft = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);\n} catch (e) {\n  draft = { title: 'Draft', draft_text: rawText.slice(0, 2000), char_count: rawText.length, qa_flags: [] };\n}\n\n// QA scoring\nconst flags = Array.isArray(draft.qa_flags) ? draft.qa_flags.length : 0;\nconst hasHook = !!draft.hook_used;\nconst hasBody = draft.draft_text && draft.draft_text.length > 100;\nconst final_score = Math.max(50, 100 - (flags * 10) - (!hasHook ? 10 : 0) - (!hasBody ? 15 : 0));\nconst status = final_score >= 75 ? 'draft' : 'needs_revision';\n\nconst draftId = crypto.randomUUID();\n\nreturn [{ json: {\n  draft_id: draftId,\n  draft,\n  final_score,\n  status,\n  brief_id: $('Build Draft Prompt').item.json.brief_id,\n  brand_id: $('Build Draft Prompt').item.json.brand_id,\n  qa_json: { final_score, flags: draft.qa_flags || [], status },\n} }];"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000008",
+      "name": "Save Draft to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1220, 400],
+      "parameters": {
+        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_drafts",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
+            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{$json.draft_id}}\",\n  \"brand_id\": \"{{$json.brand_id}}\",\n  \"brief_id\": \"{{$json.brief_id}}\",\n  \"title\": \"{{$json.draft.title}}\",\n  \"draft_text\": \"{{$json.draft.draft_text}}\",\n  \"status\": \"{{$json.status}}\",\n  \"final_score\": {{$json.final_score}},\n  \"qa_json\": {{JSON.stringify($json.qa_json)}},\n  \"created_at\": \"{{$now.toISO()}}\"\n}"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000009",
+      "name": "Mark Brief as Used",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1220, 560],
+      "parameters": {
+        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_briefs?id=eq.{{$('QA Score + Save').item.json.brief_id}}",
+        "method": "PATCH",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
+            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"status\": \"used\" }"
+      }
+    },
+    {
+      "id": "d4e5f6a7-0007-0007-0007-000000000010",
+      "name": "Respond to App",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 400],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"draft_id\": \"{{$('QA Score + Save').item.json.draft_id}}\",\n  \"final_score\": {{$('QA Score + Save').item.json.final_score}},\n  \"status\": \"{{$('QA Score + Save').item.json.status}}\",\n  \"draft\": {{JSON.stringify($('QA Score + Save').item.json.draft)}}\n}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Fetch Latest Brief", "type": "main", "index": 0 },
+          { "node": "Fetch Voice Rules", "type": "main", "index": 0 },
+          { "node": "Fetch Competitor Videos", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Latest Brief": {
+      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
+    },
+    "Fetch Voice Rules": {
+      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
+    },
+    "Fetch Competitor Videos": {
+      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
+    },
+    "Build Draft Prompt": {
+      "main": [[ { "node": "Call Claude — Generate Draft", "type": "main", "index": 0 } ]]
+    },
+    "Call Claude — Generate Draft": {
+      "main": [[ { "node": "QA Score + Save", "type": "main", "index": 0 } ]]
+    },
+    "QA Score + Save": {
+      "main": [
+        [
+          { "node": "Save Draft to Supabase", "type": "main", "index": 0 },
+          { "node": "Mark Brief as Used", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Save Draft to Supabase": {
+      "main": [[ { "node": "Respond to App", "type": "main", "index": 0 } ]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "notes": "SETUP: Set n8n variables SUPABASE_URL, SUPABASE_ANON, SOCIAL_MEDIA_APP_URL, ANTHROPIC_API_KEY. This workflow: (1) fetches latest ready brief from WF06, (2) fetches brand voice rules, (3) fetches competitor video concepts as style references, (4) builds a draft prompt combining brief + voice rules + competitor style examples, (5) calls Claude to generate the full draft, (6) QA scores the draft against voice rules, (7) saves to content_drafts, (8) marks brief as used. Requires WF06 to have run first."
+  }
+}
