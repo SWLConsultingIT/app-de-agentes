@@ -140,6 +140,7 @@ _originalLeadsData = leadsData.map(l => ({ ...l }));
 //  Editable at runtime; every Marketing Pilot agent reads from here
 // ══════════════════════════════════════════════════
 const brandKitData = {
+  brandId:    null,
   name: 'Arqy',
   websiteUrl: '',
   logoSvg:    '',
@@ -263,9 +264,9 @@ function getSocialLogo(iconName, color) {
 }
 
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
-const BRAND_ID = '20000000-0000-0000-0000-000000000002';
 const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
+const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/social-bios-analysis';
 
 function buildBrandProfilePayloadFromKit() {
   return {
@@ -292,29 +293,44 @@ async function saveBrandProfile() {
   const btn = document.getElementById('bk-save-btn');
   if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
 
+  if (!brandKitData.brandId) brandKitData.brandId = crypto.randomUUID();
+
   const profile_payload = buildBrandProfilePayloadFromKit();
 
   try {
-    const res = await fetch(WF01_URL, {
+    // 1. Upsert brand row
+    await supabaseUpsert('brands', {
+      id:         brandKitData.brandId,
+      account_id: '11111111-1111-4111-8111-111111111111',
+      name:       brandKitData.name,
+      industry:   brandKitData.industry,
+      updated_at: new Date().toISOString(),
+    });
+
+    // 2. Upsert brand profile (data_json holds everything)
+    await supabaseUpsert('brand_profiles', {
+      brand_id:   brandKitData.brandId,
+      data_json:  profile_payload,
+      updated_at: new Date().toISOString(),
+    });
+
+    // 3. Fire WF01 for completion scoring + BrandVoice pipeline (fire-and-forget)
+    fetch(WF01_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        brand_id: BRAND_ID,
-        changed_fields: ['identity', 'palette', 'typography', 'values', 'personas', 'competitors', 'channels', 'tone_by_channel', 'content_samples'],
+        brand_id:       brandKitData.brandId,
         profile_payload,
+        changed_fields: ['profile_update'],
       }),
-    });
-    const data = await res.json();
-    if (btn) { btn.textContent = data.brandvoice_queued ? '✅ Saved & queued' : '✅ Saved'; }
-    showToast('Brand profile saved. ContentEngine now derives from this Branding Bio.');
-    setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
+    }).catch(e => console.warn('[WF01] pipeline call failed (non-blocking):', e));
 
-    // Sync brand context to social media app (fire-and-forget — app may be offline)
-    syncBrandToSocialMediaApp(profile_payload)
-      .then(() => showToast('Brand synced to social media pipeline — config updated.'))
-      .catch(e => console.warn('[sync] social-media app offline, skipping config sync:', e));
+    if (btn) { btn.textContent = '✅ Saved'; }
+    showToast(`"${brandKitData.name}" saved successfully.`);
+    setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
+    showToast('Error: ' + e.message);
     console.error('saveBrandProfile error:', e);
   }
 }
@@ -381,6 +397,7 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  brandKitData.brandId = crypto.randomUUID();
   switchView(state.currentView);
 }
 
@@ -388,13 +405,14 @@ function applyScrapedBrandData(data) {
 const WF02_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brandvoice';
 
 async function runBrandVoiceOptimizer() {
+  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
   const btn = document.getElementById('wf02-run-btn');
   if (btn) { btn.textContent = 'Running…'; btn.disabled = true; }
   try {
     // WF01 queues the brandvoice_rebuild job in Supabase then calls WF02 directly
     const res = await fetch(WF01_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, profile_payload: {}, changed_fields: ['brandvoice_rebuild'] }),
+      body: JSON.stringify({ brand_id: brandKitData.brandId, profile_payload: {}, changed_fields: ['brandvoice_rebuild'] }),
     });
     const data = await res.json();
     if (btn) { btn.textContent = '✅ Optimized'; }
@@ -412,13 +430,14 @@ async function runBrandVoiceOptimizer() {
 const WF03_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/research-sync';
 
 async function syncResearchSources() {
+  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
   const btn = document.getElementById('wf03-sync-btn');
   if (btn) { btn.textContent = 'Syncing…'; btn.disabled = true; }
   try {
     // fire-and-forget — WF03 processes all sources in batches, no respondToWebhook
     fetch(WF03_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, trigger: 'manual' }),
+      body: JSON.stringify({ brand_id: brandKitData.brandId, trigger: 'manual' }),
     }).catch(e => console.error('[WF03] webhook error:', e));
     if (btn) { btn.textContent = '✅ Synced'; }
     showToast('Research sync triggered — runs in background.');
@@ -443,7 +462,7 @@ async function createQueueJob(job_type) {
       'Content-Type': 'application/json',
       'Prefer': 'return=representation',
     },
-    body: JSON.stringify({ brand_id: BRAND_ID, job_type }),
+    body: JSON.stringify({ brand_id: brandKitData.brandId, job_type }),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -453,6 +472,21 @@ async function createQueueJob(job_type) {
 }
 
 // ── Content Queue table — reads content_drafts from Supabase ───
+async function supabaseUpsert(table, data) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Supabase ${table}: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
 async function supabaseGet(path) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
@@ -510,7 +544,7 @@ async function refreshContentQueue() {
   const tbody = document.getElementById('content-queue-tbody');
   if (!tbody) return;
   try {
-    const rows = await fetchContentDrafts(BRAND_ID);
+    const rows = await fetchContentDrafts(brandKitData.brandId);
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No drafts yet — click "Build Draft" to generate one.</td></tr>';
       return;
@@ -579,8 +613,8 @@ function setHTML(id, html) {
 async function hydrateBrandVoiceView() {
   try {
     const [profileRow, voiceRow] = await Promise.all([
-      fetchBrandProfile(BRAND_ID),
-      fetchLatestVoiceRules(BRAND_ID),
+      fetchBrandProfile(brandKitData.brandId),
+      fetchLatestVoiceRules(brandKitData.brandId),
     ]);
 
     const data = profileRow?.data_json || {};
@@ -761,7 +795,7 @@ function applyProfileDataToBrandKit(profileData) {
 
 async function loadBrandKitFromSupabase() {
   try {
-    const profileRow = await fetchBrandProfile(BRAND_ID);
+    const profileRow = await fetchBrandProfile(brandKitData.brandId);
     if (profileRow?.data_json) applyProfileDataToBrandKit(profileRow.data_json);
   } catch (err) {
     console.warn('[Branding Bio] could not load profile from Supabase, using local defaults', err);
@@ -951,11 +985,11 @@ function fmtCompactNumber(n) {
 async function hydrateContentEngineView() {
   try {
     const [profileRow, dbInsights, dbTopPieces, dbSources, dbLatestRun] = await Promise.all([
-      fetchBrandProfile(BRAND_ID),
-      fetchContentInsights(BRAND_ID),
-      fetchTopCompetitorContent(BRAND_ID),
-      fetchResearchSources(BRAND_ID),
-      fetchLatestResearchRun(BRAND_ID),
+      fetchBrandProfile(brandKitData.brandId),
+      fetchContentInsights(brandKitData.brandId),
+      fetchTopCompetitorContent(brandKitData.brandId),
+      fetchResearchSources(brandKitData.brandId),
+      fetchLatestResearchRun(brandKitData.brandId),
     ]);
 
     const data = normalizeProfileData(profileRow?.data_json);
@@ -1178,8 +1212,8 @@ async function hydrateHookMinerView() {
 
     // Always fetch the full set for stats; filtered set just for the table
     const [allHooks, filteredHooks] = await Promise.all([
-      fetchHookLibrary(BRAND_ID, ''),
-      channelFilter ? fetchHookLibrary(BRAND_ID, channelFilter) : Promise.resolve(null),
+      fetchHookLibrary(brandKitData.brandId, ''),
+      channelFilter ? fetchHookLibrary(brandKitData.brandId, channelFilter) : Promise.resolve(null),
     ]);
     const tableHooks = filteredHooks || allHooks;
 
@@ -1338,9 +1372,9 @@ async function hydrateCreativeBrainView() {
     const filter = filterEl?.value || '';
 
     const [profileRow, allAssets, filteredAssets] = await Promise.all([
-      fetchBrandProfile(BRAND_ID),
-      fetchCreativeAssets(BRAND_ID, ''),
-      filter ? fetchCreativeAssets(BRAND_ID, filter) : Promise.resolve(null),
+      fetchBrandProfile(brandKitData.brandId),
+      fetchCreativeAssets(brandKitData.brandId, ''),
+      filter ? fetchCreativeAssets(brandKitData.brandId, filter) : Promise.resolve(null),
     ]);
     const galleryAssets = filteredAssets || allAssets;
 
@@ -1432,6 +1466,197 @@ async function fetchPublishingDrafts(brandId) {
   return supabaseGet(`content_drafts?${params}`);
 }
 
+// ── SOCIAL BIOS ──────────────────────────────────────────
+
+async function fetchSocialBiosData(brandId) {
+  const params = new URLSearchParams({
+    brand_id: `eq.${brandId}`,
+    select: 'channel,handle,url,analysis_json,updated_at',
+    order: 'updated_at.desc',
+  });
+  return supabaseGet(`social_media_analyses?${params}`);
+}
+
+function renderSocialBiosCard(ch, analysis, lastRun) {
+  const logo = getSocialLogo(ch.icon, ch.color || '#6B7280');
+  const safeId = (ch.name || '').replace(/[^a-zA-Z0-9]/g, '-');
+
+  if (!analysis) {
+    return `
+      <div style="background:white;border-radius:12px;border:1px solid #E5E7EB;padding:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${logo}</div>
+          <div style="flex:1;">
+            <strong style="font-size:15px;color:#111827;">${ch.name}</strong>
+            <div style="font-size:12px;color:#6B7280;">${ch.handle || ch.url || ''}</div>
+          </div>
+          <button id="sb-btn-${safeId}" data-channel="${ch.name}" onclick="runSocialBiosAnalysis(this.dataset.channel)"
+            style="padding:7px 14px;background:#7C3AED;color:white;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">
+            <i data-lucide="play" style="width:11px;vertical-align:middle;margin-right:5px"></i>Analyze
+          </button>
+        </div>
+        <div style="margin-top:12px;padding:12px;background:#F9FAFB;border-radius:8px;font-size:12px;color:#9CA3AF;text-align:center;">
+          Not analyzed yet — click Analyze to extract voice rules and top content
+        </div>
+      </div>`;
+  }
+
+  const doRules   = (analysis.voice_rules?.do   || []).slice(0, 5);
+  const dontRules = (analysis.voice_rules?.dont || []).slice(0, 5);
+  const topPosts  = (analysis.top_posts || []).slice(0, 3);
+  const patterns  = (analysis.content_patterns || []).slice(0, 4);
+
+  return `
+    <div style="background:white;border-radius:12px;border:1px solid #E5E7EB;padding:20px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+        <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${logo}</div>
+        <div style="flex:1;">
+          <strong style="font-size:15px;color:#111827;">${ch.name}</strong>
+          <div style="font-size:12px;color:#6B7280;">${ch.handle || ''}</div>
+        </div>
+        ${analysis.formality ? `<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:#F3F4F6;color:#374151;font-weight:500;">${analysis.formality}</span>` : ''}
+        <button id="sb-btn-${safeId}" data-channel="${ch.name}" onclick="runSocialBiosAnalysis(this.dataset.channel)"
+          style="padding:5px 10px;background:#F3F4F6;color:#374151;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">
+          <i data-lucide="refresh-cw" style="width:10px;vertical-align:middle;margin-right:4px"></i>Re-analyze
+        </button>
+        ${lastRun ? `<span style="font-size:10px;color:#9CA3AF;white-space:nowrap;">${lastRun}</span>` : ''}
+      </div>
+
+      <div style="padding:12px;background:#F9FAFB;border-radius:8px;margin-bottom:14px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:6px;">Tone</div>
+        <p style="font-size:13px;color:#374151;margin:0;line-height:1.5;">${analysis.tone || '—'}</p>
+        ${analysis.posting_style ? `<p style="font-size:12px;color:#6B7280;margin:6px 0 0;font-style:italic;">${analysis.posting_style}</p>` : ''}
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div style="padding:12px;background:#F0FDF4;border-radius:8px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#059669;margin-bottom:8px;">✓ DO</div>
+          ${doRules.map(r=>`<div style="font-size:12px;color:#374151;margin-bottom:4px;line-height:1.4;">• ${r}</div>`).join('') || '<div style="font-size:12px;color:#9CA3AF;">—</div>'}
+        </div>
+        <div style="padding:12px;background:#FEF2F2;border-radius:8px;">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#DC2626;margin-bottom:8px;">✗ DON'T</div>
+          ${dontRules.map(r=>`<div style="font-size:12px;color:#374151;margin-bottom:4px;line-height:1.4;">• ${r}</div>`).join('') || '<div style="font-size:12px;color:#9CA3AF;">—</div>'}
+        </div>
+      </div>
+
+      ${patterns.length ? `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:8px;">Content Patterns</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${patterns.map(p=>`<span style="font-size:11px;padding:3px 10px;background:#EEF2FF;color:#4338CA;border-radius:20px;font-weight:500;">${p}</span>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${topPosts.length ? `
+      <div>
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:8px;">Best Performing Examples</div>
+        ${topPosts.map(p=>`
+          <div style="padding:10px;background:#FAFAFA;border:1px solid #E5E7EB;border-radius:7px;margin-bottom:6px;">
+            <div style="font-size:12px;color:#111827;font-style:italic;margin-bottom:4px;">"${p.text}"</div>
+            <div style="font-size:11px;color:#6B7280;">→ ${p.why_it_works}</div>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+}
+
+async function runSocialBiosAnalysis(channelName) {
+  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
+  const ch = (brandKitData.channels || []).find(c => c.name === channelName);
+  if (!ch || !ch.url) { showToast(`No URL found for ${channelName}.`); return; }
+
+  const safeId = channelName.replace(/[^a-zA-Z0-9]/g, '-');
+  const btn = document.getElementById(`sb-btn-${safeId}`);
+  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
+
+  try {
+    const res = await fetch(WF04_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id:       brandKitData.brandId,
+        channel_name:   ch.name,
+        channel_url:    ch.url,
+        channel_handle: ch.handle || '',
+      }),
+    });
+    if (!res.ok) throw new Error(`WF04 ${res.status}`);
+    showToast(`${channelName} analyzed.`);
+    await hydrateSocialBiosView();
+  } catch (e) {
+    showToast('Error: ' + e.message);
+    if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
+  }
+}
+
+async function runAllSocialBios() {
+  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
+  const channels = (brandKitData.channels || []).filter(c => c.url);
+  if (!channels.length) { showToast('No channels with URLs found. Scan a website in Branding Bio first.'); return; }
+
+  const btn = document.getElementById('sb-run-all-btn');
+  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
+  showToast(`Analyzing ${channels.length} channels — this may take a minute.`);
+
+  await Promise.allSettled(channels.map(ch =>
+    fetch(WF04_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id: brandKitData.brandId,
+        channel_name: ch.name,
+        channel_url: ch.url,
+        channel_handle: ch.handle || '',
+      }),
+    }).catch(e => console.warn(`[SocialBios] ${ch.name}:`, e))
+  ));
+
+  showToast('All channels analyzed.');
+  await hydrateSocialBiosView();
+  if (btn) { btn.textContent = 'Analyze All Channels'; btn.disabled = false; }
+}
+
+async function hydrateSocialBiosView() {
+  const brandTag = document.getElementById('sb-brand-tag');
+  if (brandTag) brandTag.textContent = `Brand: ${brandKitData.name || '—'}`;
+
+  const grid = document.getElementById('sb-channels-grid');
+  if (!grid) return;
+
+  const channels = brandKitData.channels || [];
+
+  if (!brandKitData.brandId) {
+    grid.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);font-size:14px;">Save a brand profile in Branding Bio first.</div>`;
+    return;
+  }
+  if (!channels.length) {
+    grid.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);font-size:14px;">No social channels found. Scan a website in Branding Bio to auto-detect channels.</div>`;
+    return;
+  }
+
+  let analyses = [];
+  try { analyses = await fetchSocialBiosData(brandKitData.brandId); }
+  catch (e) { console.warn('[SocialBios] fetch error:', e); }
+
+  const map = {};
+  analyses.forEach(a => { map[a.channel] = a; });
+
+  grid.innerHTML = channels.map(ch => {
+    const data = map[ch.name];
+    const lastRun = data?.updated_at ? new Date(data.updated_at).toLocaleString() : null;
+    return renderSocialBiosCard(ch, data?.analysis_json || null, lastRun);
+  }).join('');
+
+  lucide.createIcons({ nodes: [grid] });
+
+  const lastEl = document.getElementById('sb-last-run');
+  if (lastEl && analyses.length) {
+    const latest = analyses[0];
+    lastEl.textContent = `Last analysis: ${new Date(latest.updated_at).toLocaleString()}`;
+  }
+}
+
+// ── END SOCIAL BIOS ─────────────────────────────────────
+
 const CHANNEL_TAG_STYLE = {
   LinkedIn:  { bg: '#EFF6FF', fg: '#1D4ED8', dot: '#0A66C2' },
   Email:     { bg: '#FEF3C7', fg: '#B45309', dot: '#F59E0B' },
@@ -1486,7 +1711,7 @@ function fmtMonthName(d) {
 
 async function hydrateAutoPublisherView() {
   try {
-    const allDrafts = await fetchPublishingDrafts(BRAND_ID);
+    const allDrafts = await fetchPublishingDrafts(brandKitData.brandId);
 
     const now = Date.now();
     const oneWeekMs = 7 * 24 * 3600 * 1000;
@@ -1636,7 +1861,7 @@ async function handleGenerateVisualFromCB() {
   try {
     // Find the most recent draft for this brand
     const params = new URLSearchParams({
-      brand_id: `eq.${BRAND_ID}`,
+      brand_id: `eq.${brandKitData.brandId}`,
       order: 'created_at.desc',
       limit: '1',
       select: 'id,title,status'
@@ -1697,7 +1922,7 @@ async function runContentAnalysis() {
     // fire-and-forget — WF04 takes ~2.5 min, don't await response
     fetch(WF04_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID }),
+      body: JSON.stringify({ brand_id: brandKitData.brandId }),
     }).catch(e => console.error('[WF04] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Content analysis queued — runs in background.');
@@ -1750,7 +1975,7 @@ async function runHookMiner() {
     // fire-and-forget — WF05 runs multi-batch AI processing, don't await response
     fetch(WF05_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID }),
+      body: JSON.stringify({ brand_id: brandKitData.brandId }),
     }).catch(e => console.error('[WF05] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Hook mining queued — runs in background.');
@@ -2115,7 +2340,7 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
     const res = await fetch(WF06_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, channel, persona })
+      body: JSON.stringify({ brand_id: brandKitData.brandId, channel, persona })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -2185,7 +2410,7 @@ async function handleRegenerate() {
 
 // ── WF07 Content Builder + QA ──────────────────────────
 const WF07_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder';
-// Reuses BRAND_ID
+// Reuses brandKitData.brandId
 
 // Tracks the most recent draft built by WF07 so the Approve/Discard buttons
 // know which entity_id to send to WF08.
@@ -2196,7 +2421,7 @@ async function generateDraft() {
     const res = await fetch(WF07_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID })
+      body: JSON.stringify({ brand_id: brandKitData.brandId })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -2293,7 +2518,7 @@ async function sendApprovalDecision(decision, notes = '') {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        brand_id: BRAND_ID,
+        brand_id: brandKitData.brandId,
         entity_type: 'content_draft',
         entity_id: lastBuiltDraftId,
         decision,
@@ -2354,7 +2579,7 @@ async function generateVisualBrief(draftId) {
     const res = await fetch(WF09_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, draft_id: draftId })
+      body: JSON.stringify({ brand_id: brandKitData.brandId, draft_id: draftId })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
@@ -2470,7 +2695,7 @@ async function simulatePublish(draftId) {
     const res = await fetch(WF10_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: BRAND_ID, draft_id: draftId })
+      body: JSON.stringify({ brand_id: brandKitData.brandId, draft_id: draftId })
     });
     return { httpOk: res.ok, body: await res.json() };
   } catch (err) {
@@ -2991,6 +3216,7 @@ function switchView(viewId) {
 
     // Marketing Pilot — Tier 1 Light agents (content engine, not campaign manager)
     'branding-kit':        { name: 'Branding Bio', sub: 'Marketing Pilot · Foundation input — your brand data fuels every downstream agent' },
+    'social-bios':         { name: 'Social Bios', sub: 'Marketing Pilot · Multi-channel voice analysis — tone, rules, and top-performing content by channel' },
     'brandvoice-optimizer': { name: 'BrandVoice Optimizer', sub: 'Marketing Pilot · Codifies your brand voice into reusable rules the rest of the agents follow' },
     'content-engine':      { name: 'ContentEngine', sub: 'Marketing Pilot · Analyzes top-performing content in your industry and surfaces what actually gets engagement' },
     'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
@@ -3029,6 +3255,10 @@ function switchView(viewId) {
 
   if (viewId === 'hook-miner') {
     setTimeout(() => hydrateHookMinerView(), 80);
+  }
+
+  if (viewId === 'social-bios') {
+    setTimeout(() => hydrateSocialBiosView(), 80);
   }
 
   if (viewId === 'brandvoice-optimizer') {
@@ -5825,6 +6055,37 @@ function generateViewHTML(view) {
       </div>
     `,
 
+    'social-bios': `
+      <div class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)">
+          <div class="agent-bigicon">📱</div>
+          <div class="agent-header-text">
+            <h2>Social Bios</h2>
+            <p>Analyzes your social media presence channel by channel — scrapes each profile with AI and extracts tone, voice rules, and top-performing content patterns.</p>
+          </div>
+          <div class="agent-header-meta">
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
+            <span class="agent-tag" id="sb-brand-tag">Brand: —</span>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;">
+          <span style="font-size:11px;color:var(--text-muted);">
+            <i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>
+            <span id="sb-last-run">Last analysis: —</span>
+          </span>
+          <button id="sb-run-all-btn" onclick="runAllSocialBios()"
+            style="padding:8px 18px;background:#7C3AED;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
+            <i data-lucide="play" style="width:13px;vertical-align:middle;margin-right:6px"></i>Analyze All Channels
+          </button>
+        </div>
+
+        <div id="sb-channels-grid" style="margin-top:20px;display:grid;gap:16px;">
+          <div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">Loading…</div>
+        </div>
+      </div>
+    `,
+
     'brandvoice-optimizer': `
       <div class="view-section active">
         <div class="agent-header" style="background: linear-gradient(135deg, #EC4899 0%, #BE185D 100%)">
@@ -7855,6 +8116,7 @@ function renderCmdResponse(q, originalQuery) {
     ['analytics','analytics','metrics'],
     ['company-bio','company bio','bio scanner'],
     ['branding-kit','branding','brand kit'],
+    ['social-bios','social bios','social media bios','channel voice'],
     ['brandvoice-optimizer','brandvoice','brand voice'],
     ['content-engine','content engine'],
     ['hook-miner','hook miner','hooks'],

@@ -6,7 +6,8 @@
       "Bash(curl -s -H 'X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8' https://n8n.srv949269.hstgr.cloud/api/v1/workflows/56O90Yf4KEeaZYcV)",
       "Bash(curl -s -H 'X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8' 'https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=50')",
       "mcp__claude_ai_Supabase__execute_sql",
-      "mcp__claude_ai_Supabase__list_tables"
+      "mcp__claude_ai_Supabase__list_tables",
+      "mcp__claude_ai_Supabase__apply_migration"
     ]
   }
 }
