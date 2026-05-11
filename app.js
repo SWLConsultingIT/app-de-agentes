@@ -266,7 +266,6 @@ function getSocialLogo(iconName, color) {
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
 const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
-const WF04_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/social-bios-analysis';
 
 function buildBrandProfilePayloadFromKit() {
   return {
@@ -424,6 +423,377 @@ async function runBrandVoiceOptimizer() {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
     console.error('[WF01->WF02] error:', e);
   }
+}
+
+// ══════════════════════════════════════════════════
+// WF_SOCIAL_BIOS — SocialMediaBios (owned channels)
+// ══════════════════════════════════════════════════
+const WF_SOCIAL_BIOS_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/socialmedia-bios';
+
+const socialBiosData = {
+  lastScannedAt: null,
+  isMock: true, // flipped to false once a real scan from WF02 lands
+  selectedChannel: 'all',
+  scoringWeights: { engagement: 0.5, reach: 0.3, saves: 0.2 },
+  inputs: {
+    Instagram: { handle: 'swl.consulting', profileUrl: 'https://www.instagram.com/swl.consulting/' },
+    TikTok:    { handle: 'swl.consulting', profileUrl: 'https://www.tiktok.com/@swl.consulting' },
+  },
+  channels: [], // populated by mock or by WF02 scan
+};
+
+function loadMockSocialBios() {
+  // Demo fallback so the view is never empty when n8n is down.
+  // Mirrors the response shape produced by WF02 / Combine Results.
+  return {
+    brand_id: brandKitData.brandId,
+    scanned_at: new Date().toISOString(),
+    scoringWeights: socialBiosData.scoringWeights,
+    channels: [
+      {
+        name: 'Instagram', icon: 'instagram', color: '#E4405F',
+        handle: '@swl.consulting',
+        profileUrl: 'https://www.instagram.com/swl.consulting/',
+        enabled: true,
+        followers: 880, postingCadence: 1.6, avgEngagementRate: 5.1, primaryFormat: 'reel',
+        tone: { formal_vs_casual: 75, technical_vs_accessible: 80, serious_vs_playful: 65, humble_vs_bold: 60, short_vs_expansive: 30 },
+        toneSummary: 'Conversational and visual — accessible AI explainers, behind-the-scenes of agent builds.',
+        voiceRules: {
+          always: ['Hook in first 1.5s', 'Show the tool screen, not stock', 'End with a one-line takeaway', 'Caption in Spanish for LATAM reach'],
+          never:  ['Talking head with no visuals', 'Jargon-only captions', 'Posts longer than 90s'],
+        },
+        topPosts: [
+          { id: 'ig-1', channel: 'Instagram', snippet: '¿Cómo construir tu primer agente IA en 5 minutos? 🤖 Reel completo.', text: '', format: 'reel', publishedAt: '2026-04-26T19:00:00Z', url: '', metrics: { likes: 412, comments: 38, shares: 22, impressions: 14200 }, engagementRate: 3.3, score: 0.94, whyItWorked: 'Question hook + emoji + practical promise in 6 seconds' },
+          { id: 'ig-2', channel: 'Instagram', snippet: 'POV: estás escalando un equipo de ventas pero el CRM te frena. Mirá lo que armamos con n8n.', text: '', format: 'reel', publishedAt: '2026-04-19T20:30:00Z', url: '', metrics: { likes: 318, comments: 26, shares: 18, impressions: 9800 }, engagementRate: 3.7, score: 0.86, whyItWorked: 'POV format + relatable pain + tool reveal' },
+        ],
+        bottomPosts: [
+          { id: 'ig-9', channel: 'Instagram', snippet: 'Foto del equipo en evento corporativo.', text: '', format: 'image', publishedAt: '2026-03-11T15:00:00Z', url: '', metrics: { likes: 24, comments: 1, shares: 0, impressions: 1100 }, engagementRate: 2.3, score: 0.18 },
+        ],
+        cadenceHeatmap: buildMockHeatmap('Instagram'),
+      },
+      {
+        name: 'TikTok', icon: 'music', color: '#010101',
+        handle: '@swl.consulting',
+        profileUrl: 'https://www.tiktok.com/@swl.consulting',
+        enabled: true,
+        followers: 540, postingCadence: 3.2, avgEngagementRate: 7.4, primaryFormat: 'video',
+        tone: { formal_vs_casual: 90, technical_vs_accessible: 85, serious_vs_playful: 80, humble_vs_bold: 75, short_vs_expansive: 20 },
+        toneSummary: 'Casual, fast-paced, native to TikTok — pattern interrupts, screen recordings, plain Spanish.',
+        voiceRules: {
+          always: ['Pattern interrupt in first 0.8s', 'Screen recording over voice', 'Trend-based audio when relevant', 'On-screen captions baked in'],
+          never:  ['Corporate intro screens', 'Voice-only', 'Posts over 60s for educational content'],
+        },
+        topPosts: [
+          { id: 'tt-1', channel: 'TikTok', snippet: '3 herramientas que reemplazan a 5 SDRs (probadas con clientes reales)', text: '', format: 'video', publishedAt: '2026-04-29T22:00:00Z', url: '', metrics: { likes: 1820, comments: 142, shares: 312, impressions: 38400 }, engagementRate: 5.9, score: 0.96, whyItWorked: 'Specific number + bold claim + receipts in description' },
+          { id: 'tt-2', channel: 'TikTok', snippet: 'Probé Make vs n8n para un caso real. Acá los resultados 👇', text: '', format: 'video', publishedAt: '2026-04-22T21:30:00Z', url: '', metrics: { likes: 1240, comments: 88, shares: 145, impressions: 24800 }, engagementRate: 5.9, score: 0.89, whyItWorked: 'Comparison hook + tool name recognition + receipts framing' },
+        ],
+        bottomPosts: [
+          { id: 'tt-9', channel: 'TikTok', snippet: 'Felicitaciones a todo el equipo por el cierre de año.', text: '', format: 'video', publishedAt: '2026-03-02T18:00:00Z', url: '', metrics: { likes: 38, comments: 2, shares: 0, impressions: 1400 }, engagementRate: 2.9, score: 0.11 },
+        ],
+        cadenceHeatmap: buildMockHeatmap('TikTok'),
+      },
+    ],
+  };
+}
+
+function buildMockHeatmap(channel) {
+  // Creates a plausible 7×24 cadence heatmap so the UI cell colors are not all empty.
+  const hotHours = channel === 'TikTok' ? [19, 20, 21, 22] : channel === 'Instagram' ? [12, 13, 19, 20] : [9, 10, 14, 15];
+  const matrix = [];
+  for (let d = 0; d < 7; d++) {
+    const row = [];
+    for (let h = 0; h < 24; h++) {
+      const weekday = d >= 1 && d <= 5;
+      const hot = hotHours.includes(h);
+      const count = (hot && weekday) ? 1 + Math.floor(Math.random() * 2) : (Math.random() < 0.06 ? 1 : 0);
+      const avgEr = count ? +(2 + Math.random() * 4).toFixed(2) : 0;
+      row.push({ count, avgEr });
+    }
+    matrix.push(row);
+  }
+  return matrix;
+}
+
+async function scanSocialMediaBios() {
+  const btn = document.getElementById('smb-scan-btn');
+  const statusEl = document.getElementById('smb-scan-status');
+  const channels = Object.entries(socialBiosData.inputs)
+    .filter(([_, v]) => v.handle && v.handle.trim())
+    .map(([name, v]) => ({ name, handle: v.handle.trim(), profileUrl: v.profileUrl.trim() }));
+
+  if (!channels.length) {
+    showToast('Add at least one handle (LinkedIn / Instagram / TikTok) first.');
+    return;
+  }
+
+  if (btn) { btn.textContent = 'Scanning…'; btn.disabled = true; }
+  if (statusEl) statusEl.innerHTML = '<span style="color:#9333EA">⟳ Scraping channels via Apify — this may take 30–90 seconds…</span>';
+
+  try {
+    const res = await fetch(WF_SOCIAL_BIOS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        brand_id: brandKitData.brandId,
+        channels,
+        maxPosts: 30,
+        scoringWeights: socialBiosData.scoringWeights,
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text || text.length < 5) throw new Error('Empty response — is the workflow activated in n8n?');
+    const data = JSON.parse(text);
+    if (!Array.isArray(data.channels) || !data.channels.length) throw new Error('No channels returned from scan.');
+    applySocialBiosData(data);
+    if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Channels scanned — voice rules updated below.</span>';
+    showToast('SocialMediaBios scan complete.');
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Loading demo data so you can preview the view.</span>`;
+    console.error('[WF_SOCIAL_BIOS] scan error:', e);
+    applySocialBiosData(loadMockSocialBios(), { isMock: true });
+  } finally {
+    if (btn) { btn.textContent = 'Scan Channels'; btn.disabled = false; }
+  }
+}
+
+function applySocialBiosData(data, opts = {}) {
+  if (!data || !Array.isArray(data.channels)) return;
+  socialBiosData.lastScannedAt = data.scanned_at || new Date().toISOString();
+  socialBiosData.isMock = !!opts.isMock;
+  if (data.scoringWeights) socialBiosData.scoringWeights = data.scoringWeights;
+  socialBiosData.channels = data.channels;
+  hydrateSocialBiosView();
+}
+
+async function fetchSocialBios(brandId) {
+  // Reads the latest scan from public.social_media_analyses (one row per channel)
+  // and rebuilds the shape that applySocialBiosData expects.
+  // Demo fallback: if no brand_id (Branding Bio not saved yet), pull the latest scan
+  // regardless of brand so the view still shows real Claude Haiku analysis.
+  try {
+    const filter = brandId ? `brand_id=eq.${brandId}&` : '';
+    const rows = await supabaseGet(
+      `social_media_analyses?${filter}select=channel,handle,url,analysis_json,updated_at&order=updated_at.desc&limit=20`
+    );
+    if (!Array.isArray(rows) || !rows.length) return null;
+    // Dedupe by channel keeping the most recent.
+    const byChannel = {};
+    for (const r of rows) {
+      if (!byChannel[r.channel]) byChannel[r.channel] = r;
+    }
+    const channels = Object.values(byChannel).map(r => r.analysis_json);
+    const scannedAt = Object.values(byChannel)
+      .map(r => r.updated_at).sort().reverse()[0] || new Date().toISOString();
+    return { scanned_at: scannedAt, channels };
+  } catch (e) {
+    console.warn('[SocialMediaBios] fetchSocialBios failed:', e);
+    return null;
+  }
+}
+
+function autofillHandlesFromBrandKit() {
+  // READ-ONLY against brandKitData — never mutates it.
+  const channels = (brandKitData && brandKitData.channels) || [];
+  let touched = 0;
+  for (const c of channels) {
+    if (!c.handle) continue;
+    const clean = c.handle.replace(/^@/, '').trim();
+    const name = (c.name || '').trim();
+    if (/instagram/i.test(name)) {
+      socialBiosData.inputs.Instagram = { handle: clean, profileUrl: `https://www.instagram.com/${clean}/` };
+      touched++;
+    } else if (/tiktok/i.test(name)) {
+      socialBiosData.inputs.TikTok = { handle: clean, profileUrl: `https://www.tiktok.com/@${clean}` };
+      touched++;
+    }
+  }
+  hydrateSocialBiosView();
+  showToast(touched ? `Auto-filled ${touched} handle(s) from Branding Bio.` : 'No matching channels in Branding Bio yet.');
+}
+
+function updateSocialBiosInput(channelName, field, value) {
+  const slot = socialBiosData.inputs[channelName];
+  if (!slot) return;
+  if (field === 'handle') {
+    const clean = value.replace(/^@/, '').trim();
+    slot.handle = clean;
+    if (channelName === 'Instagram') slot.profileUrl = clean ? `https://www.instagram.com/${clean}/` : '';
+    if (channelName === 'TikTok')    slot.profileUrl = clean ? `https://www.tiktok.com/@${clean}`     : '';
+  }
+}
+
+function selectSocialBiosChannel(name) {
+  socialBiosData.selectedChannel = name;
+  hydrateSocialBiosView();
+}
+
+// Public contract for BrandVoice Optimizer to consume (read-only).
+function getSocialBiosForBrandVoice() {
+  const channels = socialBiosData.channels || [];
+  return {
+    scanned_at: socialBiosData.lastScannedAt,
+    tone_by_channel: channels.map(c => ({
+      channel: c.name,
+      tone: c.tone,
+      summary: c.toneSummary,
+      avgEngagementRate: c.avgEngagementRate,
+      evidence_post_ids: (c.topPosts || []).slice(0, 3).map(p => p.id),
+    })),
+    content_samples: channels.flatMap(c => (c.topPosts || []).slice(0, 2).map(p => ({
+      title: p.snippet, channel: c.name, perf: `ER ${p.engagementRate}%`, voiceFit: 95, sourcePostId: p.id,
+    }))),
+    voice_rules_seed: channels.map(c => ({ channel: c.name, always: c.voiceRules?.always || [], never: c.voiceRules?.never || [] })),
+  };
+}
+
+async function hydrateSocialBiosView() {
+  // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
+  if (!document.getElementById('smb-root')) return;
+
+  // Supabase-first: on the first hydrate of the session, try to load the latest scan from
+  // social_media_analyses. If anything is there, that wins over the mock and the DEMO banner hides.
+  if (!socialBiosData.channels || !socialBiosData.channels.length) {
+    const stored = await fetchSocialBios(brandKitData.brandId);
+    if (stored && stored.channels.length) {
+      socialBiosData.lastScannedAt = stored.scanned_at;
+      socialBiosData.channels = stored.channels;
+      socialBiosData.isMock = false;
+    } else {
+      const mock = loadMockSocialBios();
+      socialBiosData.lastScannedAt = mock.scanned_at;
+      socialBiosData.channels = mock.channels;
+      socialBiosData.isMock = true;
+    }
+  }
+
+  // Mock-data badge — visible until a real scan from WF02 lands.
+  const banner = document.getElementById('smb-mock-banner');
+  if (banner) banner.style.display = socialBiosData.isMock ? '' : 'none';
+
+  const sel = socialBiosData.selectedChannel;
+  const channels = socialBiosData.channels;
+  const visible = sel === 'all' ? channels : channels.filter(c => c.name === sel);
+  const focus = visible.length === 1 ? visible[0] : null;
+
+  // ── KPIs ──
+  const totalPosts = channels.reduce((s, c) => s + ((c.topPosts || []).length + (c.bottomPosts || []).length + Math.max(0, (c.posts || []).length - (c.topPosts || []).length - (c.bottomPosts || []).length)), 0);
+  const allErs = channels.flatMap(c => (c.topPosts || []).map(p => p.engagementRate || 0).concat((c.bottomPosts || []).map(p => p.engagementRate || 0)));
+  const avgEr = allErs.length ? +(allErs.reduce((s, v) => s + v, 0) / allErs.length).toFixed(2) : 0;
+  const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+  setText('smb-stat-channels', String(channels.length));
+  setText('smb-stat-posts', String(totalPosts));
+  setText('smb-stat-er', `${avgEr}%`);
+  setText('smb-stat-variance', focus ? `${Math.round((Math.abs(50 - focus.tone.formal_vs_casual) + Math.abs(50 - focus.tone.serious_vs_playful)) / 2)}%` : '—');
+  setText('smb-last-scan', socialBiosData.lastScannedAt ? new Date(socialBiosData.lastScannedAt).toLocaleString() : '—');
+
+  // ── Channel pills active state ──
+  document.querySelectorAll('.smb-channel-tab').forEach(el => {
+    const isActive = el.dataset.channel === sel;
+    el.classList.toggle('active', isActive);
+  });
+
+  // ── Per-channel focus card ──
+  if (focus) {
+    setHTML('smb-focus-card', `
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="width:40px;height:40px;border-radius:10px;background:${focus.color};color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">${focus.name.charAt(0)}</div>
+        <div style="flex:1;min-width:200px;">
+          <div style="font-size:16px;font-weight:700;color:var(--text-main);">${focus.name} · ${focus.handle}</div>
+          <a href="${focus.profileUrl}" target="_blank" style="font-size:12px;color:var(--text-muted);text-decoration:none;">${focus.profileUrl}</a>
+        </div>
+        <div class="smb-kpi-mini"><div class="lbl">Followers</div><div class="val">${focus.followers ?? '—'}</div></div>
+        <div class="smb-kpi-mini"><div class="lbl">Posts/week</div><div class="val">${focus.postingCadence ?? '—'}</div></div>
+        <div class="smb-kpi-mini"><div class="lbl">Avg ER</div><div class="val">${focus.avgEngagementRate ?? '—'}%</div></div>
+        <div class="smb-kpi-mini"><div class="lbl">Primary format</div><div class="val" style="text-transform:capitalize;">${focus.primaryFormat || '—'}</div></div>
+      </div>
+      <div style="margin-top:14px;padding:12px;background:#FAF5FF;border-left:3px solid #9333EA;border-radius:8px;font-size:13px;color:#581C87;">${focus.toneSummary || 'Run a scan to populate tone summary.'}</div>
+    `);
+
+    // Tone bars (5 dimensions)
+    const tone = focus.tone || {};
+    const dims = [
+      ['Formal', 'Casual', tone.formal_vs_casual],
+      ['Technical', 'Accessible', tone.technical_vs_accessible],
+      ['Serious', 'Playful', tone.serious_vs_playful],
+      ['Humble', 'Bold', tone.humble_vs_bold],
+      ['Short', 'Expansive', tone.short_vs_expansive],
+    ];
+    setHTML('smb-tone-bars', dims.map(([a, b, v]) => `
+      <div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><span>${a}</span><span>${b}</span></div>
+        <div style="position:relative;height:8px;background:#F3E8FF;border-radius:99px;overflow:hidden;">
+          <div style="position:absolute;left:0;top:0;height:100%;width:${v ?? 50}%;background:linear-gradient(90deg,#A855F7,#D946EF);"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text-main);margin-top:2px;font-weight:700;">${v ?? 50}/100</div>
+      </div>
+    `).join(''));
+
+    // Top posts table
+    setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
+      <tr class="smb-post-row">
+        <td style="max-width:340px;"><div style="color:var(--text-main);">${p.snippet}</div>${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}</td>
+        <td style="text-transform:capitalize;">${p.format}</td>
+        <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
+        <td>${p.metrics?.likes ?? 0}</td>
+        <td>${p.metrics?.comments ?? 0}</td>
+        <td>${p.metrics?.shares ?? 0}</td>
+        <td style="font-weight:700;color:#10B981;">${p.engagementRate ?? 0}%</td>
+      </tr>
+    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No posts yet — run a scan.</td></tr>');
+
+    // Voice rules
+    setHTML('smb-voice-always', (focus.voiceRules?.always || []).map(r => `<li>✓ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
+    setHTML('smb-voice-never',  (focus.voiceRules?.never  || []).map(r => `<li>✗ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
+
+    // Voice Rules in Action — best vs worst
+    const best = (focus.topPosts || [])[0];
+    const worst = (focus.bottomPosts || [])[0];
+    setHTML('smb-rules-action', `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
+          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;">✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
+          <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
+        </div>
+        <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
+          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;">✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
+          <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
+        </div>
+      </div>
+    `);
+
+    // Cadence heatmap
+    const heat = focus.cadenceHeatmap || [];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:9px;">';
+    html += '<div></div>' + Array.from({ length: 24 }, (_, h) => `<div style="text-align:center;color:var(--text-muted);">${h}</div>`).join('');
+    for (let d = 0; d < 7; d++) {
+      html += `<div style="font-weight:600;color:var(--text-muted);text-align:right;padding-right:4px;">${days[d]}</div>`;
+      for (let h = 0; h < 24; h++) {
+        const cell = heat[d]?.[h] || { count: 0, avgEr: 0 };
+        const intensity = Math.min(1, cell.avgEr / 6);
+        const bg = cell.count ? `rgba(168,85,247,${0.15 + intensity * 0.85})` : '#F9FAFB';
+        const title = cell.count ? `${days[d]} ${h}:00 · ${cell.count} posts · ER ${cell.avgEr}%` : `${days[d]} ${h}:00 · no posts`;
+        html += `<div class="smb-heatmap-cell" style="background:${bg};" title="${title}"></div>`;
+      }
+    }
+    html += '</div>';
+    setHTML('smb-heatmap', html);
+  } else {
+    setHTML('smb-focus-card', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel above to see its profile.</div>');
+    setHTML('smb-tone-bars', '');
+    setHTML('smb-top-posts-tbody', '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to see top posts.</td></tr>');
+    setHTML('smb-voice-always', '<li style="color:var(--text-muted);">Select a channel</li>');
+    setHTML('smb-voice-never',  '<li style="color:var(--text-muted);">Select a channel</li>');
+    setHTML('smb-rules-action', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to compare best vs flopped posts.</div>');
+    setHTML('smb-heatmap', '');
+  }
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 // ── WF03 Research Source Sync ──────────────────────────
@@ -1466,196 +1836,6 @@ async function fetchPublishingDrafts(brandId) {
   return supabaseGet(`content_drafts?${params}`);
 }
 
-// ── SOCIAL BIOS ──────────────────────────────────────────
-
-async function fetchSocialBiosData(brandId) {
-  const params = new URLSearchParams({
-    brand_id: `eq.${brandId}`,
-    select: 'channel,handle,url,analysis_json,updated_at',
-    order: 'updated_at.desc',
-  });
-  return supabaseGet(`social_media_analyses?${params}`);
-}
-
-function renderSocialBiosCard(ch, analysis, lastRun) {
-  const logo = getSocialLogo(ch.icon, ch.color || '#6B7280');
-  const safeId = (ch.name || '').replace(/[^a-zA-Z0-9]/g, '-');
-
-  if (!analysis) {
-    return `
-      <div style="background:white;border-radius:12px;border:1px solid #E5E7EB;padding:20px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${logo}</div>
-          <div style="flex:1;">
-            <strong style="font-size:15px;color:#111827;">${ch.name}</strong>
-            <div style="font-size:12px;color:#6B7280;">${ch.handle || ch.url || ''}</div>
-          </div>
-          <button id="sb-btn-${safeId}" data-channel="${ch.name}" onclick="runSocialBiosAnalysis(this.dataset.channel)"
-            style="padding:7px 14px;background:#7C3AED;color:white;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;">
-            <i data-lucide="play" style="width:11px;vertical-align:middle;margin-right:5px"></i>Analyze
-          </button>
-        </div>
-        <div style="margin-top:12px;padding:12px;background:#F9FAFB;border-radius:8px;font-size:12px;color:#9CA3AF;text-align:center;">
-          Not analyzed yet — click Analyze to extract voice rules and top content
-        </div>
-      </div>`;
-  }
-
-  const doRules   = (analysis.voice_rules?.do   || []).slice(0, 5);
-  const dontRules = (analysis.voice_rules?.dont || []).slice(0, 5);
-  const topPosts  = (analysis.top_posts || []).slice(0, 3);
-  const patterns  = (analysis.content_patterns || []).slice(0, 4);
-
-  return `
-    <div style="background:white;border-radius:12px;border:1px solid #E5E7EB;padding:20px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-        <div style="width:40px;height:40px;border-radius:10px;background:#F3F4F6;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${logo}</div>
-        <div style="flex:1;">
-          <strong style="font-size:15px;color:#111827;">${ch.name}</strong>
-          <div style="font-size:12px;color:#6B7280;">${ch.handle || ''}</div>
-        </div>
-        ${analysis.formality ? `<span style="font-size:11px;padding:3px 9px;border-radius:20px;background:#F3F4F6;color:#374151;font-weight:500;">${analysis.formality}</span>` : ''}
-        <button id="sb-btn-${safeId}" data-channel="${ch.name}" onclick="runSocialBiosAnalysis(this.dataset.channel)"
-          style="padding:5px 10px;background:#F3F4F6;color:#374151;border:none;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;">
-          <i data-lucide="refresh-cw" style="width:10px;vertical-align:middle;margin-right:4px"></i>Re-analyze
-        </button>
-        ${lastRun ? `<span style="font-size:10px;color:#9CA3AF;white-space:nowrap;">${lastRun}</span>` : ''}
-      </div>
-
-      <div style="padding:12px;background:#F9FAFB;border-radius:8px;margin-bottom:14px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:6px;">Tone</div>
-        <p style="font-size:13px;color:#374151;margin:0;line-height:1.5;">${analysis.tone || '—'}</p>
-        ${analysis.posting_style ? `<p style="font-size:12px;color:#6B7280;margin:6px 0 0;font-style:italic;">${analysis.posting_style}</p>` : ''}
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-        <div style="padding:12px;background:#F0FDF4;border-radius:8px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#059669;margin-bottom:8px;">✓ DO</div>
-          ${doRules.map(r=>`<div style="font-size:12px;color:#374151;margin-bottom:4px;line-height:1.4;">• ${r}</div>`).join('') || '<div style="font-size:12px;color:#9CA3AF;">—</div>'}
-        </div>
-        <div style="padding:12px;background:#FEF2F2;border-radius:8px;">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#DC2626;margin-bottom:8px;">✗ DON'T</div>
-          ${dontRules.map(r=>`<div style="font-size:12px;color:#374151;margin-bottom:4px;line-height:1.4;">• ${r}</div>`).join('') || '<div style="font-size:12px;color:#9CA3AF;">—</div>'}
-        </div>
-      </div>
-
-      ${patterns.length ? `
-      <div style="margin-bottom:14px;">
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:8px;">Content Patterns</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-          ${patterns.map(p=>`<span style="font-size:11px;padding:3px 10px;background:#EEF2FF;color:#4338CA;border-radius:20px;font-weight:500;">${p}</span>`).join('')}
-        </div>
-      </div>` : ''}
-
-      ${topPosts.length ? `
-      <div>
-        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9CA3AF;margin-bottom:8px;">Best Performing Examples</div>
-        ${topPosts.map(p=>`
-          <div style="padding:10px;background:#FAFAFA;border:1px solid #E5E7EB;border-radius:7px;margin-bottom:6px;">
-            <div style="font-size:12px;color:#111827;font-style:italic;margin-bottom:4px;">"${p.text}"</div>
-            <div style="font-size:11px;color:#6B7280;">→ ${p.why_it_works}</div>
-          </div>`).join('')}
-      </div>` : ''}
-    </div>`;
-}
-
-async function runSocialBiosAnalysis(channelName) {
-  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
-  const ch = (brandKitData.channels || []).find(c => c.name === channelName);
-  if (!ch || !ch.url) { showToast(`No URL found for ${channelName}.`); return; }
-
-  const safeId = channelName.replace(/[^a-zA-Z0-9]/g, '-');
-  const btn = document.getElementById(`sb-btn-${safeId}`);
-  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
-
-  try {
-    const res = await fetch(WF04_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        brand_id:       brandKitData.brandId,
-        channel_name:   ch.name,
-        channel_url:    ch.url,
-        channel_handle: ch.handle || '',
-      }),
-    });
-    if (!res.ok) throw new Error(`WF04 ${res.status}`);
-    showToast(`${channelName} analyzed.`);
-    await hydrateSocialBiosView();
-  } catch (e) {
-    showToast('Error: ' + e.message);
-    if (btn) { btn.textContent = 'Retry'; btn.disabled = false; }
-  }
-}
-
-async function runAllSocialBios() {
-  if (!brandKitData.brandId) { showToast('Save a brand profile first.'); return; }
-  const channels = (brandKitData.channels || []).filter(c => c.url);
-  if (!channels.length) { showToast('No channels with URLs found. Scan a website in Branding Bio first.'); return; }
-
-  const btn = document.getElementById('sb-run-all-btn');
-  if (btn) { btn.textContent = 'Analyzing…'; btn.disabled = true; }
-  showToast(`Analyzing ${channels.length} channels — this may take a minute.`);
-
-  await Promise.allSettled(channels.map(ch =>
-    fetch(WF04_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        brand_id: brandKitData.brandId,
-        channel_name: ch.name,
-        channel_url: ch.url,
-        channel_handle: ch.handle || '',
-      }),
-    }).catch(e => console.warn(`[SocialBios] ${ch.name}:`, e))
-  ));
-
-  showToast('All channels analyzed.');
-  await hydrateSocialBiosView();
-  if (btn) { btn.textContent = 'Analyze All Channels'; btn.disabled = false; }
-}
-
-async function hydrateSocialBiosView() {
-  const brandTag = document.getElementById('sb-brand-tag');
-  if (brandTag) brandTag.textContent = `Brand: ${brandKitData.name || '—'}`;
-
-  const grid = document.getElementById('sb-channels-grid');
-  if (!grid) return;
-
-  const channels = brandKitData.channels || [];
-
-  if (!brandKitData.brandId) {
-    grid.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);font-size:14px;">Save a brand profile in Branding Bio first.</div>`;
-    return;
-  }
-  if (!channels.length) {
-    grid.innerHTML = `<div style="padding:48px;text-align:center;color:var(--text-muted);font-size:14px;">No social channels found. Scan a website in Branding Bio to auto-detect channels.</div>`;
-    return;
-  }
-
-  let analyses = [];
-  try { analyses = await fetchSocialBiosData(brandKitData.brandId); }
-  catch (e) { console.warn('[SocialBios] fetch error:', e); }
-
-  const map = {};
-  analyses.forEach(a => { map[a.channel] = a; });
-
-  grid.innerHTML = channels.map(ch => {
-    const data = map[ch.name];
-    const lastRun = data?.updated_at ? new Date(data.updated_at).toLocaleString() : null;
-    return renderSocialBiosCard(ch, data?.analysis_json || null, lastRun);
-  }).join('');
-
-  lucide.createIcons({ nodes: [grid] });
-
-  const lastEl = document.getElementById('sb-last-run');
-  if (lastEl && analyses.length) {
-    const latest = analyses[0];
-    lastEl.textContent = `Last analysis: ${new Date(latest.updated_at).toLocaleString()}`;
-  }
-}
-
-// ── END SOCIAL BIOS ─────────────────────────────────────
 
 const CHANNEL_TAG_STYLE = {
   LinkedIn:  { bg: '#EFF6FF', fg: '#1D4ED8', dot: '#0A66C2' },
@@ -3216,7 +3396,7 @@ function switchView(viewId) {
 
     // Marketing Pilot — Tier 1 Light agents (content engine, not campaign manager)
     'branding-kit':        { name: 'Branding Bio', sub: 'Marketing Pilot · Foundation input — your brand data fuels every downstream agent' },
-    'social-bios':         { name: 'Social Bios', sub: 'Marketing Pilot · Multi-channel voice analysis — tone, rules, and top-performing content by channel' },
+    'social-media-bios':   { name: 'SocialMediaBios', sub: 'Marketing Pilot · Analyzes your owned social channels — tone, top posts and channel-specific voice rules' },
     'brandvoice-optimizer': { name: 'BrandVoice Optimizer', sub: 'Marketing Pilot · Codifies your brand voice into reusable rules the rest of the agents follow' },
     'content-engine':      { name: 'ContentEngine', sub: 'Marketing Pilot · Analyzes top-performing content in your industry and surfaces what actually gets engagement' },
     'hook-miner':          { name: 'HookMiner', sub: 'Marketing Pilot · Extracts the hooks and opening frameworks that drive the most engagement, ranked by channel' },
@@ -3257,7 +3437,7 @@ function switchView(viewId) {
     setTimeout(() => hydrateHookMinerView(), 80);
   }
 
-  if (viewId === 'social-bios') {
+  if (viewId === 'social-media-bios') {
     setTimeout(() => hydrateSocialBiosView(), 80);
   }
 
@@ -6055,33 +6235,125 @@ function generateViewHTML(view) {
       </div>
     `,
 
-    'social-bios': `
-      <div class="view-section active">
-        <div class="agent-header" style="background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%)">
+    'social-media-bios': `
+      <div id="smb-root" class="view-section active">
+        <div class="agent-header" style="background: linear-gradient(135deg, #D946EF 0%, #9333EA 100%)">
           <div class="agent-bigicon">📱</div>
           <div class="agent-header-text">
-            <h2>Social Bios</h2>
-            <p>Analyzes your social media presence channel by channel — scrapes each profile with AI and extracts tone, voice rules, and top-performing content patterns.</p>
+            <h2>SocialMediaBios</h2>
+            <p>Analyzes your owned social channels (Instagram · TikTok) to surface tone by channel, top-performing posts, and channel-specific voice rules — the second input that fuels BrandVoice Optimizer.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag" id="sb-brand-tag">Brand: —</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Ready</div><br>
+            <span class="agent-tag">Apify · Claude Haiku</span>
           </div>
         </div>
 
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:12px;">
-          <span style="font-size:11px;color:var(--text-muted);">
-            <i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i>
-            <span id="sb-last-run">Last analysis: —</span>
-          </span>
-          <button id="sb-run-all-btn" onclick="runAllSocialBios()"
-            style="padding:8px 18px;background:#7C3AED;color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">
-            <i data-lucide="play" style="width:13px;vertical-align:middle;margin-right:6px"></i>Analyze All Channels
-          </button>
+        <!-- Mock-data warning banner (hidden after first real scan) -->
+        <div id="smb-mock-banner" style="margin-top:16px; padding:12px 16px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; display:flex; gap:10px; align-items:flex-start;">
+          <i data-lucide="alert-triangle" style="width:18px; flex-shrink:0; margin-top:1px; color:#D97706;"></i>
+          <div style="flex:1; font-size:13px; color:#92400E;">
+            <strong>DEMO DATA</strong> — these posts and metrics are placeholders so you can preview the view. To pull <em>real</em> data from LinkedIn, Instagram and TikTok, activate workflow <code>WF02 — SocialMediaBios</code> in n8n and click <strong>Scan Channels</strong> below.
+          </div>
         </div>
 
-        <div id="sb-channels-grid" style="margin-top:20px;display:grid;gap:16px;">
-          <div style="padding:40px;text-align:center;color:var(--text-muted);font-size:14px;">Loading…</div>
+        <!-- Input row: handles + actions -->
+        <div class="card" style="margin-top:24px; padding:20px 24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+            <div>
+              <h3 class="card-title" style="margin:0;"><i data-lucide="link-2"></i> Owned Channels</h3>
+              <p style="margin:4px 0 0; font-size:12px; color:var(--text-muted);">Last scan: <span id="smb-last-scan">—</span></p>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button onclick="autofillHandlesFromBrandKit()" style="padding:8px 14px; background:white; color:#9333EA; border:1px solid #D946EF; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="download" style="width:13px;vertical-align:middle;margin-right:6px;"></i>Auto-fill from Branding Bio</button>
+              <button id="smb-scan-btn" onclick="scanSocialMediaBios()" style="padding:8px 18px; background:#9333EA; color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;"><i data-lucide="scan" style="width:13px;vertical-align:middle;margin-right:6px;"></i>Scan Channels</button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px;">
+            <div class="smb-input-card">
+              <label><i data-lucide="instagram" style="width:14px;color:#E4405F"></i> Instagram handle</label>
+              <input type="text" value="${socialBiosData.inputs.Instagram.handle}" oninput="updateSocialBiosInput('Instagram','handle',this.value)" placeholder="swl.consulting" />
+              <span class="smb-hint">instagram.com/<b>&lt;handle&gt;</b></span>
+            </div>
+            <div class="smb-input-card">
+              <label><i data-lucide="music" style="width:14px;color:#010101"></i> TikTok handle</label>
+              <input type="text" value="${socialBiosData.inputs.TikTok.handle}" oninput="updateSocialBiosInput('TikTok','handle',this.value)" placeholder="swl.consulting" />
+              <span class="smb-hint">tiktok.com/@<b>&lt;handle&gt;</b></span>
+            </div>
+          </div>
+          <div id="smb-scan-status" style="margin-top:12px; font-size:12px;"></div>
+        </div>
+
+        <!-- KPI strip -->
+        <div class="agent-stats" style="margin-top:16px;">
+          <div class="agent-stat"><div class="agent-stat-label">Channels analyzed</div><div class="agent-stat-value" id="smb-stat-channels">—</div></div>
+          <div class="agent-stat"><div class="agent-stat-label">Posts indexed</div><div class="agent-stat-value" id="smb-stat-posts">—</div></div>
+          <div class="agent-stat"><div class="agent-stat-label">Avg engagement rate</div><div class="agent-stat-value" id="smb-stat-er">—</div></div>
+          <div class="agent-stat"><div class="agent-stat-label">Tone divergence</div><div class="agent-stat-value" id="smb-stat-variance">—</div></div>
+        </div>
+
+        <!-- Channel selector pills -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
+          <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')">All channels</div>
+          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><i data-lucide="instagram" style="width:13px;vertical-align:middle;margin-right:5px;color:#E4405F"></i>Instagram</div>
+          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><i data-lucide="music" style="width:13px;vertical-align:middle;margin-right:5px;color:#000"></i>TikTok</div>
+        </div>
+
+        <!-- Focus card -->
+        <div class="card" style="margin-top:16px; padding:20px 24px;">
+          <div id="smb-focus-card"></div>
+        </div>
+
+        <!-- Two columns: tone + voice rules -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+          <div class="card" style="padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="sliders"></i> Tone snapshot</h3>
+            <div id="smb-tone-bars"></div>
+          </div>
+          <div class="card" style="padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="check-circle"></i> Voice rules</h3>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div>
+                <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:6px;">ALWAYS</div>
+                <ul id="smb-voice-always" class="smb-rules-list"></ul>
+              </div>
+              <div>
+                <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:6px;">NEVER</div>
+                <ul id="smb-voice-never" class="smb-rules-list"></ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Voice rules in action -->
+        <div class="card" style="margin-top:16px; padding:20px 24px;">
+          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="zap"></i> Voice rules in action — best vs flopped</h3>
+          <div id="smb-rules-action"></div>
+        </div>
+
+        <!-- Top posts -->
+        <div class="card" style="margin-top:16px; padding:20px 24px;">
+          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trending-up"></i> Top-performing posts</h3>
+          <table class="lm-table">
+            <thead><tr><th>Post snippet</th><th>Format</th><th>Date</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Engagement</th></tr></thead>
+            <tbody id="smb-top-posts-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Cadence heatmap -->
+        <div class="card" style="margin-top:16px; padding:20px 24px;">
+          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="calendar"></i> Posting cadence (avg engagement by day × hour, UTC)</h3>
+          <div id="smb-heatmap"></div>
+        </div>
+
+        <!-- CTA to BrandVoice -->
+        <div class="card" style="margin-top:16px; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; background:linear-gradient(135deg,#FAF5FF 0%, #FCE7F3 100%); border:1px solid #E9D5FF;">
+          <div>
+            <h3 style="margin:0; font-size:15px; color:#581C87;">Your channel voice feeds BrandVoice Optimizer</h3>
+            <p style="margin:4px 0 0; font-size:12px; color:#6B21A8;">BrandVoice Optimizer combines this with your Branding Bio to produce one unified voice per channel.</p>
+          </div>
+          <button class="btn-sm btn-primary" onclick="switchView('brandvoice-optimizer')" style="background:#9333EA;border:none;"><i data-lucide="arrow-right" style="width:14px"></i> Open BrandVoice Optimizer</button>
         </div>
       </div>
     `,
@@ -8116,7 +8388,7 @@ function renderCmdResponse(q, originalQuery) {
     ['analytics','analytics','metrics'],
     ['company-bio','company bio','bio scanner'],
     ['branding-kit','branding','brand kit'],
-    ['social-bios','social bios','social media bios','channel voice'],
+    ['social-media-bios','social media bios','social bios','social media','channel voice'],
     ['brandvoice-optimizer','brandvoice','brand voice'],
     ['content-engine','content engine'],
     ['hook-miner','hook miner','hooks'],
