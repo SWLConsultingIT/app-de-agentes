@@ -2,201 +2,289 @@
   "name": "WF02 — SocialMediaBios (Owned Channels Analysis)",
   "nodes": [
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000001",
+      "id": "23aaabc6-05db-47c0-b077-c478fb89de4e",
       "name": "Webhook — Scan Owned Channels",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [100, 400],
+      "position": [
+        4112,
+        464
+      ],
       "parameters": {
-        "path": "socialmedia-bios",
         "httpMethod": "POST",
-        "responseMode": "responseNode"
+        "path": "socialmedia-bios",
+        "responseMode": "responseNode",
+        "options": {}
       },
+      "onError": "continueRegularOutput",
       "webhookId": "wf02-socialmedia-bios"
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000002",
+      "id": "ced4c030-ad04-4337-82ed-3c87ac47b89f",
       "name": "⚙️ Config & Route",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [320, 400],
+      "position": [
+        4336,
+        464
+      ],
       "parameters": {
         "jsCode": "// Normalize webhook input. Supported channels in v1: Instagram + TikTok.\n// LinkedIn is intentionally NOT supported — no public 'no-cookies' scraper produces\n// reliable results for small/medium company pages. Use LinkedIn Marketing API in production.\nconst raw = $input.first().json;\nconst body = raw.body || raw;\n\nconst channels = Array.isArray(body.channels) ? body.channels : [];\nconst maxPosts = Math.min(Math.max(parseInt(body.maxPosts || 30, 10), 5), 100);\nconst brandId  = body.brand_id || body.brandId || null;\nconst weights  = body.scoringWeights || { engagement: 0.5, reach: 0.3, saves: 0.2 };\n\nif (!channels.length) {\n  throw new Error('No channels provided. Expected body.channels = [{ name, handle, profileUrl }, ...]');\n}\n\nconst out = { brandId, maxPosts, weights, channels: [] };\n\nfor (const c of channels) {\n  const name = (c.name || '').trim();\n  const handle = (c.handle || '').replace(/^@/, '').trim();\n  const profileUrl = (c.profileUrl || '').trim();\n  if (!name) continue;\n\n  let normalized = { name, handle, profileUrl, enabled: false };\n\n  if (/instagram/i.test(name)) {\n    if (handle) { normalized.profileUrl = `https://www.instagram.com/${handle}/`; normalized.enabled = true; }\n  } else if (/tiktok/i.test(name)) {\n    if (handle) { normalized.profileUrl = `https://www.tiktok.com/@${handle}`;    normalized.enabled = true; }\n  } else {\n    // Unsupported channel (e.g. LinkedIn) — silently skipped.\n    continue;\n  }\n\n  out.channels.push(normalized);\n}\n\nout.scanInstagram = out.channels.find(c => /instagram/i.test(c.name) && c.enabled) || null;\nout.scanTikTok    = out.channels.find(c => /tiktok/i.test(c.name)    && c.enabled) || null;\n\nreturn [{ json: out }];"
       }
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000011",
+      "id": "cb261fa0-3c74-4abe-ad9d-e96bd2ff33b0",
       "name": "Apify — Instagram Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [600, 300],
+      "position": [
+        4608,
+        352
+      ],
       "parameters": {
-        "url": "https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items",
         "method": "POST",
+        "url": "https://api.apify.com/v2/acts/apify~instagram-scraper/run-sync-get-dataset-items",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "apifyApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"directUrls\": [\"{{ $('⚙️ Config & Route').first().json.scanInstagram.profileUrl }}\"],\n  \"resultsType\": \"posts\",\n  \"resultsLimit\": {{ $('⚙️ Config & Route').first().json.maxPosts }},\n  \"searchType\": \"user\",\n  \"addParentData\": false\n}",
         "options": {
-          "timeout": 180000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 180000
         }
       },
       "credentials": {
-        "apifyApi": { "name": "Apify Sales" }
+        "apifyApi": {
+          "id": "578ElguokD1xbL56",
+          "name": "Apify Sales"
+        }
       },
       "continueOnFail": true
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000012",
+      "id": "f5add45e-8822-4614-b59b-6bbc427d192c",
       "name": "Apify — TikTok Posts",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [600, 500],
+      "position": [
+        4608,
+        560
+      ],
       "parameters": {
-        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items",
         "method": "POST",
+        "url": "https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "apifyApi",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"profiles\": [\"{{ $('⚙️ Config & Route').first().json.scanTikTok.handle }}\"],\n  \"resultsPerPage\": {{ $('⚙️ Config & Route').first().json.maxPosts }},\n  \"shouldDownloadVideos\": false,\n  \"shouldDownloadCovers\": false,\n  \"shouldDownloadSubtitles\": false\n}",
         "options": {
-          "timeout": 180000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 180000
         }
       },
       "credentials": {
-        "apifyApi": { "name": "Apify Sales" }
+        "apifyApi": {
+          "id": "578ElguokD1xbL56",
+          "name": "Apify Sales"
+        }
       },
       "continueOnFail": true
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000021",
+      "id": "ce34f049-5736-4ad8-986a-4aa5a6317a01",
       "name": "Bundle Instagram",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 300],
+      "position": [
+        4896,
+        352
+      ],
       "parameters": {
-        "jsCode": "// Collapse all items produced by the Apify Instagram node into ONE item carrying { channel, meta, posts }.\nconst cfg = $('⚙️ Config & Route').first().json;\nconst meta = cfg.scanInstagram || { name: 'Instagram', handle: '', profileUrl: '' };\nconst raw = $input.all().map(it => it && it.json ? it.json : it).filter(Boolean);\n\nfunction nz(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }\n\nconst posts = raw.map((p, i) => {\n  const text = p.caption || p.text || '';\n  const url  = p.url || (p.shortCode ? `https://www.instagram.com/p/${p.shortCode}/` : '');\n  return {\n    id: p.id || p.shortCode || `ig-${i}`,\n    channel: 'Instagram',\n    text: String(text).slice(0, 2000),\n    snippet: String(text).replace(/\\s+/g, ' ').slice(0, 180),\n    format: (p.type || p.productType || 'post').toString().toLowerCase(),\n    publishedAt: p.timestamp || p.takenAt || null,\n    url,\n    metrics: {\n      likes:       nz(p.likesCount),\n      comments:    nz(p.commentsCount),\n      shares:      0,\n      impressions: nz(p.videoViewCount || p.videoPlayCount || 0),\n    },\n  };\n});\n\nreturn [{ json: { channel: 'Instagram', meta, posts } }];"
+        "jsCode": "// Collapse all items produced by the Apify Instagram node into ONE item carrying { channel, meta, posts }.\n// NOTE: apify~instagram-scraper in posts mode does NOT include ownerFollowersCount.\n// Followers stay null here; a separate IG profile scraper node should populate it.\nconst cfg = $('⚙️ Config & Route').first().json;\nconst metaIn = cfg.scanInstagram || { name: 'Instagram', handle: '', profileUrl: '' };\nconst raw = $input.all().map(it => it && it.json ? it.json : it).filter(Boolean);\n\nfunction nz(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }\n\n// Try a few possible fields where the scraper might surface followers; fall through to null.\nlet followers = null;\nfor (const p of raw) {\n  const cand = p.ownerFollowersCount ?? p.owner?.followersCount ?? p.ownerFollowers ?? null;\n  if (cand != null && Number.isFinite(Number(cand))) { followers = Number(cand); break; }\n}\nconst meta = { ...metaIn, followers };\n\nconst posts = raw.map((p, i) => {\n  const text = p.caption || p.text || '';\n  const url  = p.url || (p.shortCode ? `https://www.instagram.com/p/${p.shortCode}/` : '');\n  return {\n    id: p.id || p.shortCode || `ig-${i}`,\n    channel: 'Instagram',\n    text: String(text).slice(0, 2000),\n    snippet: String(text).replace(/\\s+/g, ' ').slice(0, 180),\n    format: (p.type || p.productType || 'post').toString().toLowerCase(),\n    publishedAt: p.timestamp || p.takenAt || null,\n    url,\n    metrics: {\n      likes:       nz(p.likesCount),\n      comments:    nz(p.commentsCount),\n      shares:      0,\n      impressions: nz(p.videoViewCount || p.videoPlayCount || 0),\n    },\n  };\n});\n\nreturn [{ json: { channel: 'Instagram', meta, posts } }];"
       }
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000022",
+      "id": "ddd173bb-5fdf-461c-9406-da38636a21d4",
       "name": "Bundle TikTok",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [880, 500],
+      "position": [
+        4896,
+        560
+      ],
       "parameters": {
-        "jsCode": "// Collapse all items produced by the Apify TikTok node into ONE item carrying { channel, meta, posts }.\n// IMPORTANT: clockworks/tiktok-scraper returns FLAT keys like 'authorMeta.name' or 'videoMeta.duration' rather than nested objects.\nconst cfg = $('⚙️ Config & Route').first().json;\nconst meta = cfg.scanTikTok || { name: 'TikTok', handle: '', profileUrl: '' };\nconst raw = $input.all().map(it => it && it.json ? it.json : it).filter(Boolean);\n\nfunction nz(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }\nfunction g(p, ...keys) {\n  for (const k of keys) { if (p[k] !== undefined && p[k] !== null) return p[k]; }\n  return undefined;\n}\n\nconst posts = raw.map((p, i) => {\n  const text = p.text || p.desc || '';\n  const url  = p.webVideoUrl || p.videoUrl || '';\n  const id   = p.id || (url.match(/video\\/(\\d+)/) || [])[1] || `tt-${i}`;\n  return {\n    id: String(id),\n    channel: 'TikTok',\n    text: String(text).slice(0, 2000),\n    snippet: String(text).replace(/\\s+/g, ' ').slice(0, 180),\n    format: 'video',\n    publishedAt: p.createTimeISO || (p.createTime ? new Date(p.createTime * 1000).toISOString() : null),\n    url,\n    metrics: {\n      likes:       nz(g(p, 'diggCount')    || g(p['stats'] || {}, 'diggCount')),\n      comments:    nz(g(p, 'commentCount') || g(p['stats'] || {}, 'commentCount')),\n      shares:      nz(g(p, 'shareCount')   || g(p['stats'] || {}, 'shareCount')),\n      impressions: nz(g(p, 'playCount')    || g(p['stats'] || {}, 'playCount')),\n    },\n  };\n});\n\nreturn [{ json: { channel: 'TikTok', meta, posts } }];"
+        "jsCode": "// Collapse all items produced by the Apify TikTok node into ONE item carrying { channel, meta, posts }.\n// IMPORTANT: clockworks/tiktok-scraper returns FLAT keys like 'authorMeta.name' or 'videoMeta.duration' rather than nested objects.\nconst cfg = $('⚙️ Config & Route').first().json;\nconst metaIn = cfg.scanTikTok || { name: 'TikTok', handle: '', profileUrl: '' };\nconst raw = $input.all().map(it => it && it.json ? it.json : it).filter(Boolean);\n\nfunction nz(v) { return typeof v === 'number' && isFinite(v) ? v : 0; }\nfunction g(p, ...keys) {\n  for (const k of keys) { if (p[k] !== undefined && p[k] !== null) return p[k]; }\n  return undefined;\n}\n\n// Extract author followers (fans) once — present per-post in authorMeta\nlet followers = null;\nlet primaryFormat = 'video';\nfor (const p of raw) {\n  const am = p.authorMeta || {};\n  if (am.fans != null && Number.isFinite(am.fans)) { followers = am.fans; break; }\n}\nconst meta = { ...metaIn, followers };\n\nconst posts = raw.map((p, i) => {\n  const text = p.text || p.desc || '';\n  const url  = p.webVideoUrl || p.videoUrl || '';\n  const id   = p.id || (url.match(/video\\/(\\d+)/) || [])[1] || `tt-${i}`;\n  return {\n    id: String(id),\n    channel: 'TikTok',\n    text: String(text).slice(0, 2000),\n    snippet: String(text).replace(/\\s+/g, ' ').slice(0, 180),\n    format: 'video',\n    publishedAt: p.createTimeISO || (p.createTime ? new Date(p.createTime * 1000).toISOString() : null),\n    url,\n    metrics: {\n      likes:       nz(g(p, 'diggCount')    || g(p['stats'] || {}, 'diggCount')),\n      comments:    nz(g(p, 'commentCount') || g(p['stats'] || {}, 'commentCount')),\n      shares:      nz(g(p, 'shareCount')   || g(p['stats'] || {}, 'shareCount')),\n      impressions: nz(g(p, 'playCount')    || g(p['stats'] || {}, 'playCount')),\n    },\n  };\n});\n\nreturn [{ json: { channel: 'TikTok', meta, posts } }];"
       }
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000030",
+      "id": "b55676b2-53a9-4bd5-b01e-076c74ab1681",
       "name": "Merge Channels",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3,
-      "position": [1140, 400],
-      "parameters": {
-        "mode": "append",
-        "numberInputs": 2
-      }
+      "position": [
+        5152,
+        464
+      ],
+      "parameters": {}
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000040",
+      "id": "f1513436-8481-4711-99d7-d97c719a9881",
       "name": "Compute Metrics & Heatmap",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1380, 400],
+      "position": [
+        5392,
+        464
+      ],
       "parameters": {
-        "jsCode": "// Receives 1 item per supported channel (Instagram / TikTok), computes engagement scores,\n// builds top/bottom posts and a 7×24 cadence heatmap, and emits ONE consolidated item.\n// Guarantees every requested channel shows up in the output, even when its Apify branch produced 0 posts.\nconst items = $input.all().map(it => it.json);\nconst cfg = $('⚙️ Config & Route').first().json;\nconst weights = cfg.weights || { engagement: 0.5, reach: 0.3, saves: 0.2 };\n\nconst expected = [];\nif (cfg.scanInstagram) expected.push({ name: 'Instagram', meta: cfg.scanInstagram });\nif (cfg.scanTikTok)    expected.push({ name: 'TikTok',    meta: cfg.scanTikTok });\n\nconst bundleByChannel = {};\nfor (const it of items) { if (it && it.channel) bundleByChannel[it.channel] = it; }\nconst merged = expected.map(ec => bundleByChannel[ec.name] || { channel: ec.name, meta: ec.meta, posts: [] });\n\nfunction engagementRate(m) {\n  const interactions = (m.likes || 0) + (m.comments || 0) + (m.shares || 0);\n  const denom = (m.impressions || 0) > 0 ? m.impressions : 1000;\n  return +((interactions / denom) * 100).toFixed(2);\n}\n\nfunction buildHeatmap(posts) {\n  const m = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ count: 0, totalEr: 0 })));\n  for (const p of posts) {\n    if (!p.publishedAt) continue;\n    const d = new Date(p.publishedAt);\n    if (isNaN(d.getTime())) continue;\n    const dow = d.getUTCDay(), hr = d.getUTCHours();\n    const cell = m[dow][hr];\n    m[dow][hr] = { count: cell.count + 1, totalEr: cell.totalEr + (p.engagementRate || 0) };\n  }\n  return m.map(row => row.map(c => ({ count: c.count, avgEr: c.count ? +(c.totalEr / c.count).toFixed(2) : 0 })));\n}\n\nconst out = { cfg, channels: [] };\n\nfor (const item of merged) {\n  const name = item.channel;\n  const meta = item.meta || {};\n  const rawPosts = Array.isArray(item.posts) ? item.posts : [];\n\n  const posts = rawPosts.map(p => ({ ...p, engagementRate: engagementRate(p.metrics || {}) }));\n  const maxReach = Math.max(1, ...posts.map(p => p.metrics?.impressions || 0));\n  const maxSaves = Math.max(1, ...posts.map(p => p.metrics?.shares || 0));\n  const maxEr    = Math.max(0.01, ...posts.map(p => p.engagementRate));\n\n  const scored = posts.map(p => {\n    const eN = (p.engagementRate || 0) / maxEr;\n    const rN = (p.metrics?.impressions || 0) / maxReach;\n    const sN = (p.metrics?.shares || 0) / maxSaves;\n    const score = (weights.engagement || 0.5) * eN + (weights.reach || 0.3) * rN + (weights.saves || 0.2) * sN;\n    return { ...p, score: +score.toFixed(3) };\n  });\n\n  const sorted = [...scored].sort((a, b) => b.score - a.score);\n  const topPosts    = sorted.slice(0, 5);\n  const bottomPosts = posts.length > 5 ? sorted.slice(-3).reverse() : [];\n\n  const avgEr = posts.length ? +(posts.reduce((s, p) => s + p.engagementRate, 0) / posts.length).toFixed(2) : 0;\n  const cadence = posts.length ? +((posts.length / 12).toFixed(2)) : 0;\n\n  out.channels.push({\n    name,\n    icon: name.toLowerCase(),\n    color: name === 'Instagram' ? '#E4405F' : '#010101',\n    handle: '@' + (meta.handle || ''),\n    profileUrl: meta.profileUrl || '',\n    enabled: true,\n    followers: null,\n    postingCadence: cadence,\n    avgEngagementRate: avgEr,\n    primaryFormat: (posts[0] && posts[0].format) || 'post',\n    posts: scored,\n    topPosts,\n    bottomPosts,\n    cadenceHeatmap: buildHeatmap(scored),\n  });\n}\n\nconsole.log('[WF02 Compute] channels:', out.channels.map(c => `${c.name}(${c.posts.length})`).join(', '));\nreturn [{ json: out }];"
+        "jsCode": "// Receives 1 item per supported channel (Instagram / TikTok), computes engagement scores,\n// builds top/bottom posts and a 7×24 cadence heatmap, and emits ONE consolidated item.\n// Guarantees every requested channel shows up in the output, even when its Apify branch produced 0 posts.\nconst items = $input.all().map(it => it.json);\nconst cfg = $('⚙️ Config & Route').first().json;\nconst weights = cfg.weights || { engagement: 0.5, reach: 0.3, saves: 0.2 };\n\nconst expected = [];\nif (cfg.scanInstagram) expected.push({ name: 'Instagram', meta: cfg.scanInstagram });\nif (cfg.scanTikTok)    expected.push({ name: 'TikTok',    meta: cfg.scanTikTok });\n\nconst bundleByChannel = {};\nfor (const it of items) { if (it && it.channel) bundleByChannel[it.channel] = it; }\nconst merged = expected.map(ec => bundleByChannel[ec.name] || { channel: ec.name, meta: ec.meta, posts: [] });\n\nfunction engagementRate(m) {\n  const interactions = (m.likes || 0) + (m.comments || 0) + (m.shares || 0);\n  const denom = (m.impressions || 0) > 0 ? m.impressions : 1000;\n  return +((interactions / denom) * 100).toFixed(2);\n}\n\nfunction buildHeatmap(posts) {\n  const m = Array.from({ length: 7 }, () => Array.from({ length: 24 }, () => ({ count: 0, totalEr: 0 })));\n  for (const p of posts) {\n    if (!p.publishedAt) continue;\n    const d = new Date(p.publishedAt);\n    if (isNaN(d.getTime())) continue;\n    const dow = d.getUTCDay(), hr = d.getUTCHours();\n    const cell = m[dow][hr];\n    m[dow][hr] = { count: cell.count + 1, totalEr: cell.totalEr + (p.engagementRate || 0) };\n  }\n  return m.map(row => row.map(c => ({ count: c.count, avgEr: c.count ? +(c.totalEr / c.count).toFixed(2) : 0 })));\n}\n\nconst out = { cfg, channels: [] };\n\nfor (const item of merged) {\n  const name = item.channel;\n  const meta = item.meta || {};\n  const rawPosts = Array.isArray(item.posts) ? item.posts : [];\n\n  const posts = rawPosts.map(p => ({ ...p, engagementRate: engagementRate(p.metrics || {}) }));\n  const maxReach = Math.max(1, ...posts.map(p => p.metrics?.impressions || 0));\n  const maxSaves = Math.max(1, ...posts.map(p => p.metrics?.shares || 0));\n  const maxEr    = Math.max(0.01, ...posts.map(p => p.engagementRate));\n\n  const scored = posts.map(p => {\n    const eN = (p.engagementRate || 0) / maxEr;\n    const rN = (p.metrics?.impressions || 0) / maxReach;\n    const sN = (p.metrics?.shares || 0) / maxSaves;\n    const score = (weights.engagement || 0.5) * eN + (weights.reach || 0.3) * rN + (weights.saves || 0.2) * sN;\n    return { ...p, score: +score.toFixed(3) };\n  });\n\n  const sorted = [...scored].sort((a, b) => b.score - a.score);\n  const topPosts    = sorted.slice(0, 5);\n  const bottomPosts = posts.length > 5 ? sorted.slice(-3).reverse() : [];\n\n  const avgEr = posts.length ? +(posts.reduce((s, p) => s + p.engagementRate, 0) / posts.length).toFixed(2) : 0;\n  const cadence = posts.length ? +((posts.length / 12).toFixed(2)) : 0;\n\n  out.channels.push({\n    name,\n    icon: name.toLowerCase(),\n    color: name === 'Instagram' ? '#E4405F' : '#010101',\n    handle: '@' + (meta.handle || ''),\n    profileUrl: meta.profileUrl || '',\n    enabled: true,\n    followers: (meta.followers != null && Number.isFinite(Number(meta.followers))) ? Number(meta.followers) : null,\n    postingCadence: cadence,\n    avgEngagementRate: avgEr,\n    primaryFormat: (posts[0] && posts[0].format) || 'post',\n    posts: scored,\n    topPosts,\n    bottomPosts,\n    cadenceHeatmap: buildHeatmap(scored),\n  });\n}\n\nconsole.log('[WF02 Compute] channels:', out.channels.map(c => `${c.name}(posts=${c.posts.length}, followers=${c.followers})`).join(', '));\nreturn [{ json: out }];"
       }
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000050",
+      "id": "a11a3a5b-d382-40c0-827b-cb6854992d03",
       "name": "Claude Haiku — Tone Analysis",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [1620, 400],
+      "position": [
+        5632,
+        464
+      ],
       "parameters": {
-        "url": "https://api.anthropic.com/v1/messages",
         "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "anthropicApi",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "content-type", "value": "application/json" }
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"model\": \"claude-haiku-4-5-20251001\",\n  \"max_tokens\": 2500,\n  \"system\": \"You are a brand voice analyst. You receive real social media posts grouped by channel and return strictly valid JSON. No markdown fences, no explanation outside the JSON. Be opinionated — score each axis at extremes (10-25 or 75-95) rather than clustering around 50.\",\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": {{ JSON.stringify(\n      'Analyze the brand voice of these owned social media channels. For each channel return tone metrics (0-100), a one-sentence summary, voice rules (always / never), and one-line explanations of why the top 3 posts worked.\\n\\nINPUT:\\n' +\n      JSON.stringify($json.channels.map(c => ({\n        channel: c.name,\n        handle: c.handle,\n        avgEngagementRate: c.avgEngagementRate,\n        topPosts: (c.topPosts || []).map(p => ({ id: p.id, snippet: p.snippet, format: p.format, er: p.engagementRate, likes: p.metrics?.likes, comments: p.metrics?.comments, shares: p.metrics?.shares })),\n        bottomPosts: (c.bottomPosts || []).map(p => ({ id: p.id, snippet: p.snippet, er: p.engagementRate })),\n      })), null, 2) +\n      '\\n\\nReturn ONLY this JSON shape:\\n{\\n  \"channels\": [\\n    {\\n      \"name\": \"Instagram\",\\n      \"tone\": { \"formal_vs_casual\": 0-100, \"technical_vs_accessible\": 0-100, \"serious_vs_playful\": 0-100, \"humble_vs_bold\": 0-100, \"short_vs_expansive\": 0-100 },\\n      \"toneSummary\": \"One sentence describing the voice\",\\n      \"voiceRules\": { \"always\": [\"3-5 short rules\"], \"never\": [\"3-5 short rules\"] },\\n      \"whyItWorked\": [{ \"postId\": \"X\", \"reason\": \"One sentence\" }]\\n    }\\n  ]\\n}\\n\\nSCORING RULES — read carefully. Each axis is 0 = FULLY the FIRST adjective, 100 = FULLY the SECOND adjective. NEVER reverse them.\\n\\n• formal_vs_casual: 0 = corporate/B2B/dressed-up (\"We are pleased to announce our strategic AI deployment\"). 100 = slangy/emoji-heavy/broken sentences in everyday Spanish or English (\"Team Work!!\", \"que sueñooo\").\\n• technical_vs_accessible: 0 = dense jargon for experts (\"governance, deployment, integration, AI architecture, ML pipelines\"). 100 = everyday language any person understands (\"Team Work!!\", \"office moments\", \"sueño\").\\n• serious_vs_playful: 0 = business-outcomes only (\"transformation that drives ROI\"). 100 = humor/jokes/playful self-aware content (\"Perfil de Actor: 10/10\").\\n• humble_vs_bold: 0 = modest/proof-based/third-party validation. 100 = strong opinionated claims (\"Most companies don\\'t fail at AI because of technology\").\\n• short_vs_expansive: 0 = 1-3 word captions (\"Team Work!!\"). 100 = multi-paragraph essays.\\n\\nWORKED EXAMPLES (use to calibrate):\\n— A LinkedIn account writing \"Our enterprise AI strategy delivers ROI through structured deployment of intelligent automation\": formal_vs_casual=15, technical_vs_accessible=15, serious_vs_playful=10, short_vs_expansive=70.\\n— A TikTok with captions \"Team Work!!\" and \"Perfil de Actor: 10/10\": formal_vs_casual=95, technical_vs_accessible=95, serious_vs_playful=90, short_vs_expansive=5.\\n— An Instagram mixing posts about \"Sales Automation\", \"AI readiness\", \"Building enterprise AI\": formal_vs_casual=25, technical_vs_accessible=25, serious_vs_playful=20.\\n\\nIf a channel has zero posts, return tone with all 50s and empty voiceRules.'\n    ) }}\n  }]\n}",
         "options": {
-          "timeout": 60000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 60000
         }
       },
       "credentials": {
-        "anthropicApi": { "name": "Anthropic ' LeadGen" }
+        "anthropicApi": {
+          "id": "cDqTZ0I8h6TjXkKy",
+          "name": "Anthropic ' LeadGen"
+        }
       },
       "continueOnFail": true
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000060",
+      "id": "5b63121b-464d-4d08-8c25-c3e6be4bed08",
       "name": "Combine Results",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1860, 400],
+      "position": [
+        5872,
+        464
+      ],
       "parameters": {
         "jsCode": "// Merge tone analysis (Claude) back into the channel objects (metrics).\nconst prev = $('Compute Metrics & Heatmap').first().json;\nconst rawText = $input.first().json?.content?.[0]?.text || '';\n\nlet tone = { channels: [] };\ntry {\n  const cleaned = rawText.replace(/^```json?\\s*/i, '').replace(/\\s*```$/i, '').trim();\n  tone = JSON.parse(cleaned);\n} catch (e) {\n  const m = rawText.match(/\\{[\\s\\S]*\\}/);\n  if (m) { try { tone = JSON.parse(m[0]); } catch {} }\n}\n\nconst toneByName = {};\nfor (const t of (tone.channels || [])) {\n  toneByName[(t.name || '').toLowerCase()] = t;\n}\n\nconst channels = (prev.channels || []).map(c => {\n  const t = toneByName[c.name.toLowerCase()] || {};\n  const byId = new Map((t.whyItWorked || []).map(w => [String(w.postId), w.reason]));\n  const topPosts = (c.topPosts || []).map(p => ({ ...p, whyItWorked: byId.get(String(p.id)) || '' }));\n  return {\n    name: c.name,\n    icon: c.icon,\n    color: c.color,\n    handle: c.handle,\n    profileUrl: c.profileUrl,\n    enabled: true,\n    followers: c.followers,\n    postingCadence: c.postingCadence,\n    avgEngagementRate: c.avgEngagementRate,\n    primaryFormat: c.primaryFormat,\n    tone: t.tone || { formal_vs_casual: 50, technical_vs_accessible: 50, serious_vs_playful: 50, humble_vs_bold: 50, short_vs_expansive: 50 },\n    toneSummary: t.toneSummary || '',\n    voiceRules: t.voiceRules || { always: [], never: [] },\n    topPosts,\n    bottomPosts: c.bottomPosts || [],\n    cadenceHeatmap: c.cadenceHeatmap,\n  };\n});\n\nconst result = {\n  brand_id: prev.cfg && prev.cfg.brandId,\n  scanned_at: new Date().toISOString(),\n  scoringWeights: prev.cfg && prev.cfg.weights,\n  channels,\n};\n\nconsole.log('[WF02 Final] channels:', channels.map(c => `${c.name}(top=${c.topPosts.length})`).join(', '));\nreturn [{ json: result }];"
       }
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000065",
+      "id": "1f3548b2-a6cf-4aa4-b28a-3e5164362cef",
       "name": "Persist to Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
-      "position": [2100, 400],
+      "position": [
+        6112,
+        464
+      ],
       "parameters": {
-        "url": "https://lvgqecbibzqkmemecskr.supabase.co/rest/v1/social_media_analyses?on_conflict=brand_id,channel",
         "method": "POST",
+        "url": "https://lvgqecbibzqkmemecskr.supabase.co/rest/v1/social_media_analyses?on_conflict=brand_id,channel",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey",        "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Z3FlY2JpYnpxa21lbWVjc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Nzc2NjYsImV4cCI6MjA5MjM1MzY2Nn0.dFWq5rlelCyQ2Gdx1qQnKZo4s3x828fbC-EADX8D1G8" },
-            { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Z3FlY2JpYnpxa21lbWVjc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Nzc2NjYsImV4cCI6MjA5MjM1MzY2Nn0.dFWq5rlelCyQ2Gdx1qQnKZo4s3x828fbC-EADX8D1G8" },
-            { "name": "Content-Type",  "value": "application/json" },
-            { "name": "Prefer",        "value": "resolution=merge-duplicates,return=minimal" }
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Z3FlY2JpYnpxa21lbWVjc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Nzc2NjYsImV4cCI6MjA5MjM1MzY2Nn0.dFWq5rlelCyQ2Gdx1qQnKZo4s3x828fbC-EADX8D1G8"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2Z3FlY2JpYnpxa21lbWVjc2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3Nzc2NjYsImV4cCI6MjA5MjM1MzY2Nn0.dFWq5rlelCyQ2Gdx1qQnKZo4s3x828fbC-EADX8D1G8"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates,return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json.channels.map(c => ({ brand_id: $json.brand_id, channel: c.name, handle: (c.handle || '').replace(/^@/, ''), url: c.profileUrl, analysis_json: c }))) }}",
+        "jsonBody": "={{ $json.channels.map(c => ({ brand_id: $json.brand_id, channel: c.name, handle: (c.handle || '').replace(/^@/, ''), url: c.profileUrl, analysis_json: c, updated_at: $json.scanned_at })) }}",
         "options": {
-          "timeout": 30000,
-          "response": { "response": { "neverError": true } }
+          "response": {
+            "response": {
+              "neverError": false
+            }
+          },
+          "timeout": 30000
         }
       },
-      "continueOnFail": true
+      "onError": "continueRegularOutput",
+      "continueOnFail": false
     },
     {
-      "id": "b2c3d4e5-0000-0000-0000-000000000070",
+      "id": "ce1a9d7c-b8c5-4e88-9b8f-6593f0fa6197",
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [2100, 400],
+      "position": [
+        6112,
+        464
+      ],
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ JSON.stringify($('Combine Results').first().json) }}",
         "options": {
           "responseHeaders": {
             "entries": [
-              { "name": "Access-Control-Allow-Origin", "value": "*" },
-              { "name": "Access-Control-Allow-Methods", "value": "POST, OPTIONS" },
-              { "name": "Access-Control-Allow-Headers", "value": "Content-Type" }
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "POST, OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
             ]
           }
         }
@@ -205,45 +293,140 @@
   ],
   "connections": {
     "Webhook — Scan Owned Channels": {
-      "main": [[{ "node": "⚙️ Config & Route", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "⚙️ Config & Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "⚙️ Config & Route": {
-      "main": [[
-        { "node": "Apify — Instagram Posts", "type": "main", "index": 0 },
-        { "node": "Apify — TikTok Posts",    "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Apify — Instagram Posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apify — TikTok Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apify — Instagram Posts": {
-      "main": [[{ "node": "Bundle Instagram", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Bundle Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Apify — TikTok Posts": {
-      "main": [[{ "node": "Bundle TikTok", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Bundle TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Bundle Instagram": {
-      "main": [[{ "node": "Merge Channels", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Bundle TikTok": {
-      "main": [[{ "node": "Merge Channels", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "Merge Channels",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
     },
     "Merge Channels": {
-      "main": [[{ "node": "Compute Metrics & Heatmap", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Compute Metrics & Heatmap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Compute Metrics & Heatmap": {
-      "main": [[{ "node": "Claude Haiku — Tone Analysis", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Claude Haiku — Tone Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Claude Haiku — Tone Analysis": {
-      "main": [[{ "node": "Combine Results", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Combine Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Combine Results": {
-      "main": [[{ "node": "Persist to Supabase", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Persist to Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Persist to Supabase": {
-      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
   "meta": {
-    "notes": "v7 final: LinkedIn REMOVED — after 4 public 'no-cookies' scrapers (harvestapi/apimaestro/datadoping/benjarapi) failed to return real posts for small/medium company pages, we dropped LinkedIn from v1 scope. Production should use LinkedIn Marketing API. Currently supports: Instagram (apify/instagram-scraper) + TikTok (clockworks/tiktok-scraper). SETUP: map 'Apify Sales' credential on Apify nodes, 'Anthropic ' LeadGen' on Claude node, then Activate. Cost per scan: ~$0.16 ($0.07 IG + $0.09 TikTok + $0.005 Claude)."
+    "notes": "v8 — Bundle TikTok extracts authorMeta.fans; Compute passes followers through; Persist body uses array literal (was double-encoded via JSON.stringify) with updated_at; neverError removed so HTTP errors surface."
   }
 }
