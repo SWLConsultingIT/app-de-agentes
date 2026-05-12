@@ -2277,6 +2277,9 @@ async function hydrateHookMinerView() {
       Social media app offline.</p>`;
     lucide.createIcons();
   }
+
+  // Load the Foreplay.co-style swipe file (runs independently, uses its own try/catch)
+  initSwipeFile();
 }
 
 async function hydrateContentBuilderInsights() {
@@ -2475,6 +2478,283 @@ async function runCompetitorPipeline() {
     if (statusEl) statusEl.textContent = '❌ Error — ¿social media app corriendo?';
     showToast('No se pudo iniciar el pipeline. Asegurate que el social media app esté corriendo en localhost:3000.', 'error');
     console.error('[runCompetitorPipeline]', err);
+  }
+}
+
+// ── Creative Library — Swipe File (Foreplay.co style) ───
+let _swipeVideos = [];
+let _swipeDisplayed = 0;
+const SWIPE_PER_PAGE = 20;
+
+function fmtViews(n) {
+  n = Number(n) || 0;
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+  return String(n);
+}
+
+function renderAnalysisMarkdown(text) {
+  if (!text) return '<em style="color:var(--text-muted)">Sin contenido</em>';
+  const lines = text.split('\n');
+  let html = '';
+  let inList = false;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) {
+      if (inList) { html += '</ul>'; inList = false; }
+      continue;
+    }
+    if (/^# /.test(line)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h4 style="margin:14px 0 5px;font-size:13px;font-weight:700;color:#111827;border-bottom:1px solid #E2E8F0;padding-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">${escapeHtml(line.slice(2).trim())}</h4>`;
+    } else if (/^## /.test(line)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      html += `<h5 style="margin:10px 0 3px;font-size:12px;font-weight:700;color:#374151;">${escapeHtml(line.slice(3).trim())}</h5>`;
+    } else if (/^[-*•] /.test(t) || /^->/.test(t)) {
+      if (!inList) { html += '<ul style="margin:4px 0 6px;padding-left:16px;font-size:12px;color:#374151;">'; inList = true; }
+      const content = t.replace(/^[-*•>]+ ?/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html += `<li style="margin:2px 0;">${content}</li>`;
+    } else if (/^\d+[.)]\s/.test(t)) {
+      if (inList) { html += '</ul>'; inList = false; }
+      const content = t.replace(/^\d+[.)]\s*/, '').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html += `<p style="margin:2px 0 2px 14px;font-size:12px;color:#374151;">• ${content}</p>`;
+    } else {
+      if (inList) { html += '</ul>'; inList = false; }
+      const formatted = t
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+      html += `<p style="margin:3px 0;font-size:12px;line-height:1.6;color:#374151;">${formatted}</p>`;
+    }
+  }
+  if (inList) html += '</ul>';
+  return html;
+}
+
+function ensureSwipeModal() {
+  if (document.getElementById('swipe-modal')) return;
+  const el = document.createElement('div');
+  el.id = 'swipe-modal';
+  el.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.65);overflow-y:auto;padding:24px 16px;';
+  el.innerHTML = `
+    <div id="swipe-modal-box" style="max-width:740px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.3);">
+      <div style="padding:16px 20px 14px;border-bottom:1px solid #E2E8F0;display:flex;align-items:center;gap:14px;">
+        <div id="swipe-modal-thumb" style="width:44px;height:60px;border-radius:8px;overflow:hidden;flex-shrink:0;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:22px;">🎬</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong id="swipe-modal-creator" style="font-size:14px;">@creator</strong>
+            <a id="swipe-modal-link" href="#" target="_blank" style="color:#6B7280;font-size:11px;text-decoration:none;">ver video ↗</a>
+          </div>
+          <div id="swipe-modal-stats" style="font-size:11px;color:#6B7280;margin-top:3px;"></div>
+          <div id="swipe-modal-config" style="margin-top:4px;"></div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button id="swipe-tab-analysis" onclick="swipeModalTab('analysis')"
+            style="padding:5px 12px;border-radius:6px;border:1px solid #F97316;font-size:12px;cursor:pointer;font-weight:600;background:#F97316;color:white;">
+            🔍 Analysis
+          </button>
+          <button id="swipe-tab-concepts" onclick="swipeModalTab('concepts')"
+            style="padding:5px 12px;border-radius:6px;border:1px solid #E2E8F0;font-size:12px;cursor:pointer;font-weight:600;background:white;color:#374151;">
+            ✨ Concepts
+          </button>
+        </div>
+        <button onclick="closeSwipeModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;cursor:pointer;font-size:20px;color:#9CA3AF;line-height:1;padding:0;">✕</button>
+      </div>
+      <div id="swipe-modal-body" style="padding:20px 24px;max-height:calc(90vh - 130px);overflow-y:auto;"></div>
+    </div>`;
+  el.addEventListener('click', e => { if (e.target === el) closeSwipeModal(); });
+  document.body.appendChild(el);
+}
+
+let _swipeModalVideo = null;
+let _swipeModalSection = 'analysis';
+
+function openSwipeModal(videoId, section) {
+  section = section || 'analysis';
+  ensureSwipeModal();
+  const video = _swipeVideos.find(v => v.id === videoId);
+  if (!video) return;
+  _swipeModalVideo = video;
+
+  document.getElementById('swipe-modal-creator').textContent = '@' + video.creator;
+  document.getElementById('swipe-modal-link').href = video.link;
+  document.getElementById('swipe-modal-stats').textContent =
+    '▶ ' + fmtViews(video.views) + ' views · ♥ ' + fmtViews(video.likes) + ' · 💬 ' + fmtViews(video.comments) + (video.datePosted ? ' · ' + video.datePosted : '');
+  document.getElementById('swipe-modal-config').innerHTML = video.configName
+    ? `<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:#FEF3C7;color:#B45309;">${escapeHtml(video.configName)}</span>`
+    : '';
+
+  const thumbEl = document.getElementById('swipe-modal-thumb');
+  if (video.thumbnail) {
+    thumbEl.innerHTML = `<img src="${SOCIAL_MEDIA_API_URL}/api/proxy-image?url=${encodeURIComponent(video.thumbnail)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='🎬'">`;
+  } else {
+    thumbEl.innerHTML = '🎬';
+  }
+
+  swipeModalTab(section);
+  document.getElementById('swipe-modal').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function swipeModalTab(section) {
+  _swipeModalSection = section;
+  const aBtn = document.getElementById('swipe-tab-analysis');
+  const cBtn = document.getElementById('swipe-tab-concepts');
+  const body = document.getElementById('swipe-modal-body');
+  if (aBtn) {
+    aBtn.style.background = section === 'analysis' ? '#F97316' : 'white';
+    aBtn.style.color = section === 'analysis' ? 'white' : '#374151';
+    aBtn.style.borderColor = section === 'analysis' ? '#F97316' : '#E2E8F0';
+  }
+  if (cBtn) {
+    cBtn.style.background = section === 'concepts' ? '#7C3AED' : 'white';
+    cBtn.style.color = section === 'concepts' ? 'white' : '#374151';
+    cBtn.style.borderColor = section === 'concepts' ? '#7C3AED' : '#E2E8F0';
+  }
+  if (body && _swipeModalVideo) {
+    const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.newConcepts;
+    body.innerHTML = renderAnalysisMarkdown(content);
+  }
+}
+
+function closeSwipeModal() {
+  const m = document.getElementById('swipe-modal');
+  if (m) m.style.display = 'none';
+  document.body.style.overflow = '';
+  _swipeModalVideo = null;
+}
+
+async function toggleSwipeStar(videoId, currentStarred) {
+  const newStarred = !currentStarred;
+  const video = _swipeVideos.find(v => v.id === videoId);
+  if (video) video.starred = newStarred;
+  const btn = document.querySelector(`[data-star="${CSS.escape(videoId)}"]`);
+  if (btn) { btn.textContent = newStarred ? '★' : '☆'; btn.style.color = newStarred ? '#F59E0B' : '#9CA3AF'; }
+  try {
+    await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: videoId, starred: newStarred }),
+    });
+  } catch (e) {
+    if (video) video.starred = currentStarred;
+    if (btn) { btn.textContent = currentStarred ? '★' : '☆'; btn.style.color = currentStarred ? '#F59E0B' : '#9CA3AF'; }
+  }
+}
+
+function getSwipeFiltered() {
+  const configFilter  = document.getElementById('hm-swipe-config')?.value  || '';
+  const creatorFilter = document.getElementById('hm-swipe-creator')?.value || '';
+  const sort = document.getElementById('hm-swipe-sort')?.value || 'views';
+
+  let videos = _swipeVideos.filter(v =>
+    (!configFilter  || v.configName === configFilter) &&
+    (!creatorFilter || v.creator    === creatorFilter)
+  );
+
+  if (sort === 'views')       videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'starred') videos.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'date-posted') videos.sort((a, b) => (b.datePosted || '').localeCompare(a.datePosted || ''));
+  else if (sort === 'date-added')  videos.sort((a, b) => (b.dateAdded  || '').localeCompare(a.dateAdded  || ''));
+  return videos;
+}
+
+function renderSwipeGrid() {
+  const grid = document.getElementById('hm-swipe-grid');
+  if (!grid) return;
+
+  const filtered = getSwipeFiltered();
+  if (!_swipeDisplayed) _swipeDisplayed = SWIPE_PER_PAGE;
+  const visible = filtered.slice(0, _swipeDisplayed);
+
+  const subtitle = document.getElementById('hm-swipe-subtitle');
+  if (subtitle) subtitle.textContent = filtered.length + ' videos · ' + _swipeVideos.length + ' total';
+
+  if (!visible.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:28px;font-size:13px;">Sin videos para estos filtros.</div>';
+    const lm = document.getElementById('hm-swipe-loadmore');
+    if (lm) lm.style.display = 'none';
+    return;
+  }
+
+  grid.innerHTML = visible.map(v => {
+    const imgSrc = v.thumbnail
+      ? `${SOCIAL_MEDIA_API_URL}/api/proxy-image?url=${encodeURIComponent(v.thumbnail)}`
+      : '';
+    const starColor = v.starred ? '#F59E0B' : '#9CA3AF';
+    const starIcon  = v.starred ? '★' : '☆';
+    const safeId = escapeHtml(v.id);
+    return `<div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:white;transition:transform .15s;">
+      <a href="${escapeHtml(v.link)}" target="_blank" rel="noopener"
+        style="display:block;position:relative;aspect-ratio:9/16;background:#F3F4F6;overflow:hidden;text-decoration:none;">
+        ${imgSrc
+          ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'">`
+          : '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🎬</div>'}
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:14px 8px 6px;">
+          <span style="color:white;font-size:12px;font-weight:700;">▶ ${fmtViews(v.views)}</span>
+        </div>
+      </a>
+      <div style="padding:8px 10px 10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+          <span style="font-size:12px;font-weight:600;color:var(--text-main);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 24px);">@${escapeHtml(v.creator)}</span>
+          <button data-star="${safeId}" onclick="event.stopPropagation();toggleSwipeStar('${safeId}',${!!v.starred})"
+            style="background:none;border:none;cursor:pointer;font-size:16px;color:${starColor};padding:0;line-height:1;flex-shrink:0;">${starIcon}</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.configName || '—')}</div>
+        <div style="display:flex;gap:4px;">
+          <button onclick="openSwipeModal('${safeId}','analysis')"
+            style="flex:1;padding:4px 0;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:white;color:#374151;transition:background .12s;"
+            onmouseover="this.style.background='#FFF7ED'" onmouseout="this.style.background='white'">🔍 Analysis</button>
+          <button onclick="openSwipeModal('${safeId}','concepts')"
+            style="flex:1;padding:4px 0;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:white;color:#374151;transition:background .12s;"
+            onmouseover="this.style.background='#F5F3FF'" onmouseout="this.style.background='white'">✨ Concepts</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const remaining = filtered.length - _swipeDisplayed;
+  const lm = document.getElementById('hm-swipe-loadmore');
+  const remEl = document.getElementById('hm-swipe-remaining');
+  if (lm) lm.style.display = remaining > 0 ? 'block' : 'none';
+  if (remEl) remEl.textContent = remaining > 0 ? '(' + remaining + ' más)' : '';
+}
+
+function loadMoreSwipeVideos() {
+  _swipeDisplayed = (_swipeDisplayed || SWIPE_PER_PAGE) + SWIPE_PER_PAGE;
+  renderSwipeGrid();
+}
+
+async function initSwipeFile() {
+  _swipeDisplayed = SWIPE_PER_PAGE;
+  _swipeVideos = [];
+  try {
+    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    _swipeVideos = await res.json();
+
+    const configSel  = document.getElementById('hm-swipe-config');
+    const creatorSel = document.getElementById('hm-swipe-creator');
+    if (configSel) {
+      const configs = [...new Set(_swipeVideos.map(v => v.configName).filter(Boolean))].sort();
+      configSel.innerHTML = '<option value="">All Configs</option>' +
+        configs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    }
+    if (creatorSel) {
+      const creators = [...new Set(_swipeVideos.map(v => v.creator).filter(Boolean))].sort();
+      creatorSel.innerHTML = '<option value="">All Creators</option>' +
+        creators.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    }
+    renderSwipeGrid();
+  } catch (err) {
+    const grid = document.getElementById('hm-swipe-grid');
+    if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;">
+      <strong style="color:#EF4444;">No se pudo conectar al social media app.</strong><br>
+      <span style="font-size:11px;color:var(--text-muted);">Asegurate que esté corriendo:
+        <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">npm run dev</code>
+        en <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">content creation/social-media/app/</code>
+      </span></div>`;
+    const sub = document.getElementById('hm-swipe-subtitle');
+    if (sub) sub.textContent = 'social media app offline';
   }
 }
 
@@ -6484,6 +6764,44 @@ function generateViewHTML(view) {
           <h3 class="card-title"><i data-lucide="target"></i> Recommended Hooks This Week — auto-queued for ContentBuilder</h3>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;" id="hm-recommended-container">
             <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Creative Library — Swipe File (Foreplay.co style) -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3 class="card-title" style="margin:0;">
+                <i data-lucide="film" style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>
+                Creative Library — Swipe File
+              </h3>
+              <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0 0;" id="hm-swipe-subtitle">conectando con social media app…</p>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <select id="hm-swipe-config" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
+                <option value="">All Configs</option>
+              </select>
+              <select id="hm-swipe-creator" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
+                <option value="">All Creators</option>
+              </select>
+              <select id="hm-swipe-sort" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
+                <option value="views">Most Views</option>
+                <option value="starred">Starred First</option>
+                <option value="date-posted">Date Posted</option>
+                <option value="date-added">Date Added</option>
+              </select>
+            </div>
+          </div>
+          <div id="hm-swipe-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px;">
+            <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:28px; font-size:13px;">
+              <i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px"></i>
+              Conectando al social media app…
+            </div>
+          </div>
+          <div id="hm-swipe-loadmore" style="text-align:center; margin-top:14px; display:none;">
+            <button onclick="loadMoreSwipeVideos()" style="padding:6px 20px; border:1px solid var(--border); border-radius:6px; font-size:12px; cursor:pointer; background:white; color:var(--text-main);">
+              Ver más <span id="hm-swipe-remaining"></span>
+            </button>
           </div>
         </div>
 
