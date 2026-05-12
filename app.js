@@ -6206,7 +6206,6 @@ function generateViewHTML(view) {
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Ready</div><br>
-            <span class="agent-tag">Apify · Claude Haiku</span>
           </div>
         </div>
 
