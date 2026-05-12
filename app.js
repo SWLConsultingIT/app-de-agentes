@@ -2435,8 +2435,9 @@ async function syncCompetitorCreators() {
     loadSocialMediaConfigs();
   } catch (err) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>Sync Competitors'; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
-    if (statusEl) statusEl.textContent = '❌ Error al sincronizar con Supabase.';
-    showToast('No se pudo sincronizar con Supabase.', 'error');
+    const errMsg = err?.message || String(err);
+    if (statusEl) statusEl.textContent = '❌ ' + errMsg;
+    showToast('Error: ' + errMsg, 'error');
     console.error('[syncCompetitorCreators]', err);
   }
 }
