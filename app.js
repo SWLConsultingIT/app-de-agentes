@@ -2149,7 +2149,6 @@ async function runContentAnalysis() {
 
 // ── WF05 Hook Miner ────────────────────────────────────
 const WF05_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/hook-mining';
-const SOCIAL_MEDIA_API_URL = 'http://localhost:3000';
 
 // Standard Gemini video analysis prompt (reused across all brand configs)
 const STANDARD_ANALYSIS_INSTRUCTION = `# CONCEPT
@@ -2200,11 +2199,15 @@ async function runHookMiner() {
   }
 }
 
-// ── Social Media App — competitor video integration ─────
+// ── Social Media — Supabase-backed (sm_videos / sm_creators / sm_configs) ──
 async function fetchCompetitorVideos() {
-  const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  const params = new URLSearchParams({
+    order: 'views.desc',
+    select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
+  });
+  if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
+  return supabaseGet(`sm_videos?${params}`);
 }
 
 function classifyHook(text) {
@@ -2250,12 +2253,12 @@ function parseHooksFromVideos(videos) {
       }
     }
     // Extract spoken hooks from Claude-generated concepts — these are ready-to-adapt lines
-    if (video.newConcepts) {
-      const spokenMatches = [...video.newConcepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
+    if (video.new_concepts) {
+      const spokenMatches = [...video.new_concepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
       spokenMatches.forEach(m => {
         const fw = classifyHook(m[1]);
         hooks.push({ text: m[1].trim(), creator: video.creator, views: video.views,
-          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views),
+          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views) + 2,
           thumbnail: video.thumbnail, link: video.link, isConcept: true });
       });
     }
@@ -2333,11 +2336,9 @@ async function hydrateHookMinerView() {
   } catch (err) {
     console.error('[HookMiner] social-media app error:', err);
     const errHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;">
-      <strong style="color:#EF4444;">No se pudo conectar al social media app.</strong><br>
-      <span style="font-size:11px;color:var(--text-muted);">Asegurate de que esté corriendo:
-        <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">npm run dev</code>
-        en <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">content creation/social-media/app/</code>
-      </span></td></tr>`;
+      <strong style="color:#EF4444;">Error cargando hooks: ${escapeHtml(String(err?.message || err))}</strong><br>
+      <span style="font-size:11px;color:var(--text-muted);">Verificá la consola para más detalles.</span>
+      </td></tr>`;
     if (tbody) tbody.innerHTML = errHTML;
     if (recEl) recEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:12px;">
       <i data-lucide="wifi-off" style="width:12px;vertical-align:middle;margin-right:4px"></i>
@@ -2742,38 +2743,127 @@ Scene flow and spoken text (1-20 sentences)
 ...`;
 }
 
+function extractInstagramUsername(url) {
+  if (!url) return null;
+  // Handle @handle or plain username
+  if (!url.includes('/')) return url.replace(/^@/, '').trim() || null;
+  const m = url.match(/instagram\.com\/([A-Za-z0-9._]+)\/?/);
+  return m ? m[1] : null;
+}
+
+async function discoverInstagramFromUrl(websiteUrl) {
+  if (!websiteUrl) return null;
+  const RESERVED = new Set(['p', 'reel', 'reels', 'stories', 'explore', 'accounts', 'about', 'help', 'legal', 'privacy', 'terms', 'share']);
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(websiteUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(websiteUrl),
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(7000) });
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (!html || html.length < 200) continue;
+      // Match all hrefs containing instagram.com/username
+      const matches = [...html.matchAll(/href=["'][^"']*instagram\.com\/([A-Za-z0-9._]{2,40})[^"']*["']/gi)];
+      for (const m of matches) {
+        const handle = m[1].split('/')[0].split('?')[0];
+        if (!RESERVED.has(handle.toLowerCase())) return handle;
+      }
+      return null;
+    } catch { continue; }
+  }
+  return null;
+}
+
+async function syncCompetitorCreators() {
+  const btn = document.getElementById('hm-sync-competitors-btn');
+  const statusEl = document.getElementById('hm-pipeline-status');
+
+  const competitors = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name));
+
+  if (!competitors.length) {
+    showToast('No hay competidores en el Branding Bio. Agregá competidores primero.', 'error');
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Syncing…'; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
+  if (statusEl) statusEl.textContent = `Buscando Instagrams de ${competitors.length} competidores…`;
+
+  // Category = brand config name (same as syncBrandToSocialMediaApp uses)
+  const category = (brandKitData.name || 'BRAND').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20).toLowerCase();
+
+  try {
+    // Get existing creator usernames from Supabase
+    const existing = await supabaseGet('sm_creators?select=username');
+    const existingUsernames = new Set(existing.map(c => (c.username || '').toLowerCase()));
+
+    let added = 0, skipped = 0, discovered = 0, notFound = 0;
+    for (const competitor of competitors) {
+      // 1. Try explicit instagram_url first
+      let username = extractInstagramUsername(competitor.instagram_url);
+
+      // 2. If not set, scrape their website to find Instagram link
+      if (!username && competitor.url) {
+        if (statusEl) statusEl.textContent = `Buscando Instagram de "${competitor.name}"…`;
+        username = await discoverInstagramFromUrl(competitor.url);
+        if (username) discovered++;
+      }
+
+      if (!username) { notFound++; continue; }
+      if (existingUsernames.has(username.toLowerCase())) { skipped++; continue; }
+      await supabaseUpsert('sm_creators', { username, category });
+      added++;
+      existingUsernames.add(username.toLowerCase());
+    }
+
+    // Create/update sm_configs so n8n can find this brand's pipeline config
+    const configName = category.toUpperCase();
+    const cfgRes = await fetch(`${SUPABASE_URL}/rest/v1/sm_configs?on_conflict=config_name`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({
+        config_name: configName,
+        creators_category: category,
+        analysis_instruction: STANDARD_ANALYSIS_INSTRUCTION,
+        new_concepts_instruction: buildNewConceptsInstruction(brandKitData),
+      }),
+    });
+    if (!cfgRes.ok) throw new Error(`Supabase sm_configs: ${cfgRes.status} ${await cfgRes.text()}`);
+
+    const msg = `${added} nuevo${added !== 1 ? 's' : ''} · ${skipped} ya existía${skipped !== 1 ? 'n' : ''} · ${discovered} descubiertos via web · ${notFound} sin Instagram · config "${configName}" listo`;
+    if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>✅ Synced (${added + skipped})`; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
+    if (statusEl) statusEl.textContent = msg;
+    showToast(`Sync completo: ${msg}. Ahora corré el pipeline.`);
+    loadSocialMediaConfigs();
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>Sync Competitors'; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
+    const errMsg = err?.message || String(err);
+    if (statusEl) statusEl.textContent = '❌ ' + errMsg;
+    showToast('Error: ' + errMsg, 'error');
+    console.error('[syncCompetitorCreators]', err);
+  }
+}
+
 async function syncBrandToSocialMediaApp(profilePayload) {
   const companyName = (profilePayload.identity?.company_name || 'BRAND').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
   const creatorsCategory = companyName.toLowerCase();
   const newConceptsInstruction = buildNewConceptsInstruction(profilePayload);
 
-  // Get existing configs
-  const configsRes = await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`);
-  const configs = configsRes.ok ? await configsRes.json() : [];
-  const existing = configs.find(c => c.configName === companyName);
-
-  const payload = {
-    configName: companyName,
-    creatorsCategory,
-    analysisInstruction: STANDARD_ANALYSIS_INSTRUCTION,
-    newConceptsInstruction,
-  };
-
-  if (existing) {
-    await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...payload, id: existing.id }),
-    });
-    console.log(`[sync] Updated social media config "${companyName}"`);
-  } else {
-    await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    console.log(`[sync] Created social media config "${companyName}"`);
-  }
+  // Upsert into sm_configs (merge on config_name)
+  await supabaseUpsert('sm_configs', {
+    config_name: companyName,
+    creators_category: creatorsCategory,
+    analysis_instruction: STANDARD_ANALYSIS_INSTRUCTION,
+    new_concepts_instruction: newConceptsInstruction,
+    brand_id: brandKitData.brandId || null,
+  });
+  console.log(`[sync] Upserted sm_configs "${companyName}"`);
 
   // Re-load config selector in Hook Miner if visible
   const sel = document.getElementById('hm-config-select');
@@ -2784,55 +2874,55 @@ async function loadSocialMediaConfigs() {
   const sel = document.getElementById('hm-config-select');
   if (!sel) return;
   try {
-    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/configs`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const configs = await res.json();
+    const configs = await supabaseGet('sm_configs?order=config_name.asc&select=id,config_name,creators_category');
     if (!configs.length) {
-      sel.innerHTML = '<option value="">No configs — save Branding Bio first</option>';
+      sel.innerHTML = '<option value="">No configs — guardá Branding Bio primero</option>';
       return;
     }
+    const currentBrandConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
     sel.innerHTML = configs.map(c =>
-      `<option value="${escapeHtml(c.configName)}">${escapeHtml(c.configName)} · ${escapeHtml(c.creatorsCategory)}</option>`
+      `<option value="${escapeHtml(c.config_name)}"${c.config_name === currentBrandConfig ? ' selected' : ''}>${escapeHtml(c.config_name)} · ${escapeHtml(c.creators_category)}</option>`
     ).join('');
   } catch (e) {
-    sel.innerHTML = '<option value="">Social media app offline</option>';
+    sel.innerHTML = '<option value="">Error cargando configs</option>';
+    console.error('[loadSocialMediaConfigs]', e);
   }
 }
 
+const SM_PIPELINE_WEBHOOK = 'https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline';
+
 async function runCompetitorPipeline() {
-  const configName = document.getElementById('hm-config-select')?.value;
+  const sel = document.getElementById('hm-config-select');
+  const configName = sel?.value || (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
   const btn = document.getElementById('hm-run-pipeline-btn');
   const statusEl = document.getElementById('hm-pipeline-status');
 
-  if (!configName) { showToast('Seleccioná un config primero.', 'error'); return; }
+  if (!configName) { showToast('Seleccioná un config o cargá un brand en BrandingBio.', 'error'); return; }
   if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
-  if (statusEl) statusEl.textContent = 'Pipeline iniciado — analizando videos de competidores...';
+  if (statusEl) statusEl.textContent = 'Pipeline iniciado — scrapeando y analizando videos…';
 
   try {
-    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/pipeline/run`, {
+    // Fire-and-forget to n8n — pipeline runs async (Apify + Gemini + Claude)
+    fetch(SM_PIPELINE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ configName, maxVideos: 10, topK: 3, nDays: 30 }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+      body: JSON.stringify({ config_name: configName, max_videos: 10, top_k: 3, n_days: 30 }),
+    }).catch(e => console.error('[sm-pipeline] webhook error:', e));
 
-    if (data.started) {
-      showToast(`Pipeline corriendo en background para config "${configName}". Los hooks se actualizarán cuando termine (puede tardar varios minutos).`);
-      if (statusEl) statusEl.textContent = '⏳ Pipeline corriendo — los hooks se actualizarán automáticamente...';
-      if (btn) { btn.innerHTML = '<i data-lucide="clock" style="width:12px;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
+    showToast(`Pipeline lanzado para "${configName}" — puede tardar varios minutos.`);
+    if (statusEl) statusEl.textContent = '⏳ Pipeline corriendo (Apify → Gemini → Claude → Supabase)…';
+    if (btn) { btn.innerHTML = '<i data-lucide="clock" style="width:12px;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
 
-      // Poll for new videos after 2 min
-      setTimeout(async () => {
-        await hydrateHookMinerView();
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
-        if (statusEl) statusEl.textContent = '✅ Pipeline completado — hooks actualizados.';
-      }, 120000);
-    }
+    // Refresh swipe file after 3 min
+    setTimeout(async () => {
+      await initSwipeFile();
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
+      if (statusEl) statusEl.textContent = '✅ Videos actualizados.';
+    }, 180000);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
-    if (statusEl) statusEl.textContent = '❌ Error — ¿social media app corriendo?';
-    showToast('No se pudo iniciar el pipeline. Asegurate que el social media app esté corriendo en localhost:3000.', 'error');
+    if (statusEl) statusEl.textContent = '❌ Error — revisá el workflow n8n.';
+    showToast('No se pudo iniciar el pipeline.', 'error');
     console.error('[runCompetitorPipeline]', err);
   }
 }
@@ -2941,7 +3031,7 @@ function openSwipeModal(videoId, section) {
 
   const thumbEl = document.getElementById('swipe-modal-thumb');
   if (video.thumbnail) {
-    thumbEl.innerHTML = `<img src="${SOCIAL_MEDIA_API_URL}/api/proxy-image?url=${encodeURIComponent(video.thumbnail)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='🎬'">`;
+    thumbEl.innerHTML = `<img src="${escapeHtml(video.thumbnail)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='🎬'">`;
   } else {
     thumbEl.innerHTML = '🎬';
   }
@@ -2967,7 +3057,7 @@ function swipeModalTab(section) {
     cBtn.style.borderColor = section === 'concepts' ? '#7C3AED' : '#E2E8F0';
   }
   if (body && _swipeModalVideo) {
-    const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.newConcepts;
+    const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.new_concepts;
     body.innerHTML = renderAnalysisMarkdown(content);
   }
 }
@@ -2986,10 +3076,15 @@ async function toggleSwipeStar(videoId, currentStarred) {
   const btn = document.querySelector(`[data-star="${CSS.escape(videoId)}"]`);
   if (btn) { btn.textContent = newStarred ? '★' : '☆'; btn.style.color = newStarred ? '#F59E0B' : '#9CA3AF'; }
   try {
-    await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/sm_videos?id=eq.${encodeURIComponent(videoId)}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: videoId, starred: newStarred }),
+      headers: {
+        apikey: SUPABASE_ANON,
+        Authorization: `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({ starred: newStarred }),
     });
   } catch (e) {
     if (video) video.starred = currentStarred;
@@ -3003,14 +3098,14 @@ function getSwipeFiltered() {
   const sort = document.getElementById('hm-swipe-sort')?.value || 'views';
 
   let videos = _swipeVideos.filter(v =>
-    (!configFilter  || v.configName === configFilter) &&
-    (!creatorFilter || v.creator    === creatorFilter)
+    (!configFilter  || v.config_name === configFilter) &&
+    (!creatorFilter || v.creator     === creatorFilter)
   );
 
-  if (sort === 'views')       videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
-  else if (sort === 'starred') videos.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (Number(b.views) || 0) - (Number(a.views) || 0));
-  else if (sort === 'date-posted') videos.sort((a, b) => (b.datePosted || '').localeCompare(a.datePosted || ''));
-  else if (sort === 'date-added')  videos.sort((a, b) => (b.dateAdded  || '').localeCompare(a.dateAdded  || ''));
+  if (sort === 'views')            videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'starred')     videos.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'date-posted') videos.sort((a, b) => (b.date_posted || '').localeCompare(a.date_posted || ''));
+  else if (sort === 'date-added')  videos.sort((a, b) => (b.date_added  || '').localeCompare(a.date_added  || ''));
   return videos;
 }
 
@@ -3033,9 +3128,7 @@ function renderSwipeGrid() {
   }
 
   grid.innerHTML = visible.map(v => {
-    const imgSrc = v.thumbnail
-      ? `${SOCIAL_MEDIA_API_URL}/api/proxy-image?url=${encodeURIComponent(v.thumbnail)}`
-      : '';
+    const imgSrc = v.thumbnail || '';
     const starColor = v.starred ? '#F59E0B' : '#9CA3AF';
     const starIcon  = v.starred ? '★' : '☆';
     const safeId = escapeHtml(v.id);
@@ -3055,7 +3148,7 @@ function renderSwipeGrid() {
           <button data-star="${safeId}" onclick="event.stopPropagation();toggleSwipeStar('${safeId}',${!!v.starred})"
             style="background:none;border:none;cursor:pointer;font-size:16px;color:${starColor};padding:0;line-height:1;flex-shrink:0;">${starIcon}</button>
         </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.configName || '—')}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.config_name || '—')}</div>
         <div style="display:flex;gap:4px;">
           <button onclick="openSwipeModal('${safeId}','analysis')"
             style="flex:1;padding:4px 0;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:white;color:#374151;transition:background .12s;"
@@ -3084,14 +3177,18 @@ async function initSwipeFile() {
   _swipeDisplayed = SWIPE_PER_PAGE;
   _swipeVideos = [];
   try {
-    const res = await fetch(`${SOCIAL_MEDIA_API_URL}/api/videos`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    _swipeVideos = await res.json();
+    const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    const params = new URLSearchParams({
+      order: 'views.desc',
+      select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
+    });
+    if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
+    _swipeVideos = await supabaseGet(`sm_videos?${params}`);
 
     const configSel  = document.getElementById('hm-swipe-config');
     const creatorSel = document.getElementById('hm-swipe-creator');
     if (configSel) {
-      const configs = [...new Set(_swipeVideos.map(v => v.configName).filter(Boolean))].sort();
+      const configs = [...new Set(_swipeVideos.map(v => v.config_name).filter(Boolean))].sort();
       configSel.innerHTML = '<option value="">All Configs</option>' +
         configs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }
@@ -3104,13 +3201,11 @@ async function initSwipeFile() {
   } catch (err) {
     const grid = document.getElementById('hm-swipe-grid');
     if (grid) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;">
-      <strong style="color:#EF4444;">No se pudo conectar al social media app.</strong><br>
-      <span style="font-size:11px;color:var(--text-muted);">Asegurate que esté corriendo:
-        <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">npm run dev</code>
-        en <code style="background:#F3F4F6;padding:1px 5px;border-radius:4px;">content creation/social-media/app/</code>
-      </span></div>`;
+      <strong style="color:#EF4444;">No se pudo cargar los videos desde Supabase.</strong><br>
+      <span style="font-size:11px;color:var(--text-muted);">Revisá la conexión a Supabase o corré el pipeline para generar videos.</span>
+    </div>`;
     const sub = document.getElementById('hm-swipe-subtitle');
-    if (sub) sub.textContent = 'social media app offline';
+    if (sub) sub.textContent = 'error cargando videos';
   }
 }
 
@@ -7116,6 +7211,9 @@ function generateViewHTML(view) {
             <select id="hm-config-select" style="padding:5px 10px; border:1px solid #FCD34D; border-radius:6px; font-size:12px; background:white; color:var(--text-main);">
               <option>Cargando configs…</option>
             </select>
+            <button id="hm-sync-competitors-btn" onclick="syncCompetitorCreators()" style="padding:6px 12px; background:white; color:#92400E; border:1px solid #FCD34D; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+              <i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>Sync Competitors
+            </button>
             <button id="hm-run-pipeline-btn" onclick="runCompetitorPipeline()" style="padding:6px 14px; background:#F97316; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
               <i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline
             </button>
