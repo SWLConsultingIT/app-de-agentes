@@ -2134,10 +2134,12 @@ async function runHookMiner() {
 
 // ── Social Media — Supabase-backed (sm_videos / sm_creators / sm_configs) ──
 async function fetchCompetitorVideos() {
+  const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
   const params = new URLSearchParams({
     order: 'views.desc',
     select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
   });
+  if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
   return supabaseGet(`sm_videos?${params}`);
 }
 
@@ -2184,12 +2186,12 @@ function parseHooksFromVideos(videos) {
       }
     }
     // Extract spoken hooks from Claude-generated concepts — these are ready-to-adapt lines
-    if (video.newConcepts) {
-      const spokenMatches = [...video.newConcepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
+    if (video.new_concepts) {
+      const spokenMatches = [...video.new_concepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
       spokenMatches.forEach(m => {
         const fw = classifyHook(m[1]);
         hooks.push({ text: m[1].trim(), creator: video.creator, views: video.views,
-          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views),
+          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views) + 2,
           thumbnail: video.thumbnail, link: video.link, isConcept: true });
       });
     }
@@ -2267,11 +2269,9 @@ async function hydrateHookMinerView() {
   } catch (err) {
     console.error('[HookMiner] social-media app error:', err);
     const errHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;">
-      <strong style="color:#EF4444;">No se pudo conectar al social media app.</strong><br>
-      <span style="font-size:11px;color:var(--text-muted);">Asegurate de que esté corriendo:
-        <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">npm run dev</code>
-        en <code style="background:#F3F4F6;padding:2px 6px;border-radius:4px;">content creation/social-media/app/</code>
-      </span></td></tr>`;
+      <strong style="color:#EF4444;">Error cargando hooks: ${escapeHtml(String(err?.message || err))}</strong><br>
+      <span style="font-size:11px;color:var(--text-muted);">Verificá la consola para más detalles.</span>
+      </td></tr>`;
     if (tbody) tbody.innerHTML = errHTML;
     if (recEl) recEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:12px;">
       <i data-lucide="wifi-off" style="width:12px;vertical-align:middle;margin-right:4px"></i>
@@ -2395,20 +2395,44 @@ function extractInstagramUsername(url) {
   return m ? m[1] : null;
 }
 
+async function discoverInstagramFromUrl(websiteUrl) {
+  if (!websiteUrl) return null;
+  const RESERVED = new Set(['p', 'reel', 'reels', 'stories', 'explore', 'accounts', 'about', 'help', 'legal', 'privacy', 'terms', 'share']);
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(websiteUrl),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(websiteUrl),
+  ];
+  for (const proxy of proxies) {
+    try {
+      const res = await fetch(proxy, { signal: AbortSignal.timeout(7000) });
+      if (!res.ok) continue;
+      const html = await res.text();
+      if (!html || html.length < 200) continue;
+      // Match all hrefs containing instagram.com/username
+      const matches = [...html.matchAll(/href=["'][^"']*instagram\.com\/([A-Za-z0-9._]{2,40})[^"']*["']/gi)];
+      for (const m of matches) {
+        const handle = m[1].split('/')[0].split('?')[0];
+        if (!RESERVED.has(handle.toLowerCase())) return handle;
+      }
+      return null;
+    } catch { continue; }
+  }
+  return null;
+}
+
 async function syncCompetitorCreators() {
   const btn = document.getElementById('hm-sync-competitors-btn');
   const statusEl = document.getElementById('hm-pipeline-status');
 
   const competitors = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name));
-  const withIG = competitors.filter(c => extractInstagramUsername(c.instagram_url));
 
-  if (!withIG.length) {
-    showToast('No hay handles de Instagram en los competidores del Branding Bio. Agregá instagram_url a cada competidor.', 'error');
+  if (!competitors.length) {
+    showToast('No hay competidores en el Branding Bio. Agregá competidores primero.', 'error');
     return;
   }
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Syncing…'; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
-  if (statusEl) statusEl.textContent = `Sincronizando ${withIG.length} competidores…`;
+  if (statusEl) statusEl.textContent = `Buscando Instagrams de ${competitors.length} competidores…`;
 
   // Category = brand config name (same as syncBrandToSocialMediaApp uses)
   const category = (brandKitData.name || 'BRAND').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20).toLowerCase();
@@ -2418,17 +2442,45 @@ async function syncCompetitorCreators() {
     const existing = await supabaseGet('sm_creators?select=username');
     const existingUsernames = new Set(existing.map(c => (c.username || '').toLowerCase()));
 
-    let added = 0, skipped = 0;
-    for (const competitor of withIG) {
-      const username = extractInstagramUsername(competitor.instagram_url);
-      if (!username) continue;
+    let added = 0, skipped = 0, discovered = 0, notFound = 0;
+    for (const competitor of competitors) {
+      // 1. Try explicit instagram_url first
+      let username = extractInstagramUsername(competitor.instagram_url);
+
+      // 2. If not set, scrape their website to find Instagram link
+      if (!username && competitor.url) {
+        if (statusEl) statusEl.textContent = `Buscando Instagram de "${competitor.name}"…`;
+        username = await discoverInstagramFromUrl(competitor.url);
+        if (username) discovered++;
+      }
+
+      if (!username) { notFound++; continue; }
       if (existingUsernames.has(username.toLowerCase())) { skipped++; continue; }
       await supabaseUpsert('sm_creators', { username, category });
       added++;
       existingUsernames.add(username.toLowerCase());
     }
 
-    const msg = `${added} nuevo${added !== 1 ? 's' : ''} · ${skipped} ya existía${skipped !== 1 ? 'n' : ''} · categoría "${category}"`;
+    // Create/update sm_configs so n8n can find this brand's pipeline config
+    const configName = category.toUpperCase();
+    const cfgRes = await fetch(`${SUPABASE_URL}/rest/v1/sm_configs?on_conflict=config_name`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=representation',
+      },
+      body: JSON.stringify({
+        config_name: configName,
+        creators_category: category,
+        analysis_instruction: STANDARD_ANALYSIS_INSTRUCTION,
+        new_concepts_instruction: buildNewConceptsInstruction(brandKitData),
+      }),
+    });
+    if (!cfgRes.ok) throw new Error(`Supabase sm_configs: ${cfgRes.status} ${await cfgRes.text()}`);
+
+    const msg = `${added} nuevo${added !== 1 ? 's' : ''} · ${skipped} ya existía${skipped !== 1 ? 'n' : ''} · ${discovered} descubiertos via web · ${notFound} sin Instagram · config "${configName}" listo`;
     if (btn) { btn.disabled = false; btn.innerHTML = `<i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>✅ Synced (${added + skipped})`; if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] }); }
     if (statusEl) statusEl.textContent = msg;
     showToast(`Sync completo: ${msg}. Ahora corré el pipeline.`);
@@ -2471,8 +2523,9 @@ async function loadSocialMediaConfigs() {
       sel.innerHTML = '<option value="">No configs — guardá Branding Bio primero</option>';
       return;
     }
+    const currentBrandConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
     sel.innerHTML = configs.map(c =>
-      `<option value="${escapeHtml(c.config_name)}">${escapeHtml(c.config_name)} · ${escapeHtml(c.creators_category)}</option>`
+      `<option value="${escapeHtml(c.config_name)}"${c.config_name === currentBrandConfig ? ' selected' : ''}>${escapeHtml(c.config_name)} · ${escapeHtml(c.creators_category)}</option>`
     ).join('');
   } catch (e) {
     sel.innerHTML = '<option value="">Error cargando configs</option>';
@@ -2483,11 +2536,12 @@ async function loadSocialMediaConfigs() {
 const SM_PIPELINE_WEBHOOK = 'https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline';
 
 async function runCompetitorPipeline() {
-  const configName = document.getElementById('hm-config-select')?.value;
+  const sel = document.getElementById('hm-config-select');
+  const configName = sel?.value || (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
   const btn = document.getElementById('hm-run-pipeline-btn');
   const statusEl = document.getElementById('hm-pipeline-status');
 
-  if (!configName) { showToast('Seleccioná un config primero.', 'error'); return; }
+  if (!configName) { showToast('Seleccioná un config o cargá un brand en BrandingBio.', 'error'); return; }
   if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
   if (statusEl) statusEl.textContent = 'Pipeline iniciado — scrapeando y analizando videos…';
 
@@ -2647,7 +2701,7 @@ function swipeModalTab(section) {
     cBtn.style.borderColor = section === 'concepts' ? '#7C3AED' : '#E2E8F0';
   }
   if (body && _swipeModalVideo) {
-    const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.newConcepts;
+    const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.new_concepts;
     body.innerHTML = renderAnalysisMarkdown(content);
   }
 }
@@ -2688,14 +2742,14 @@ function getSwipeFiltered() {
   const sort = document.getElementById('hm-swipe-sort')?.value || 'views';
 
   let videos = _swipeVideos.filter(v =>
-    (!configFilter  || v.configName === configFilter) &&
-    (!creatorFilter || v.creator    === creatorFilter)
+    (!configFilter  || v.config_name === configFilter) &&
+    (!creatorFilter || v.creator     === creatorFilter)
   );
 
-  if (sort === 'views')       videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
-  else if (sort === 'starred') videos.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (Number(b.views) || 0) - (Number(a.views) || 0));
-  else if (sort === 'date-posted') videos.sort((a, b) => (b.datePosted || '').localeCompare(a.datePosted || ''));
-  else if (sort === 'date-added')  videos.sort((a, b) => (b.dateAdded  || '').localeCompare(a.dateAdded  || ''));
+  if (sort === 'views')            videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'starred')     videos.sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (Number(b.views) || 0) - (Number(a.views) || 0));
+  else if (sort === 'date-posted') videos.sort((a, b) => (b.date_posted || '').localeCompare(a.date_posted || ''));
+  else if (sort === 'date-added')  videos.sort((a, b) => (b.date_added  || '').localeCompare(a.date_added  || ''));
   return videos;
 }
 
@@ -2738,7 +2792,7 @@ function renderSwipeGrid() {
           <button data-star="${safeId}" onclick="event.stopPropagation();toggleSwipeStar('${safeId}',${!!v.starred})"
             style="background:none;border:none;cursor:pointer;font-size:16px;color:${starColor};padding:0;line-height:1;flex-shrink:0;">${starIcon}</button>
         </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.configName || '—')}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.config_name || '—')}</div>
         <div style="display:flex;gap:4px;">
           <button onclick="openSwipeModal('${safeId}','analysis')"
             style="flex:1;padding:4px 0;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:white;color:#374151;transition:background .12s;"
@@ -2767,16 +2821,18 @@ async function initSwipeFile() {
   _swipeDisplayed = SWIPE_PER_PAGE;
   _swipeVideos = [];
   try {
+    const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
     const params = new URLSearchParams({
       order: 'views.desc',
       select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
     });
+    if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
     _swipeVideos = await supabaseGet(`sm_videos?${params}`);
 
     const configSel  = document.getElementById('hm-swipe-config');
     const creatorSel = document.getElementById('hm-swipe-creator');
     if (configSel) {
-      const configs = [...new Set(_swipeVideos.map(v => v.configName).filter(Boolean))].sort();
+      const configs = [...new Set(_swipeVideos.map(v => v.config_name).filter(Boolean))].sort();
       configSel.innerHTML = '<option value="">All Configs</option>' +
         configs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }

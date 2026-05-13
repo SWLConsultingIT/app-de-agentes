@@ -263,7 +263,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ directUrls: ['https://www.instagram.com/' + $json.username + '/'], resultsLimit: $('SET Config Context').first().json.max_videos, addParentData: false }) }}",
+        "jsonBody": "={{ ({ username: [$json.username], resultsLimit: $('SET Config Context').first().json.max_videos }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -323,8 +323,15 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ contents: [{ parts: [ { fileData: { mimeType: 'video/mp4', fileUri: $json.video_url } }, { text: $('SET Config Context').first().json.analysis_instruction } ] }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048 } }) }}",
-        "options": {}
+        "jsonBody": "={{ ({ contents: [{ parts: [ { fileData: { mimeType: 'video/mp4', fileUri: $json.video_url } }, { text: $('SET Config Context').first().json.analysis_instruction } ] }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048 } }) }}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 4000
+            }
+          }
+        }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
@@ -419,7 +426,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: $('SET Config Context').first().json.new_concepts_instruction + '\\n\\nVideo analysis to adapt:\\n' + $json.analysis }] }) }}",
+        "jsonBody": "={{ ({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: $('SET Config Context').first().json.new_concepts_instruction + '\\n\\nVideo analysis to adapt:\\n' + $json.analysis }] }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -467,7 +474,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}",
+        "jsonBody": "={{ $json }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
