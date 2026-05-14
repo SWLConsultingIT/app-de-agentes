@@ -1318,3 +1318,65 @@ body {
   vertical-align: top;
 }
 .smb-post-row:hover td { background: #FAF5FF; }
+
+/* ── Branding Bio · competitor socials sub-row ─────────────── */
+.bk-socials-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 10px; font-size: 11px; font-weight: 700;
+  background: var(--surface); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: 99px;
+  cursor: pointer; transition: 0.15s; font-family: inherit;
+  text-transform: uppercase; letter-spacing: 0.3px;
+}
+.bk-socials-toggle:hover {
+  border-color: var(--ai-accent); color: var(--ai-accent);
+}
+.bk-socials-toggle.has-data {
+  background: var(--ai-gradient-soft);
+  color: var(--ai-accent);
+  border-color: rgba(142, 84, 233, 0.3);
+}
+.bk-socials-toggle.open {
+  background: var(--ai-gradient); color: white;
+  border-color: transparent;
+}
+.bk-socials-subrow td {
+  border-top: 1px dashed var(--border-hover) !important;
+  border-bottom: 1px dashed var(--border-hover) !important;
+}
+.bk-socials-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+.bk-social-input {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.bk-social-input label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.bk-social-input input {
+  padding: 6px 9px; font-size: 11px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); font-family: inherit;
+  outline: none; transition: border-color 0.15s;
+}
+.bk-social-input input:focus {
+  border-color: var(--ai-accent);
+}
+.bk-socials-discover {
+  display: inline-flex; align-items: center;
+  padding: 5px 10px; font-size: 11px; font-weight: 600;
+  background: var(--surface); color: var(--ai-accent);
+  border: 1px solid rgba(142, 84, 233, 0.3); border-radius: 6px;
+  cursor: pointer; transition: 0.15s; font-family: inherit;
+}
+.bk-socials-discover:hover:not([disabled]) {
+  background: var(--ai-gradient-soft);
+}
+.bk-socials-discover[disabled] {
+  opacity: 0.45; cursor: not-allowed;
+}

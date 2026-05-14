@@ -274,6 +274,11 @@ const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
 
 function buildBrandProfilePayloadFromKit() {
+  // Strip UI-only flags (_socialsOpen) before sending to Supabase so we don't pollute the persisted shape.
+  const competitors = (brandKitData.competitors || []).map(c => {
+    const { _socialsOpen, ...rest } = c;
+    return rest;
+  });
   return {
     identity: {
       company_name: brandKitData.name,
@@ -286,7 +291,7 @@ function buildBrandProfilePayloadFromKit() {
     typography:       brandKitData.typography,
     values:           brandKitData.values,
     personas:         brandKitData.personas,
-    competitors:      brandKitData.competitors,
+    competitors,
     channels:         brandKitData.channels,
     tone_by_channel:  brandKitData.toneByChannel,
     content_samples:  brandKitData.samples,
@@ -331,7 +336,8 @@ async function saveBrandProfile() {
     }).catch(e => console.warn('[WF01] pipeline call failed (non-blocking):', e));
 
     if (btn) { btn.textContent = '✅ Saved'; }
-    showToast(`"${brandKitData.name}" saved successfully.`);
+    const competitorCount = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
+    showToast(`"${brandKitData.name}" saved. ${competitorCount} competitor${competitorCount===1?'':'s'} now visible in CompetitorsViews.`);
     setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
@@ -825,6 +831,26 @@ async function syncResearchSources() {
     const sources = [];
     for (const c of (brandKitData.competitors || [])) {
       if (!c?.name || /^new competitor$/i.test(c.name)) continue;
+      const baseConfig = {
+        competitor_tier: c.tier || 'Mid',
+        positioning:     c.positioning || '',
+        diff:            c.diff || '',
+        derived_from:    'branding_bio',
+      };
+      // Website source — WF03 scrapes the homepage for positioning, value-prop, and on-page copy.
+      if (c.url) {
+        sources.push({
+          brand_id:        brandKitData.brandId,
+          source_type:     'website',
+          source_url:      c.url,
+          source_handle:   c.name,
+          competitor_name: c.name,
+          channel:         'Website',
+          active:          true,
+          config_json:     baseConfig,
+        });
+      }
+      // Social sources — one row per platform the competitor has a URL for.
       for (const { channel, field } of channelKeyMap) {
         if (!c[field]) continue;
         sources.push({
@@ -835,12 +861,7 @@ async function syncResearchSources() {
           competitor_name: c.name,
           channel,
           active:          true,
-          config_json: {
-            competitor_tier: c.tier || 'Mid',
-            positioning:     c.positioning || '',
-            diff:            c.diff || '',
-            derived_from:    'branding_bio',
-          },
+          config_json:     baseConfig,
         });
       }
     }
@@ -859,10 +880,12 @@ async function syncResearchSources() {
     }).catch(e => console.error('[WF03] webhook error:', e));
 
     const competitorCount = new Set(sources.map(s => s.competitor_name)).size;
-    if (btn) { btn.textContent = `✅ ${sources.length} accounts synced`; }
-    showToast(`Synced ${sources.length} accounts across ${competitorCount} competitors. WF03 scraping in background.`);
+    const websiteCount = sources.filter(s => s.source_type === 'website').length;
+    const socialCount  = sources.filter(s => s.source_type === 'social').length;
+    if (btn) { btn.textContent = `✅ ${sources.length} sources synced`; }
+    showToast(`Sent to WF03: ${websiteCount} website${websiteCount===1?'':'s'} + ${socialCount} social account${socialCount===1?'':'s'} across ${competitorCount} competitor${competitorCount===1?'':'s'}. Scraping in background.`);
     setTimeout(() => hydrateCompetitorsView(), 1500);
-    setTimeout(() => { if (btn) { btn.innerHTML = '<i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Accounts'; btn.disabled = false; if (typeof lucide !== 'undefined') lucide.createIcons(); } }, 5000);
+    setTimeout(() => { if (btn) { btn.innerHTML = '<i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Web + Socials'; btn.disabled = false; if (typeof lucide !== 'undefined') lucide.createIcons(); } }, 5000);
   } catch (e) {
     if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
     showToast('Sync failed: ' + e.message);
@@ -1381,7 +1404,7 @@ async function hydrateCompetitorsView() {
     if (topTbody) {
       if (!topPieces.length) {
         topTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">
-          No competitor posts analyzed yet — click <strong>Sync Accounts</strong> then <strong>Run Comparison</strong> to populate.
+          No competitor posts analyzed yet — click <strong>Sync Web + Socials</strong> then <strong>Run Comparison</strong> to populate.
         </td></tr>`;
       } else {
         const sorted = [...topPieces].sort((a, b) =>
@@ -3823,6 +3846,50 @@ function addBrandListItem(list, template) {
 }
 function removeBrandListItem(list, idx) {
   brandKitData[list].splice(idx, 1);
+  switchView(state.currentView);
+}
+
+// Toggle the social-URLs sub-row open/closed for a competitor.
+// `_socialsOpen` is a UI-only flag that survives a re-render but is not persisted to Supabase.
+function toggleCompetitorSocials(idx) {
+  const c = brandKitData.competitors?.[idx];
+  if (!c) return;
+  c._socialsOpen = !c._socialsOpen;
+  switchView(state.currentView);
+}
+
+// Attempt to discover social URLs by scanning the competitor's website HTML via a CORS proxy.
+// Mirrors the approach already used by discoverInstagramFromUrl() — best-effort, non-blocking.
+async function discoverSocialsForCompetitor(idx) {
+  const c = brandKitData.competitors?.[idx];
+  if (!c?.url) { showToast('Add the website URL first.'); return; }
+  showToast(`Scanning ${c.name}'s website for social links…`);
+  const proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(c.url),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(c.url),
+  ];
+  let html = '';
+  for (const p of proxies) {
+    try {
+      const r = await fetch(p, { headers: { 'Accept': 'text/html' } });
+      if (r.ok) { html = await r.text(); break; }
+    } catch (_) { /* try next proxy */ }
+  }
+  if (!html) { showToast('Could not read the website (CORS proxy blocked).'); return; }
+  const patterns = {
+    linkedin_url:  /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in|school)\/[a-zA-Z0-9_\-./]+/i,
+    instagram_url: /https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9_.\-]+/i,
+    tiktok_url:    /https?:\/\/(?:www\.)?tiktok\.com\/@[a-zA-Z0-9_.\-]+/i,
+    youtube_url:   /https?:\/\/(?:www\.)?youtube\.com\/(?:@|c\/|channel\/|user\/)[a-zA-Z0-9_\-./]+/i,
+    x_url:         /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+/i,
+  };
+  let found = 0;
+  for (const [field, re] of Object.entries(patterns)) {
+    if (c[field]) continue; // don't overwrite manual entries
+    const m = html.match(re);
+    if (m) { c[field] = m[0].replace(/[\/"<>?#].*$/, ''); found++; }
+  }
+  showToast(found ? `Found ${found} social URL(s) on ${c.name}'s website.` : `No social links found on ${c.name}'s website.`);
   switchView(state.currentView);
 }
 
@@ -6871,12 +6938,15 @@ function generateViewHTML(view) {
           </div>
           <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#92400E; display:flex; gap:8px; align-items:flex-start;">
             <i data-lucide="alert-triangle" style="width:13px; flex-shrink:0; margin-top:1px; color:#F59E0B;"></i>
-            <span>AI cannot auto-detect competitors. Add each competitor's website URL manually — these feed HookMiner and CompetitorsViews for analysis.</span>
+            <span>AI cannot auto-detect competitors. Cargá cada competidor a mano con su <strong>website URL</strong> + las <strong>URLs de redes sociales</strong> (LinkedIn, IG, TikTok, YouTube, X). Eso es lo que CompetitorsViews va a scrapear cuando corras <strong>Sync Accounts</strong>.</span>
           </div>
           <table class="lm-table">
-            <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:40px;"></th></tr></thead>
+            <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:90px;">Socials</th><th style="width:40px;"></th></tr></thead>
             <tbody>
-              ${brandKitData.competitors.map((c, i) => `
+              ${brandKitData.competitors.map((c, i) => {
+                const socialCount = ['linkedin_url','instagram_url','tiktok_url','youtube_url','x_url'].filter(k => c[k]).length;
+                const isOpen = !!c._socialsOpen;
+                return `
                 <tr>
                   <td><input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('competitors', ${i}, 'name', this.value)" style="padding:6px 8px; font-size:13px;"></td>
                   <td><input class="bk-input" type="text" value="${c.url||''}" oninput="updateBrandListItem('competitors', ${i}, 'url', this.value)" placeholder="https://…" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
@@ -6889,12 +6959,51 @@ function generateViewHTML(view) {
                     </select>
                   </td>
                   <td><input class="bk-input" type="text" value="${c.diff}" oninput="updateBrandListItem('competitors', ${i}, 'diff', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400; color:var(--text-muted);"></td>
+                  <td>
+                    <button class="bk-socials-toggle ${isOpen?'open':''} ${socialCount?'has-data':''}" onclick="toggleCompetitorSocials(${i})" title="Edit social media URLs">
+                      <i data-lucide="${isOpen?'chevron-up':'chevron-down'}" style="width:11px;vertical-align:middle;"></i>
+                      ${socialCount ? `${socialCount}/5` : '+ add'}
+                    </button>
+                  </td>
                   <td><button class="bk-row-action" onclick="removeBrandListItem('competitors', ${i})" title="Remove">✕</button></td>
                 </tr>
-              `).join('')}
+                ${isOpen ? `
+                <tr class="bk-socials-subrow">
+                  <td colspan="7" style="background:#FAFBFC; padding:14px 18px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+                      <div style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.4px; text-transform:uppercase;">Redes sociales de ${escapeHtml(c.name)}</div>
+                      <button class="bk-socials-discover" onclick="discoverSocialsForCompetitor(${i})" ${!c.url?'disabled':''} title="${c.url?'Scan website to discover socials':'Add website URL first'}">
+                        <i data-lucide="search" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Discover from website
+                      </button>
+                    </div>
+                    <div class="bk-socials-grid">
+                      <div class="bk-social-input">
+                        <label><i data-lucide="linkedin" style="width:12px;color:#0A66C2"></i> LinkedIn</label>
+                        <input class="bk-input" type="text" value="${c.linkedin_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'linkedin_url', this.value)" placeholder="linkedin.com/company/…" />
+                      </div>
+                      <div class="bk-social-input">
+                        <label><i data-lucide="instagram" style="width:12px;color:#E4405F"></i> Instagram</label>
+                        <input class="bk-input" type="text" value="${c.instagram_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'instagram_url', this.value)" placeholder="instagram.com/…" />
+                      </div>
+                      <div class="bk-social-input">
+                        <label><i data-lucide="music" style="width:12px;color:#000"></i> TikTok</label>
+                        <input class="bk-input" type="text" value="${c.tiktok_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'tiktok_url', this.value)" placeholder="tiktok.com/@…" />
+                      </div>
+                      <div class="bk-social-input">
+                        <label><i data-lucide="youtube" style="width:12px;color:#FF0000"></i> YouTube</label>
+                        <input class="bk-input" type="text" value="${c.youtube_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'youtube_url', this.value)" placeholder="youtube.com/@…" />
+                      </div>
+                      <div class="bk-social-input">
+                        <label><i data-lucide="twitter" style="width:12px;color:#1DA1F2"></i> X / Twitter</label>
+                        <input class="bk-input" type="text" value="${c.x_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'x_url', this.value)" placeholder="x.com/…" />
+                      </div>
+                    </div>
+                  </td>
+                </tr>` : ''}
+              `;}).join('')}
             </tbody>
           </table>
-          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different' })" style="margin-top:12px;">+ Add competitor</button>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'' })" style="margin-top:12px;">+ Add competitor</button>
         </div>
 
         <!-- 7. Logos -->
@@ -7128,7 +7237,7 @@ function generateViewHTML(view) {
             <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cv-sources-line">Tracked channels: —</span></span>
           </div>
           <div style="display:flex; gap:8px;">
-            <button id="wf03-sync-btn" onclick="syncResearchSources()" style="padding:8px 14px; background:white; color:#0369A1; border:1px solid #BAE6FD; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Accounts</button>
+            <button id="wf03-sync-btn" onclick="syncResearchSources()" title="Scrapes each competitor's website + LinkedIn, Instagram, TikTok, YouTube and X URLs you set in Branding Bio." style="padding:8px 14px; background:white; color:#0369A1; border:1px solid #BAE6FD; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Web + Socials</button>
             <button id="wf04-analyze-btn" onclick="runContentAnalysis()" style="padding:8px 14px; background:#06B6D4; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Run Comparison</button>
           </div>
         </div>
