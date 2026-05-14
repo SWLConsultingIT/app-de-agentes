@@ -641,6 +641,144 @@ function selectSocialBiosChannel(name) {
   hydrateSocialBiosView();
 }
 
+// ── Cross-channel comparison renderer (shown when "Compare all" is active) ──
+function renderSocialBiosComparison(channels) {
+  const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  if (!channels || !channels.length) {
+    setHTML('smb-channel-cards', '<div style="text-align:center;color:var(--text-muted);padding:24px;">No channels yet — run a scan or fill the handles above.</div>');
+    setHTML('smb-tone-matrix', '');
+    setHTML('smb-best-per-channel', '');
+    setHTML('smb-leaderboard', '');
+    return;
+  }
+
+  // ── 1. Channel snapshot cards ──
+  // Highlight the best ER channel with a "Top performer" ribbon.
+  const sortedByEr = [...channels].sort((a, b) => (b.avgEngagementRate || 0) - (a.avgEngagementRate || 0));
+  const topErChannel = sortedByEr[0]?.name;
+
+  setHTML('smb-channel-cards', channels.map(c => {
+    const top = (c.topPosts || [])[0];
+    const isTop = c.name === topErChannel;
+    const iconMap = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
+    return `
+      <div class="smb-channel-card" style="border-top:3px solid ${c.color};">
+        ${isTop ? `<div class="smb-channel-card-ribbon"><i data-lucide="star" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Top performer</div>` : ''}
+        <div class="smb-channel-card-head">
+          <div class="smb-channel-card-avatar" style="background:${c.color};"><i data-lucide="${iconMap[c.name] || 'globe'}" style="width:18px;color:white;"></i></div>
+          <div style="flex:1;min-width:0;">
+            <div class="smb-channel-card-title">${c.name}</div>
+            <a href="${c.profileUrl}" target="_blank" class="smb-channel-card-handle">${c.handle}</a>
+          </div>
+          <button class="smb-channel-card-open" onclick="selectSocialBiosChannel('${c.name}')" title="Open ${c.name} detail"><i data-lucide="arrow-up-right" style="width:13px;"></i></button>
+        </div>
+        <div class="smb-channel-card-stats">
+          <div><div class="lbl">Followers</div><div class="val">${c.followers ?? '—'}</div></div>
+          <div><div class="lbl">Posts/wk</div><div class="val">${c.postingCadence ?? '—'}</div></div>
+          <div><div class="lbl">Avg ER</div><div class="val" style="color:${c.color};">${c.avgEngagementRate ?? '—'}%</div></div>
+          <div><div class="lbl">Format</div><div class="val" style="text-transform:capitalize;font-size:13px;">${c.primaryFormat || '—'}</div></div>
+        </div>
+        <div class="smb-channel-card-tone">${c.toneSummary || 'Run a scan to populate.'}</div>
+        ${top ? `
+          <div class="smb-channel-card-bestpost">
+            <div class="smb-bestpost-label"><i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%</div>
+            <div class="smb-bestpost-text">${top.snippet}</div>
+          </div>` : ''}
+      </div>
+    `;
+  }).join(''));
+
+  // ── 2. Tone fingerprint matrix ──
+  // One row per tone dimension; each row plots all channels on the same 0-100 axis.
+  const toneDims = [
+    { key: 'formal_vs_casual',         left: 'Formal',    right: 'Casual'     },
+    { key: 'technical_vs_accessible',  left: 'Technical', right: 'Accessible' },
+    { key: 'serious_vs_playful',       left: 'Serious',   right: 'Playful'    },
+    { key: 'humble_vs_bold',           left: 'Humble',    right: 'Bold'       },
+    { key: 'short_vs_expansive',       left: 'Short',     right: 'Expansive'  },
+  ];
+  setHTML('smb-tone-matrix', `
+    <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:11px;">
+      ${channels.map(c => `<div style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:50%;background:${c.color};display:inline-block;"></span><span style="color:var(--text-main);font-weight:600;">${c.name}</span></div>`).join('')}
+    </div>
+    ${toneDims.map(d => {
+      const values = channels.map(c => ({ name: c.name, color: c.color, v: c.tone?.[d.key] ?? 50 }));
+      const min = Math.min(...values.map(x => x.v));
+      const max = Math.max(...values.map(x => x.v));
+      const spread = max - min;
+      const variance = spread > 40 ? 'Alta' : spread > 20 ? 'Media' : 'Baja';
+      const varianceColor = spread > 40 ? '#EF4444' : spread > 20 ? '#F59E0B' : '#10B981';
+      return `
+        <div class="smb-tone-row">
+          <div class="smb-tone-row-labels">
+            <span>${d.left}</span>
+            <span style="font-size:10px;color:${varianceColor};font-weight:700;letter-spacing:0.4px;">VARIANZA ${variance.toUpperCase()}</span>
+            <span>${d.right}</span>
+          </div>
+          <div class="smb-tone-track">
+            ${values.map(x => `
+              <div class="smb-tone-dot" style="left:${x.v}%;background:${x.color};" title="${x.name}: ${x.v}/100">
+                <span class="smb-tone-dot-tooltip">${x.name}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }).join('')}
+  `);
+
+  // ── 3. Best post per channel ──
+  setHTML('smb-best-per-channel', channels.map(c => {
+    const best = (c.topPosts || [])[0];
+    if (!best) return `
+      <div class="smb-best-card" style="border-left:3px solid ${c.color};">
+        <div class="smb-best-card-head" style="color:${c.color};"><strong>${c.name}</strong> · no posts</div>
+        <div style="color:var(--text-muted);font-size:12px;">Run a scan to surface the top post.</div>
+      </div>
+    `;
+    return `
+      <div class="smb-best-card" style="border-left:3px solid ${c.color};">
+        <div class="smb-best-card-head">
+          <span style="color:${c.color};font-weight:700;">${c.name}</span>
+          <span class="smb-best-card-er">ER ${best.engagementRate ?? 0}%</span>
+        </div>
+        <div class="smb-best-card-snippet">${best.snippet}</div>
+        ${best.whyItWorked ? `<div class="smb-best-card-why">↳ ${best.whyItWorked}</div>` : ''}
+        <div class="smb-best-card-meta">
+          <span style="text-transform:capitalize;">${best.format}</span>
+          <span>· ${best.metrics?.likes ?? 0} likes</span>
+          <span>· ${best.metrics?.comments ?? 0} comments</span>
+          <span>· ${best.metrics?.shares ?? 0} shares</span>
+        </div>
+      </div>
+    `;
+  }).join(''));
+
+  // ── 4. Leaderboard ──
+  const rank = (key, label, fmt, hint) => {
+    const sorted = [...channels].sort((a, b) => (b[key] || 0) - (a[key] || 0));
+    return `
+      <div class="smb-lb-col">
+        <div class="smb-lb-col-title">${label}</div>
+        <div class="smb-lb-col-hint">${hint}</div>
+        ${sorted.map((c, i) => `
+          <div class="smb-lb-row ${i === 0 ? 'winner' : ''}">
+            <span class="smb-lb-rank">${i + 1}</span>
+            <span class="smb-lb-dot" style="background:${c.color};"></span>
+            <span class="smb-lb-name">${c.name}</span>
+            <span class="smb-lb-val">${fmt(c[key])}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  };
+  setHTML('smb-leaderboard', `
+    ${rank('avgEngagementRate', 'Engagement rate',  v => `${v ?? 0}%`,  'Promedio por post')}
+    ${rank('followers',         'Alcance potencial', v => v ?? 0,         'Total followers')}
+    ${rank('postingCadence',    'Cadencia',          v => `${v ?? 0}/sem`, 'Posts publicados por semana')}
+  `);
+}
+
 async function hydrateSocialBiosView() {
   // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
   if (!document.getElementById('smb-root')) return;
@@ -688,6 +826,19 @@ async function hydrateSocialBiosView() {
     const isActive = el.dataset.channel === sel;
     el.classList.toggle('active', isActive);
   });
+
+  // ── Toggle comparison vs single-channel view ──
+  const comparisonRoot = document.getElementById('smb-comparison-view');
+  const singleRoot = document.getElementById('smb-single-view');
+  const isAll = sel === 'all';
+  if (comparisonRoot) comparisonRoot.style.display = isAll ? '' : 'none';
+  if (singleRoot) singleRoot.style.display = isAll ? 'none' : '';
+
+  if (isAll) {
+    renderSocialBiosComparison(channels);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    return;
+  }
 
   // ── Per-channel focus card ──
   if (focus) {
@@ -7044,57 +7195,87 @@ function generateViewHTML(view) {
 
         <!-- Channel selector pills -->
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
-          <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')">All channels</div>
+          <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')"><i data-lucide="layout-grid" style="width:13px;vertical-align:middle;margin-right:5px;"></i>Compare all</div>
           <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><i data-lucide="linkedin" style="width:13px;vertical-align:middle;margin-right:5px;color:#0A66C2"></i>LinkedIn</div>
           <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><i data-lucide="instagram" style="width:13px;vertical-align:middle;margin-right:5px;color:#E4405F"></i>Instagram</div>
           <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><i data-lucide="music" style="width:13px;vertical-align:middle;margin-right:5px;color:#000"></i>TikTok</div>
         </div>
 
-        <!-- Focus card -->
-        <div class="card" style="margin-top:16px; padding:20px 24px;">
-          <div id="smb-focus-card"></div>
+        <!-- ═══════ Comparison view (visible when "all" selected) ═══════ -->
+        <div id="smb-comparison-view">
+          <!-- Channel snapshot cards: side-by-side -->
+          <div id="smb-channel-cards" class="smb-channel-cards"></div>
+
+          <!-- Tone fingerprint: cross-channel matrix -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+              <h3 class="card-title" style="margin:0;"><i data-lucide="git-compare-arrows"></i> Tone fingerprint · canal por canal</h3>
+              <span style="font-size:11px;color:var(--text-muted);">Cada punto = posición del canal en el eje (0–100). Distancia entre puntos = qué tan distinto suena cada canal.</span>
+            </div>
+            <div id="smb-tone-matrix"></div>
+          </div>
+
+          <!-- Best post per channel showcase -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trophy"></i> El post que mejor performó en cada canal</h3>
+            <div id="smb-best-per-channel" class="smb-best-grid"></div>
+          </div>
+
+          <!-- Channel leaderboard -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="award"></i> Channel leaderboard · dónde duplicar la apuesta</h3>
+            <div id="smb-leaderboard" class="smb-leaderboard"></div>
+          </div>
         </div>
 
-        <!-- Two columns: tone + voice rules -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
-          <div class="card" style="padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="sliders"></i> Tone snapshot</h3>
-            <div id="smb-tone-bars"></div>
+        <!-- ═══════ Single-channel view (visible when a channel is selected) ═══════ -->
+        <div id="smb-single-view" style="display:none;">
+          <!-- Focus card -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <div id="smb-focus-card"></div>
           </div>
-          <div class="card" style="padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="check-circle"></i> Voice rules</h3>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-              <div>
-                <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:6px;">ALWAYS</div>
-                <ul id="smb-voice-always" class="smb-rules-list"></ul>
-              </div>
-              <div>
-                <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:6px;">NEVER</div>
-                <ul id="smb-voice-never" class="smb-rules-list"></ul>
+
+          <!-- Two columns: tone + voice rules -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+            <div class="card" style="padding:20px 24px;">
+              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="sliders"></i> Tone snapshot</h3>
+              <div id="smb-tone-bars"></div>
+            </div>
+            <div class="card" style="padding:20px 24px;">
+              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="check-circle"></i> Voice rules</h3>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                <div>
+                  <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:6px;">ALWAYS</div>
+                  <ul id="smb-voice-always" class="smb-rules-list"></ul>
+                </div>
+                <div>
+                  <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:6px;">NEVER</div>
+                  <ul id="smb-voice-never" class="smb-rules-list"></ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <!-- Voice rules in action -->
-        <div class="card" style="margin-top:16px; padding:20px 24px;">
-          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="zap"></i> Voice rules in action — best vs flopped</h3>
-          <div id="smb-rules-action"></div>
-        </div>
+          <!-- Voice rules in action -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="zap"></i> Voice rules in action — best vs flopped</h3>
+            <div id="smb-rules-action"></div>
+          </div>
 
-        <!-- Top posts -->
-        <div class="card" style="margin-top:16px; padding:20px 24px;">
-          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trending-up"></i> Top-performing posts</h3>
-          <table class="lm-table">
-            <thead><tr><th>Post snippet</th><th>Format</th><th>Date</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Engagement</th></tr></thead>
-            <tbody id="smb-top-posts-tbody"></tbody>
-          </table>
-        </div>
+          <!-- Top posts -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trending-up"></i> Top-performing posts</h3>
+            <table class="lm-table">
+              <thead><tr><th>Post snippet</th><th>Format</th><th>Date</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Engagement</th></tr></thead>
+              <tbody id="smb-top-posts-tbody"></tbody>
+            </table>
+          </div>
 
-        <!-- Cadence heatmap -->
-        <div class="card" style="margin-top:16px; padding:20px 24px;">
-          <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="calendar"></i> Posting cadence (avg engagement by day × hour, UTC)</h3>
-          <div id="smb-heatmap"></div>
+          <!-- Cadence heatmap -->
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="calendar"></i> Posting cadence (avg engagement by day × hour, UTC)</h3>
+            <div id="smb-heatmap"></div>
+          </div>
         </div>
 
         <!-- CTA to CompetitorsViews -->
