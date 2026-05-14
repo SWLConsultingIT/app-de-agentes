@@ -317,12 +317,13 @@ async function saveBrandProfile() {
       updated_at: new Date().toISOString(),
     });
 
-    // 2. Upsert brand profile (data_json holds everything)
+    // 2. Upsert brand profile (data_json holds everything).
+    // on_conflict=brand_id because the table's PK is `id` but the unique-by-row key is brand_id.
     await supabaseUpsert('brand_profiles', {
       brand_id:   brandKitData.brandId,
       data_json:  profile_payload,
       updated_at: new Date().toISOString(),
-    });
+    }, 'brand_id');
 
     // 3. Fire WF01 for completion scoring + downstream pipeline (fire-and-forget)
     fetch(WF01_URL, {
@@ -968,7 +969,7 @@ async function syncResearchSources() {
         brand_id: brandKitData.brandId,
         data_json: buildBrandProfilePayloadFromKit(),
         updated_at: new Date().toISOString(),
-      });
+      }, 'brand_id');
     }
 
     // 2. Build one research_sources row per (competitor × social channel with explicit URL)
@@ -1067,8 +1068,11 @@ async function createQueueJob(job_type) {
 }
 
 // ── Content Queue table — reads content_drafts from Supabase ───
-async function supabaseUpsert(table, data) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+// `onConflict` is required when the upsert target is a unique constraint that is NOT the PK
+// (e.g. brand_profiles.brand_id) — PostgREST needs the column name to pick the conflict target.
+async function supabaseUpsert(table, data, onConflict) {
+  const qs = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : '';
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${qs}`, {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_ANON,
