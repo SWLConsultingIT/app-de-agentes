@@ -1319,6 +1319,210 @@ body {
 }
 .smb-post-row:hover td { background: #FAF5FF; }
 
+/* ── SocialMediaBios · cross-channel comparison view ─────────── */
+.smb-channel-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+.smb-channel-card {
+  position: relative;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.smb-channel-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(147, 51, 234, 0.12);
+}
+.smb-channel-card-ribbon {
+  position: absolute; top: -1px; right: 14px;
+  background: linear-gradient(135deg, #F59E0B, #D97706);
+  color: white; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.4px; padding: 3px 10px;
+  border-radius: 0 0 6px 6px;
+  text-transform: uppercase;
+}
+.smb-channel-card-head {
+  display: flex; align-items: center; gap: 10px;
+}
+.smb-channel-card-avatar {
+  width: 36px; height: 36px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.smb-channel-card-title {
+  font-size: 14px; font-weight: 700; color: var(--text-main);
+  line-height: 1.2;
+}
+.smb-channel-card-handle {
+  font-size: 11px; color: var(--text-muted);
+  text-decoration: none; display: inline-block; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.smb-channel-card-handle:hover { color: #9333EA; }
+.smb-channel-card-open {
+  width: 28px; height: 28px; border-radius: 8px;
+  background: #FAF5FF; border: 1px solid #E9D5FF;
+  color: #9333EA; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: 0.15s; flex-shrink: 0;
+}
+.smb-channel-card-open:hover {
+  background: #9333EA; color: white; border-color: transparent;
+}
+.smb-channel-card-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.smb-channel-card-stats .lbl {
+  font-size: 9px; color: var(--text-muted); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.smb-channel-card-stats .val {
+  font-size: 15px; font-weight: 700; color: var(--text-main);
+  margin-top: 2px;
+}
+.smb-channel-card-tone {
+  font-size: 12px; line-height: 1.45;
+  color: #581C87; background: #FAF5FF;
+  padding: 8px 10px; border-radius: 7px;
+  border-left: 3px solid #D946EF;
+}
+.smb-channel-card-bestpost {
+  background: #ECFDF5; border-radius: 8px;
+  padding: 9px 11px; border: 1px solid #D1FAE5;
+}
+.smb-bestpost-label {
+  font-size: 10px; font-weight: 700; color: #065F46;
+  letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px;
+}
+.smb-bestpost-text {
+  font-size: 12px; color: var(--text-main); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Tone matrix rows */
+.smb-tone-row {
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.smb-tone-row:last-child { border-bottom: none; }
+.smb-tone-row-labels {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; color: var(--text-muted);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+  margin-bottom: 8px;
+}
+.smb-tone-track {
+  position: relative; height: 10px;
+  background: linear-gradient(90deg, #F3E8FF 0%, #FAF5FF 50%, #F3E8FF 100%);
+  border-radius: 99px;
+}
+.smb-tone-dot {
+  position: absolute; top: 50%; transform: translate(-50%, -50%);
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  cursor: default; transition: transform 0.15s;
+}
+.smb-tone-dot:hover { transform: translate(-50%, -50%) scale(1.3); z-index: 5; }
+.smb-tone-dot:hover .smb-tone-dot-tooltip { opacity: 1; }
+.smb-tone-dot-tooltip {
+  position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%);
+  background: #1F2937; color: white;
+  font-size: 10px; font-weight: 600;
+  padding: 3px 7px; border-radius: 5px;
+  white-space: nowrap; opacity: 0;
+  transition: opacity 0.15s; pointer-events: none;
+}
+
+/* Best-per-channel grid */
+.smb-best-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.smb-best-card {
+  background: #FAFBFC;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+.smb-best-card-head {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; margin-bottom: 8px;
+}
+.smb-best-card-er {
+  background: #10B981; color: white;
+  font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 99px;
+}
+.smb-best-card-snippet {
+  font-size: 13px; color: var(--text-main); line-height: 1.5;
+  margin-bottom: 6px;
+}
+.smb-best-card-why {
+  font-size: 11px; color: #9333EA;
+  font-style: italic; margin-bottom: 8px;
+}
+.smb-best-card-meta {
+  font-size: 11px; color: var(--text-muted);
+  display: flex; gap: 4px; flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+
+/* Leaderboard */
+.smb-leaderboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+.smb-lb-col {
+  background: #FAFBFC;
+  border-radius: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
+.smb-lb-col-title {
+  font-size: 12px; font-weight: 700; color: var(--text-main);
+  text-transform: uppercase; letter-spacing: 0.4px;
+}
+.smb-lb-col-hint {
+  font-size: 11px; color: var(--text-muted); margin: 2px 0 10px;
+}
+.smb-lb-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 8px; border-radius: 6px;
+  font-size: 12px;
+}
+.smb-lb-row.winner {
+  background: linear-gradient(90deg, rgba(217, 70, 239, 0.08), transparent);
+  font-weight: 700;
+}
+.smb-lb-rank {
+  width: 18px; text-align: center;
+  font-size: 11px; font-weight: 700; color: var(--text-muted);
+}
+.smb-lb-row.winner .smb-lb-rank { color: #9333EA; }
+.smb-lb-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.smb-lb-name {
+  flex: 1; color: var(--text-main);
+}
+.smb-lb-val {
+  font-weight: 700; color: var(--text-main);
+}
+
 /* ── Branding Bio · competitor socials sub-row ─────────────── */
 .bk-socials-toggle {
   display: inline-flex; align-items: center; gap: 4px;
