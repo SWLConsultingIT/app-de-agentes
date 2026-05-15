@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      # Allow modules in Code nodes
+      - NODE_FUNCTION_ALLOW_EXTERNAL=axios,moment,lodash
+      - NODE_FUNCTION_ALLOW_BUILTIN=https,http,url,crypto,stream,buffer
+
+      # n8n base config — ajustá estos valores
+      - N8N_HOST=n8n.srv949269.hstgr.cloud
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - WEBHOOK_URL=https://n8n.srv949269.hstgr.cloud/
+
+      # Timezone
+      - GENERIC_TIMEZONE=America/Argentina/Buenos_Aires
+
+      # Execution settings
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336
+
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  n8n_data:

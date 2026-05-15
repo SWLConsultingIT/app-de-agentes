@@ -4,13 +4,12 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "sm-pipeline",
-        "responseMode": "onReceived",
         "options": {}
       },
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [-560, 0],
-      "id": "smp-01",
+      "position": [13632, -1264],
+      "id": "aed26332-ec4d-42d0-b40b-94cc9c772ab6",
       "name": "TRIGGER Webhook",
       "webhookId": "sm-pipeline-webhook"
     },
@@ -18,82 +17,37 @@
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "k-01",
-              "name": "APIFY_TOKEN",
-              "value": "YOUR_APIFY_TOKEN_HERE",
-              "type": "string"
-            },
-            {
-              "id": "k-02",
-              "name": "GEMINI_API_KEY",
-              "value": "YOUR_GEMINI_API_KEY_HERE",
-              "type": "string"
-            },
-            {
-              "id": "k-03",
-              "name": "ANTHROPIC_API_KEY",
-              "value": "YOUR_ANTHROPIC_API_KEY_HERE",
-              "type": "string"
-            },
-            {
-              "id": "k-04",
-              "name": "SUPABASE_URL",
-              "value": "https://lvgqecbibzqkmemecskr.supabase.co",
-              "type": "string"
-            },
-            {
-              "id": "k-05",
-              "name": "SUPABASE_KEY",
-              "value": "YOUR_SUPABASE_SERVICE_ROLE_KEY_HERE",
-              "type": "string"
-            }
+            { "id": "k-01", "name": "APIFY_TOKEN",       "value": "YOUR_APIFY_TOKEN",       "type": "string" },
+            { "id": "k-02", "name": "GEMINI_API_KEY",    "value": "YOUR_GEMINI_API_KEY",    "type": "string" },
+            { "id": "k-03", "name": "ANTHROPIC_API_KEY", "value": "YOUR_ANTHROPIC_API_KEY", "type": "string" },
+            { "id": "k-04", "name": "SUPABASE_URL",      "value": "YOUR_SUPABASE_URL",      "type": "string" },
+            { "id": "k-05", "name": "SUPABASE_KEY",      "value": "YOUR_SUPABASE_KEY",      "type": "string" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-320, 0],
-      "id": "smp-02",
+      "position": [13872, -1248],
+      "id": "903277a7-8428-4da2-9465-0e6e8a4cd492",
       "name": "SET API Keys"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "p-01",
-              "name": "config_name",
-              "value": "={{ $('TRIGGER Webhook').first().json.body.config_name }}",
-              "type": "string"
-            },
-            {
-              "id": "p-02",
-              "name": "max_videos",
-              "value": "={{ $('TRIGGER Webhook').first().json.body.max_videos ?? 10 }}",
-              "type": "number"
-            },
-            {
-              "id": "p-03",
-              "name": "top_k",
-              "value": "={{ $('TRIGGER Webhook').first().json.body.top_k ?? 3 }}",
-              "type": "number"
-            },
-            {
-              "id": "p-04",
-              "name": "n_days",
-              "value": "={{ $('TRIGGER Webhook').first().json.body.n_days ?? 30 }}",
-              "type": "number"
-            }
+            { "id": "p-01", "name": "config_name", "value": "={{ $('TRIGGER Webhook').first().json.body.config_name }}", "type": "string" },
+            { "id": "p-02", "name": "max_videos",  "value": "={{ $('TRIGGER Webhook').first().json.body.max_videos ?? 10 }}", "type": "number" },
+            { "id": "p-03", "name": "top_k",       "value": "={{ $('TRIGGER Webhook').first().json.body.top_k ?? 3 }}", "type": "number" },
+            { "id": "p-04", "name": "n_days",      "value": "={{ $('TRIGGER Webhook').first().json.body.n_days ?? 30 }}", "type": "number" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [-80, 0],
-      "id": "smp-03",
+      "position": [14112, -1264],
+      "id": "071f5af3-c48c-491b-abff-979e08228038",
       "name": "SET Input Params"
     },
     {
@@ -102,46 +56,28 @@
         "tableId": "sm_configs",
         "limit": 1,
         "filters": {
-          "conditions": [
-            {
-              "keyName": "config_name",
-              "condition": "eq",
-              "keyValue": "={{ $json.config_name }}"
-            }
-          ]
+          "conditions": [{ "keyName": "config_name", "condition": "eq", "keyValue": "={{ $json.config_name }}" }]
         }
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [160, 0],
-      "id": "smp-04",
+      "position": [14352, -1264],
+      "id": "8f82fc9a-a0b9-4cf2-b483-cac8dea35757",
       "name": "SUPABASE Get Config",
       "credentials": {
-        "supabaseApi": {
-          "id": "BDR8az1QEuSkurgW",
-          "name": "Supabase Growth Engine DEMO"
-        }
+        "supabaseApi": { "id": "BDR8az1QEuSkurgW", "name": "Supabase Growth Engine DEMO" }
       }
     },
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
           "conditions": [
             {
               "id": "smp-cond-01",
               "leftValue": "={{ $json.id }}",
               "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
             }
           ],
           "combinator": "and"
@@ -150,102 +86,54 @@
       },
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [400, 0],
-      "id": "smp-05",
+      "position": [14592, -1264],
+      "id": "35dae34b-3522-400b-b953-1c0eaa1ac6ad",
       "name": "IF Config Found"
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "ctx-01",
-              "name": "config_name",
-              "value": "={{ $('SET Input Params').first().json.config_name }}",
-              "type": "string"
-            },
-            {
-              "id": "ctx-02",
-              "name": "creators_category",
-              "value": "={{ $json.creators_category }}",
-              "type": "string"
-            },
-            {
-              "id": "ctx-03",
-              "name": "analysis_instruction",
-              "value": "={{ $json.analysis_instruction }}",
-              "type": "string"
-            },
-            {
-              "id": "ctx-04",
-              "name": "new_concepts_instruction",
-              "value": "={{ $json.new_concepts_instruction }}",
-              "type": "string"
-            },
-            {
-              "id": "ctx-05",
-              "name": "max_videos",
-              "value": "={{ $('SET Input Params').first().json.max_videos }}",
-              "type": "number"
-            },
-            {
-              "id": "ctx-06",
-              "name": "top_k",
-              "value": "={{ $('SET Input Params').first().json.top_k }}",
-              "type": "number"
-            },
-            {
-              "id": "ctx-07",
-              "name": "n_days",
-              "value": "={{ $('SET Input Params').first().json.n_days }}",
-              "type": "number"
-            }
+            { "id": "ctx-01", "name": "config_name",              "value": "={{ $('SET Input Params').first().json.config_name }}", "type": "string" },
+            { "id": "ctx-02", "name": "creators_category",        "value": "={{ $json.creators_category }}", "type": "string" },
+            { "id": "ctx-03", "name": "analysis_instruction",     "value": "={{ $json.analysis_instruction }}", "type": "string" },
+            { "id": "ctx-04", "name": "new_concepts_instruction", "value": "={{ $json.new_concepts_instruction }}", "type": "string" },
+            { "id": "ctx-05", "name": "max_videos",               "value": "={{ $('SET Input Params').first().json.max_videos }}", "type": "number" },
+            { "id": "ctx-06", "name": "top_k",                    "value": "={{ $('SET Input Params').first().json.top_k }}", "type": "number" },
+            { "id": "ctx-07", "name": "n_days",                   "value": "={{ $('SET Input Params').first().json.n_days }}", "type": "number" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [640, 0],
-      "id": "smp-07",
+      "position": [14832, -1264],
+      "id": "62a36400-169e-4383-855f-3925fb6313c1",
       "name": "SET Config Context"
     },
     {
       "parameters": {
         "operation": "getAll",
         "tableId": "sm_creators",
-        "limit": 50,
         "filters": {
-          "conditions": [
-            {
-              "keyName": "category",
-              "condition": "eq",
-              "keyValue": "={{ $json.creators_category }}"
-            }
-          ]
+          "conditions": [{ "keyName": "category", "condition": "eq", "keyValue": "={{ $json.creators_category }}" }]
         }
       },
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [880, 0],
-      "id": "smp-08",
+      "position": [15072, -1264],
+      "id": "5c9e656e-5bba-42c7-b90f-9287a1ff28d3",
       "name": "SUPABASE Get Creators",
       "credentials": {
-        "supabaseApi": {
-          "id": "BDR8az1QEuSkurgW",
-          "name": "Supabase Growth Engine DEMO"
-        }
+        "supabaseApi": { "id": "BDR8az1QEuSkurgW", "name": "Supabase Growth Engine DEMO" }
       }
     },
     {
-      "parameters": {
-        "batchSize": 1,
-        "options": {}
-      },
+      "parameters": { "options": {} },
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [1120, 0],
-      "id": "smp-09",
+      "position": [15312, -1264],
+      "id": "35ddb68b-d53a-409b-99b6-b814f190fe7b",
       "name": "SPLIT Creators Loop"
     },
     {
@@ -253,14 +141,7 @@
         "method": "POST",
         "url": "=https://api.apify.com/v2/acts/apify~instagram-reel-scraper/runs?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}&waitForFinish=120",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
+        "headerParameters": { "parameters": [{ "name": "Content-Type", "value": "application/json" }] },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ ({ username: [$json.username], resultsLimit: $('SET Config Context').first().json.max_videos }) }}",
@@ -268,11 +149,9 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [1360, 0],
-      "id": "smp-11",
-      "name": "HTTP Apify Run",
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [15552, -1264],
+      "id": "4775f377-9f2f-404d-a0ae-02b207439bdd",
+      "name": "HTTP Apify Run"
     },
     {
       "parameters": {
@@ -281,126 +160,121 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [1600, 0],
-      "id": "smp-12",
-      "name": "HTTP Apify Dataset",
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [15792, -1264],
+      "id": "b681489e-56e4-4c85-9def-f28278f7900c",
+      "name": "HTTP Apify Dataset"
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst nDays = $('SET Config Context').first().json.n_days || 30;\nconst topK = $('SET Config Context').first().json.top_k || 3;\nconst creator = $('SPLIT Creators Loop').first().json.username;\n\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nconst filtered = items\n  .map(i => i.json)\n  .filter(v => {\n    if (!v || (!v.videoUrl && !v.url)) return false;\n    const posted = v.timestamp ? new Date(v.timestamp) : null;\n    return !posted || posted >= cutoff;\n  })\n  .sort((a, b) => (b.videoPlayCount || 0) - (a.videoPlayCount || 0))\n  .slice(0, topK)\n  .map(v => ({\n    link: v.url || v.shortCode ? ('https://www.instagram.com/reel/' + v.shortCode + '/') : v.videoUrl,\n    video_url: v.videoUrl || '',\n    thumbnail: v.displayUrl || v.thumbnailUrl || '',\n    creator: creator,\n    views: v.videoPlayCount || 0,\n    likes: v.likesCount || 0,\n    comments: v.commentsCount || 0,\n    date_posted: v.timestamp ? new Date(v.timestamp).toISOString().split('T')[0] : ''\n  }));\n\nif (!filtered.length) return [];\nreturn filtered.map(v => ({ json: v }));"
+        "jsCode": "const items = $input.all();\nconst nDays = $('SET Config Context').first().json.n_days || 30;\nconst topK = $('SET Config Context').first().json.top_k || 3;\nconst creator = $('SPLIT Creators Loop').first().json.username;\n\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nconst filtered = items\n  .map(i => i.json)\n  .filter(v => {\n    if (!v || (!v.videoUrl && !v.url)) return false;\n    const posted = v.timestamp ? new Date(v.timestamp) : null;\n    return !posted || posted >= cutoff;\n  })\n  .sort((a, b) => (b.videoPlayCount || 0) - (a.videoPlayCount || 0))\n  .slice(0, topK)\n  .map(v => ({\n    link: v.url || (v.shortCode ? ('https://www.instagram.com/reel/' + v.shortCode + '/') : v.videoUrl),\n    video_url: v.videoUrl || '',\n    thumbnail: v.displayUrl || v.thumbnailUrl || '',\n    creator: creator,\n    views: v.videoPlayCount || 0,\n    likes: v.likesCount || 0,\n    comments: v.commentsCount || 0,\n    date_posted: v.timestamp ? new Date(v.timestamp).toISOString().split('T')[0] : ''\n  }));\n\n// Return a skip marker when no videos so the creator loop can advance\nif (!filtered.length) return [{ json: { _no_videos: true } }];\nreturn filtered.map(v => ({ json: v }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1840, 0],
-      "id": "smp-13",
+      "position": [16032, -1264],
+      "id": "7a5e3ea8-3dab-4820-86ab-98a1fbf33153",
       "name": "CODE Filter Sort Videos"
     },
     {
       "parameters": {
-        "batchSize": 1,
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 3 },
+          "conditions": [
+            {
+              "id": "hv-cond-01",
+              "leftValue": "={{ $json.video_url }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "type": "n8n-nodes-base.splitInBatches",
-      "typeVersion": 3,
-      "position": [2080, 0],
-      "id": "smp-14",
-      "name": "SPLIT Videos Loop"
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [16272, -1264],
+      "id": "if-has-videos-001",
+      "name": "IF Has Videos"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={{ $('SET API Keys').first().json.GEMINI_API_KEY }}",
+        "url": "={{ $json.video_url }}",
         "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ ({ contents: [{ parts: [ { fileData: { mimeType: 'video/mp4', fileUri: $json.video_url } }, { text: $('SET Config Context').first().json.analysis_instruction } ] }], generationConfig: { temperature: 0.4, maxOutputTokens: 2048 } }) }}",
+        "headerParameters": { "parameters": [{ "name": "User-Agent", "value": "Mozilla/5.0" }] },
         "options": {
-          "batching": {
-            "batch": {
-              "batchSize": 1,
-              "batchInterval": 4000
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "videoData"
             }
           }
         }
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [2320, 0],
-      "id": "smp-15",
-      "name": "HTTP Gemini Analyze",
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [16512, -1264],
+      "id": "167207ec-cfe8-4d5f-bcdc-c4533330696a",
+      "name": "HTTP Download Video"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Reads binary metadata only — mimeType is stored in binary descriptor, not filesystem-v2 content\nconst binary = $input.first().binary;\nconst videoData = binary && binary.videoData;\nif (!videoData) throw new Error('No binary from HTTP Download Video');\n\nconst mimeType = (videoData.mimeType || 'video/mp4').split(';')[0].trim();\nconst vid = $input.first().json;\n\nreturn [{\n  json: {\n    mime_type: mimeType,\n    link: vid.link,\n    video_url: vid.video_url,\n    thumbnail: vid.thumbnail,\n    creator: vid.creator,\n    views: vid.views,\n    likes: vid.likes,\n    comments: vid.comments,\n    date_posted: vid.date_posted\n  },\n  binary: { videoData: videoData }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [16752, -1264],
+      "id": "ce5fb09a-cad1-4bc9-983e-520d63317aec",
+      "name": "CODE Store Video Meta"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "gemini-1.5-pro"
+        },
+        "inputType": "binary",
+        "text": "={{ $('SET Config Context').first().json.analysis_instruction }}",
+        "binaryPropertyName": "videoData",
+        "options": {
+          "temperature": 0.4,
+          "maxOutputLength": 2048
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [16992, -1264],
+      "id": "e6ac4667-2e05-489d-ad4b-4b3eeea60313",
+      "name": "Analyze video",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "k70XVSg6bUTjTFJk",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
     },
     {
       "parameters": {
         "assignments": {
           "assignments": [
-            {
-              "id": "ga-01",
-              "name": "analysis",
-              "value": "={{ ($json.candidates && $json.candidates[0] && $json.candidates[0].content && $json.candidates[0].content.parts && $json.candidates[0].content.parts[0]) ? $json.candidates[0].content.parts[0].text : '' }}",
-              "type": "string"
-            },
-            {
-              "id": "ga-02",
-              "name": "link",
-              "value": "={{ $('SPLIT Videos Loop').first().json.link }}",
-              "type": "string"
-            },
-            {
-              "id": "ga-03",
-              "name": "thumbnail",
-              "value": "={{ $('SPLIT Videos Loop').first().json.thumbnail }}",
-              "type": "string"
-            },
-            {
-              "id": "ga-04",
-              "name": "creator",
-              "value": "={{ $('SPLIT Videos Loop').first().json.creator }}",
-              "type": "string"
-            },
-            {
-              "id": "ga-05",
-              "name": "views",
-              "value": "={{ $('SPLIT Videos Loop').first().json.views }}",
-              "type": "number"
-            },
-            {
-              "id": "ga-06",
-              "name": "likes",
-              "value": "={{ $('SPLIT Videos Loop').first().json.likes }}",
-              "type": "number"
-            },
-            {
-              "id": "ga-07",
-              "name": "comments",
-              "value": "={{ $('SPLIT Videos Loop').first().json.comments }}",
-              "type": "number"
-            },
-            {
-              "id": "ga-08",
-              "name": "date_posted",
-              "value": "={{ $('SPLIT Videos Loop').first().json.date_posted }}",
-              "type": "string"
-            }
+            { "id": "ga-01", "name": "analysis",    "value": "={{ ($json.content && $json.content.parts && $json.content.parts[0]) ? $json.content.parts[0].text : ($json.text || '') }}", "type": "string" },
+            { "id": "ga-02", "name": "link",        "value": "={{ $('CODE Store Video Meta').first().json.link }}", "type": "string" },
+            { "id": "ga-03", "name": "thumbnail",   "value": "={{ $('CODE Store Video Meta').first().json.thumbnail }}", "type": "string" },
+            { "id": "ga-04", "name": "creator",     "value": "={{ $('CODE Store Video Meta').first().json.creator }}", "type": "string" },
+            { "id": "ga-05", "name": "views",       "value": "={{ $('CODE Store Video Meta').first().json.views }}", "type": "number" },
+            { "id": "ga-06", "name": "likes",       "value": "={{ $('CODE Store Video Meta').first().json.likes }}", "type": "number" },
+            { "id": "ga-07", "name": "comments",    "value": "={{ $('CODE Store Video Meta').first().json.comments }}", "type": "number" },
+            { "id": "ga-08", "name": "date_posted", "value": "={{ $('CODE Store Video Meta').first().json.date_posted }}", "type": "string" }
           ]
         },
         "options": {}
       },
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [2560, 0],
-      "id": "smp-16",
+      "position": [17232, -1264],
+      "id": "31f87b59-dd09-4ec3-8794-680fd24561da",
       "name": "SET Extract Analysis"
     },
     {
@@ -410,32 +284,21 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "x-api-key",
-              "value": "={{ $('SET API Keys').first().json.ANTHROPIC_API_KEY }}"
-            },
-            {
-              "name": "anthropic-version",
-              "value": "2023-06-01"
-            },
-            {
-              "name": "content-type",
-              "value": "application/json"
-            }
+            { "name": "x-api-key",         "value": "={{ $('SET API Keys').first().json.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type",      "value": "application/json" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ ({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: $('SET Config Context').first().json.new_concepts_instruction + '\\n\\nVideo analysis to adapt:\\n' + $json.analysis }] }) }}",
+        "jsonBody": "={{ ({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: $('SET Config Context').first().json.new_concepts_instruction + '\\n\\n=== REFERENCE VIDEO ===\\nCreator: @' + $json.creator + '\\nViews: ' + $json.views + '\\nLikes: ' + $json.likes + '\\nPosted: ' + $json.date_posted + '\\nLink: ' + $json.link + ($json.analysis && $json.analysis.trim() ? '\\n\\nGemini video analysis:\\n' + $json.analysis : '\\n\\n[Video analysis unavailable — base the concepts on the brand context, target audience, and the creator\\'s engagement metrics above]') }] }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [2800, 0],
-      "id": "smp-17",
-      "name": "HTTP Claude Concepts",
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [17472, -1264],
+      "id": "367d5485-24ca-40be-9483-3e86a1cf7a59",
+      "name": "HTTP Claude Concepts"
     },
     {
       "parameters": {
@@ -443,33 +306,21 @@
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3040, 0],
-      "id": "smp-18",
+      "position": [17712, -1264],
+      "id": "f8be871f-6041-4902-b6ae-9d159de9322d",
       "name": "CODE Build Record"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://lvgqecbibzqkmemecskr.supabase.co/rest/v1/sm_videos",
+        "url": "https://lvgqecbibzqkmemecskr.supabase.co/rest/v1/sm_videos?on_conflict=link",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "={{ $('SET API Keys').first().json.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Authorization",
-              "value": "={{ 'Bearer ' + $('SET API Keys').first().json.SUPABASE_KEY }}"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Prefer",
-              "value": "resolution=merge-duplicates"
-            }
+            { "name": "apikey",        "value": "={{ $('SET API Keys').first().json.SUPABASE_KEY }}" },
+            { "name": "Authorization", "value": "={{ 'Bearer ' + $('SET API Keys').first().json.SUPABASE_KEY }}" },
+            { "name": "Content-Type",  "value": "application/json" },
+            { "name": "Prefer",        "value": "resolution=merge-duplicates" }
           ]
         },
         "sendBody": true,
@@ -479,213 +330,49 @@
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
-      "position": [3280, 0],
-      "id": "smp-19",
-      "name": "HTTP Supabase Upsert",
-      "alwaysOutputData": true,
-      "onError": "continueRegularOutput"
+      "position": [17952, -1264],
+      "id": "76fd6530-2077-4308-aa55-90d084b68254",
+      "name": "HTTP Supabase Upsert"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collapse N processed video items into a single loop-back trigger for the creator loop\nreturn [{ json: { loop_back: true } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [18192, -1264],
+      "id": "code-merge-001",
+      "name": "CODE Merge"
     }
   ],
   "connections": {
-    "TRIGGER Webhook": {
-      "main": [
-        [
-          {
-            "node": "SET API Keys",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SET API Keys": {
-      "main": [
-        [
-          {
-            "node": "SET Input Params",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SET Input Params": {
-      "main": [
-        [
-          {
-            "node": "SUPABASE Get Config",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SUPABASE Get Config": {
-      "main": [
-        [
-          {
-            "node": "IF Config Found",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "IF Config Found": {
-      "main": [
-        [
-          {
-            "node": "SET Config Context",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
-      ]
-    },
-    "SET Config Context": {
-      "main": [
-        [
-          {
-            "node": "SUPABASE Get Creators",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SUPABASE Get Creators": {
-      "main": [
-        [
-          {
-            "node": "SPLIT Creators Loop",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SPLIT Creators Loop": {
-      "main": [
-        [],
-        [
-          {
-            "node": "HTTP Apify Run",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Apify Run": {
-      "main": [
-        [
-          {
-            "node": "HTTP Apify Dataset",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Apify Dataset": {
-      "main": [
-        [
-          {
-            "node": "CODE Filter Sort Videos",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CODE Filter Sort Videos": {
-      "main": [
-        [
-          {
-            "node": "SPLIT Videos Loop",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SPLIT Videos Loop": {
-      "main": [
-        [
-          {
-            "node": "SPLIT Creators Loop",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "HTTP Gemini Analyze",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Gemini Analyze": {
-      "main": [
-        [
-          {
-            "node": "SET Extract Analysis",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SET Extract Analysis": {
-      "main": [
-        [
-          {
-            "node": "HTTP Claude Concepts",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Claude Concepts": {
-      "main": [
-        [
-          {
-            "node": "CODE Build Record",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CODE Build Record": {
-      "main": [
-        [
-          {
-            "node": "HTTP Supabase Upsert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Supabase Upsert": {
-      "main": [
-        [
-          {
-            "node": "SPLIT Videos Loop",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
+    "TRIGGER Webhook":        { "main": [[{ "node": "SET API Keys",           "type": "main", "index": 0 }]] },
+    "SET API Keys":           { "main": [[{ "node": "SET Input Params",        "type": "main", "index": 0 }]] },
+    "SET Input Params":       { "main": [[{ "node": "SUPABASE Get Config",     "type": "main", "index": 0 }]] },
+    "SUPABASE Get Config":    { "main": [[{ "node": "IF Config Found",          "type": "main", "index": 0 }]] },
+    "IF Config Found":        { "main": [[{ "node": "SET Config Context",       "type": "main", "index": 0 }], []] },
+    "SET Config Context":     { "main": [[{ "node": "SUPABASE Get Creators",    "type": "main", "index": 0 }]] },
+    "SUPABASE Get Creators":  { "main": [[{ "node": "SPLIT Creators Loop",      "type": "main", "index": 0 }]] },
+    "SPLIT Creators Loop":    { "main": [[], [{ "node": "HTTP Apify Run",       "type": "main", "index": 0 }]] },
+    "HTTP Apify Run":         { "main": [[{ "node": "HTTP Apify Dataset",        "type": "main", "index": 0 }]] },
+    "HTTP Apify Dataset":     { "main": [[{ "node": "CODE Filter Sort Videos",  "type": "main", "index": 0 }]] },
+    "CODE Filter Sort Videos":{ "main": [[{ "node": "IF Has Videos",            "type": "main", "index": 0 }]] },
+    "IF Has Videos":          { "main": [
+                                  [{ "node": "HTTP Download Video",             "type": "main", "index": 0 }],
+                                  [{ "node": "SPLIT Creators Loop",             "type": "main", "index": 0 }]
+                                ]},
+    "HTTP Download Video":    { "main": [[{ "node": "CODE Store Video Meta",    "type": "main", "index": 0 }]] },
+    "CODE Store Video Meta":  { "main": [[{ "node": "Analyze video",            "type": "main", "index": 0 }]] },
+    "Analyze video":          { "main": [[{ "node": "SET Extract Analysis",     "type": "main", "index": 0 }]] },
+    "SET Extract Analysis":   { "main": [[{ "node": "HTTP Claude Concepts",     "type": "main", "index": 0 }]] },
+    "HTTP Claude Concepts":   { "main": [[{ "node": "CODE Build Record",        "type": "main", "index": 0 }]] },
+    "CODE Build Record":      { "main": [[{ "node": "HTTP Supabase Upsert",     "type": "main", "index": 0 }]] },
+    "HTTP Supabase Upsert":   { "main": [[{ "node": "CODE Merge",               "type": "main", "index": 0 }]] },
+    "CODE Merge":             { "main": [[{ "node": "SPLIT Creators Loop",      "type": "main", "index": 0 }]] }
   },
   "pinData": {},
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "250f37a53250736be8af461c3752e7652027cf011896ba5176c1c6100ed4f0a0"
   }
 }
