@@ -1402,6 +1402,7 @@ body {
 .smb-bestpost-label {
   font-size: 10px; font-weight: 700; color: #065F46;
   letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 4px;
 }
 .smb-bestpost-text {
   font-size: 12px; color: var(--text-main); line-height: 1.4;
