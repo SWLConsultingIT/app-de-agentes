@@ -688,7 +688,10 @@ function renderSocialBiosComparison(channels) {
         <div class="smb-channel-card-tone">${c.toneSummary || 'Run a scan to populate.'}</div>
         ${top ? `
           <div class="smb-channel-card-bestpost">
-            <div class="smb-bestpost-label"><i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%</div>
+            <div class="smb-bestpost-label">
+              <i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%
+              ${top.url ? `<a href="${top.url}" target="_blank" rel="noopener" style="margin-left:auto;color:${c.color};font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">View<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+            </div>
             <div class="smb-bestpost-text">${top.snippet}</div>
           </div>` : ''}
       </div>
@@ -756,6 +759,7 @@ function renderSocialBiosComparison(channels) {
           <span>· ${best.metrics?.likes ?? 0} likes</span>
           <span>· ${best.metrics?.comments ?? 0} comments</span>
           <span>· ${best.metrics?.shares ?? 0} shares</span>
+          ${best.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:${c.color};font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">Ver post<i data-lucide="external-link" style="width:11px;"></i></a>` : ''}
         </div>
       </div>
     `;
@@ -790,20 +794,18 @@ async function hydrateSocialBiosView() {
   // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
   if (!document.getElementById('smb-root')) return;
 
-  // Supabase-first: on the first hydrate of the session, try to load the latest scan from
-  // social_media_analyses. If anything is there, that wins over the mock and the DEMO banner hides.
-  if (!socialBiosData.channels || !socialBiosData.channels.length) {
-    const stored = await fetchSocialBios(brandKitData.brandId);
-    if (stored && stored.channels.length) {
-      socialBiosData.lastScannedAt = stored.scanned_at;
-      socialBiosData.channels = stored.channels;
-      socialBiosData.isMock = false;
-    } else {
-      const mock = loadMockSocialBios();
-      socialBiosData.lastScannedAt = mock.scanned_at;
-      socialBiosData.channels = mock.channels;
-      socialBiosData.isMock = true;
-    }
+  // Always refetch from Supabase on each hydrate — the n8n workflow can write new analyses
+  // between mounts, and a stale in-memory cache would otherwise hide them.
+  const stored = await fetchSocialBios(brandKitData.brandId);
+  if (stored && stored.channels.length) {
+    socialBiosData.lastScannedAt = stored.scanned_at;
+    socialBiosData.channels = stored.channels;
+    socialBiosData.isMock = false;
+  } else if (!socialBiosData.channels || !socialBiosData.channels.length) {
+    const mock = loadMockSocialBios();
+    socialBiosData.lastScannedAt = mock.scanned_at;
+    socialBiosData.channels = mock.channels;
+    socialBiosData.isMock = true;
   }
 
   // Mock-data badge — visible until a real scan from WF02 lands.
@@ -886,7 +888,12 @@ async function hydrateSocialBiosView() {
     // Top posts table
     setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
       <tr class="smb-post-row">
-        <td style="max-width:340px;"><div style="color:var(--text-main);">${p.snippet}</div>${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}</td>
+        <td style="max-width:340px;">
+          ${p.url
+            ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${p.snippet}<i data-lucide="external-link" style="width:11px;flex-shrink:0;color:${focus.color};"></i></a>`
+            : `<div style="color:var(--text-main);">${p.snippet}</div>`}
+          ${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}
+        </td>
         <td style="text-transform:capitalize;">${p.format}</td>
         <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
         <td>${p.metrics?.likes ?? 0}</td>
@@ -906,12 +913,18 @@ async function hydrateSocialBiosView() {
     setHTML('smb-rules-action', `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;">✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</div>
+          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            <span>✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</span>
+            ${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#047857;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          </div>
           <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
           <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
         </div>
         <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;">✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</div>
+          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            <span>✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</span>
+            ${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#B91C1C;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          </div>
           <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
           <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
         </div>
