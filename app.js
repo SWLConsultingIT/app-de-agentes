@@ -707,7 +707,7 @@ function renderSocialBiosComparison(channels) {
         ${top ? `
           <div class="smb-channel-card-bestpost">
             <div class="smb-bestpost-label"><i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%</div>
-            <div class="smb-bestpost-text">${top.snippet}</div>
+            <div class="smb-bestpost-text">${top.url ? `<a href="${top.url}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${top.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : top.snippet}</div>
           </div>` : ''}
       </div>
     `;
@@ -767,7 +767,7 @@ function renderSocialBiosComparison(channels) {
           <span style="color:${c.color};font-weight:700;">${c.name}</span>
           <span class="smb-best-card-er">ER ${best.engagementRate ?? 0}%</span>
         </div>
-        <div class="smb-best-card-snippet">${best.snippet}</div>
+        <div class="smb-best-card-snippet">${best.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${best.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : best.snippet}</div>
         ${best.whyItWorked ? `<div class="smb-best-card-why">↳ ${best.whyItWorked}</div>` : ''}
         <div class="smb-best-card-meta">
           <span style="text-transform:capitalize;">${best.format}</span>
@@ -904,7 +904,7 @@ async function hydrateSocialBiosView() {
     // Top posts table
     setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
       <tr class="smb-post-row">
-        <td style="max-width:340px;"><div style="color:var(--text-main);">${p.snippet}</div>${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}</td>
+        <td style="max-width:340px;"><div style="color:var(--text-main);">${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none; border-bottom:1px dashed var(--border);">${p.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : p.snippet}</div>${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}</td>
         <td style="text-transform:capitalize;">${p.format}</td>
         <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
         <td>${p.metrics?.likes ?? 0}</td>
@@ -925,12 +925,12 @@ async function hydrateSocialBiosView() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
           <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;">✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${best.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : (best?.snippet || '—')}</div>
           <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
         </div>
         <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
           <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;">✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${worst.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : (worst?.snippet || '—')}</div>
           <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
         </div>
       </div>
