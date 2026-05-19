@@ -173,6 +173,14 @@ const brandKitData = {
     { code: 'P5', role: 'Founder / CEO',         label: 'SMB · mid-market buyer',           size: 'Founder-led sales · Series Seed–A · 10–80 empleados',     pains: 'Equipo chico que no escala, agencias externas genéricas que no entregan, founder-led sales tocando techo, dependencia de 1–2 SDRs estrella',             triggers: 'Cierre de Series A, presión de inversores por GTM repetible, founder cansado de hacer outreach manual, contratación de primer Head of Sales' },
     { code: 'P6', role: 'IT / Head of Eng',      label: 'Technical gatekeeper',             size: 'Aprueba o veta vendors de software',                       pains: 'Riesgo de vendor lock-in, seguridad de datos del CRM, complejidad de integración con stack propio, mantenimiento post-implementación',                   triggers: 'Nuevo stack AI a aprobar, mandato de consolidar vendors, audit de seguridad anual, política interna de data residency' },
   ],
+  // Verticales del cliente — product lines / business units / campañas que ContentBuilder usa para
+  // generar contenido por-vertical × por-canal. Se hidratan desde WF00 (scraper) y se editan en ContentBuilder.
+  // `source` distingue lo detectado por el agente vs. lo agregado a mano por el usuario.
+  verticals: [
+    { name: 'Arqy Build',   desc: 'Plataforma de project management para constructoras: obras en tiempo real, sin Excel.',                                    source: 'seed', channels: { Instagram: { enabled: true,  postsPerMonth: 4 }, TikTok: { enabled: true,  postsPerMonth: 4 }, LinkedIn: { enabled: true,  postsPerMonth: 8 } } },
+    { name: 'Arqy State',   desc: 'Vista de obra real para compradores en pozo y residentes — fotos, hitos, transparencia.',                                  source: 'seed', channels: { Instagram: { enabled: true,  postsPerMonth: 8 }, TikTok: { enabled: true,  postsPerMonth: 4 }, LinkedIn: { enabled: false, postsPerMonth: 0 } } },
+    { name: 'Arqy Capital', desc: 'Reporting institucional para inversores: rentabilidad por proyecto, exposición y due diligence.',                          source: 'seed', channels: { Instagram: { enabled: false, postsPerMonth: 0 }, TikTok: { enabled: false, postsPerMonth: 0 }, LinkedIn: { enabled: true,  postsPerMonth: 8 } } },
+  ],
   competitors: [
     { name: 'Globant',              url: 'https://www.globant.com',                 linkedin_url: 'https://www.linkedin.com/company/globant',         instagram_url: 'https://instagram.com/globant',         tiktok_url: 'https://tiktok.com/@globant',     youtube_url: 'https://youtube.com/@globant',                positioning: 'Tech consulting LATAM · AI + cultura interna fuerte',    tier: 'Premium', diff: 'Eventos propios (Converge) bien producidos. TikTok activo de innovación. Daily LI · 4x/sem IG.' },
     { name: 'BairesDev',            url: 'https://www.bairesdev.com',               linkedin_url: 'https://www.linkedin.com/company/bairesdev',       instagram_url: 'https://instagram.com/bairesdev',       tiktok_url: 'https://tiktok.com/@bairesdev',   youtube_url: 'https://youtube.com/@bairesdev',              positioning: 'Top 1% talent · outbound conversion-led',                tier: 'Premium', diff: 'Posts muy directos con CTA — "contratá developers en 48hs". Referente de outbound en LATAM.' },
@@ -291,6 +299,7 @@ function buildBrandProfilePayloadFromKit() {
     typography:       brandKitData.typography,
     values:           brandKitData.values,
     personas:         brandKitData.personas,
+    verticals:        brandKitData.verticals || [],
     competitors,
     channels:         brandKitData.channels,
     tone_by_channel:  brandKitData.toneByChannel,
@@ -385,6 +394,9 @@ async function scanBrandingBio() {
 }
 
 function applyScrapedBrandData(data) {
+  // Debug: surface what WF00 actually returned so we can tell whether the new
+  // verticals prompt is live on the n8n side.
+  console.log('[WF00] response received. verticals field:', data?.verticals, '· keys:', data ? Object.keys(data) : '(null)');
   if (data.name)            brandKitData.name = data.name;
   if (data.websiteUrl)      brandKitData.websiteUrl = data.websiteUrl;
   if (data.industry)        brandKitData.industry = data.industry;
@@ -415,6 +427,12 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  if (data.verticals?.length) brandKitData.verticals = data.verticals.map(v => ({
+    name:   v.name || v.title || 'Vertical',
+    desc:   v.desc || v.description || '',
+    source: 'scraper',
+    channels: defaultVerticalChannels(),
+  }));
   brandKitData.brandId = crypto.randomUUID();
   switchView(state.currentView);
 }
@@ -2584,6 +2602,338 @@ function removeContentBuilderVertical(idx) {
   renderContentBuilderVerticals();
 }
 
+// ── ContentBuilder · Brand-wide verticales (productos / unidades de negocio) ─
+// Single source of truth = brandKitData.verticals, hydrated by WF00 scraper and
+// persisted into brand_profiles.data_json.verticals so WF07 can read them.
+// Each vertical carries a `channels` map (Instagram/TikTok/LinkedIn) with
+// {enabled, postsPerMonth} so ContentBuilder can build a per-channel × per-vertical
+// editorial plan.
+
+// Channel metadata for the per-vertical matrix. Single source of truth for the
+// 3 channels ContentBuilder currently supports.
+const CB_VERTICAL_CHANNELS = [
+  { key: 'Instagram', emoji: '📷', color: '#E1306C', gradient: 'linear-gradient(135deg,#833AB4,#FD1D1D 60%,#FCB045)' },
+  { key: 'TikTok',    emoji: '🎵', color: '#0F172A', gradient: 'linear-gradient(135deg,#25F4EE,#FE2C55)' },
+  { key: 'LinkedIn',  emoji: '💼', color: '#0A66C2', gradient: 'linear-gradient(135deg,#0A66C2,#004182)' },
+];
+
+function defaultVerticalChannels() {
+  // Sensible default: all channels enabled at 4 posts/mo. User can tweak per-vertical.
+  return CB_VERTICAL_CHANNELS.reduce((acc, c) => {
+    acc[c.key] = { enabled: true, postsPerMonth: 4 };
+    return acc;
+  }, {});
+}
+
+function ensureVerticalChannels(v) {
+  // Back-fill for older entries (or scraper output) that don't yet carry a channels map.
+  if (!v.channels || typeof v.channels !== 'object') v.channels = defaultVerticalChannels();
+  for (const c of CB_VERTICAL_CHANNELS) {
+    if (!v.channels[c.key]) v.channels[c.key] = { enabled: false, postsPerMonth: 0 };
+  }
+  return v;
+}
+
+// Which vertical (index) is currently expanded — i.e. has the pipeline DOM moved
+// underneath it. `null` means the pipeline sits in its default anchor at the bottom.
+let cbExpandedVerticalIdx = null;
+
+function renderBrandVerticals() {
+  const list = document.getElementById('cb-brand-vertical-list');
+  if (!list) return;
+  const verticals = (brandKitData.verticals || []).map(ensureVerticalChannels);
+
+  // Detach the pipeline card from wherever it lives so the upcoming innerHTML
+  // reset doesn't destroy it. Park it in a hidden limbo div on <body>.
+  const pipeline = document.getElementById('cb-pipeline-card');
+  if (pipeline) {
+    let limbo = document.getElementById('cb-pipeline-limbo');
+    if (!limbo) {
+      limbo = document.createElement('div');
+      limbo.id = 'cb-pipeline-limbo';
+      limbo.style.display = 'none';
+      document.body.appendChild(limbo);
+    }
+    limbo.appendChild(pipeline);
+  }
+
+  if (!verticals.length) {
+    list.innerHTML = '<span style="font-size:11px; color:var(--text-muted); font-style:italic;">El scraper aún no detectó verticales — escribí los productos/unidades de negocio del cliente abajo y dale Enter.</span>';
+    cbExpandedVerticalIdx = null;
+    reattachPipelineToActiveSlot();
+    return;
+  }
+  list.innerHTML = verticals.map((v, i) => {
+    const badgeColor = v.source === 'scraper' ? '#7C3AED' : (v.source === 'manual' ? '#0EA5E9' : '#64748B');
+    const badgeBg    = v.source === 'scraper' ? '#F3E8FF' : (v.source === 'manual' ? '#E0F2FE' : '#F1F5F9');
+    const badgeText  = v.source === 'scraper' ? 'Detectado' : (v.source === 'manual' ? 'Manual' : 'Default');
+    const desc = v.desc ? `<span style="color:var(--text-muted)"> — ${escapeHtml(v.desc)}</span>` : '';
+
+    // Channel matrix: one pill per channel with toggle + posts/month number input
+    const totalPosts = CB_VERTICAL_CHANNELS.reduce((s, c) => s + (v.channels[c.key].enabled ? Number(v.channels[c.key].postsPerMonth) || 0 : 0), 0);
+    const channelChips = CB_VERTICAL_CHANNELS.map(c => {
+      const slot = v.channels[c.key];
+      const on = !!slot.enabled;
+      const bg = on ? c.gradient : 'white';
+      const fg = on ? 'white' : '#64748B';
+      const border = on ? 'transparent' : 'var(--border)';
+      return `
+        <div class="cb-vchan" data-vidx="${i}" data-ch="${c.key}" style="display:inline-flex; align-items:center; gap:6px; padding:5px 4px 5px 10px; background:${bg}; color:${fg}; border:1px solid ${border}; border-radius:999px; font-size:11.5px; font-weight:600;">
+          <span onclick="toggleVerticalChannel(${i}, '${c.key}')" style="display:inline-flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
+            <span style="font-size:13px; line-height:1;">${c.emoji}</span>
+            <span>${c.key}</span>
+            <span style="opacity:${on ? 1 : 0.6}; font-size:10px; padding:1px 6px; border-radius:99px; background:${on ? 'rgba(255,255,255,0.18)' : '#F1F5F9'};">${on ? 'ON' : 'OFF'}</span>
+          </span>
+          <input type="number" min="0" max="60" value="${slot.postsPerMonth || 0}"
+                 onchange="setVerticalChannelPosts(${i}, '${c.key}', this.value)"
+                 ${on ? '' : 'disabled'}
+                 title="Posts por mes"
+                 style="width:38px; padding:2px 4px; border:1px solid ${on ? 'rgba(255,255,255,0.35)' : 'var(--border)'}; border-radius:5px; font-size:11px; font-weight:700; text-align:center; background:${on ? 'rgba(255,255,255,0.18)' : '#F8FAFC'}; color:${on ? 'white' : '#64748B'}; outline:none;" />
+          <span style="font-size:10px; opacity:0.85; padding-right:6px;">/mes</span>
+        </div>
+      `;
+    }).join('');
+
+    const isExpanded = cbExpandedVerticalIdx === i;
+    const expandBg   = isExpanded ? '#7C3AED' : 'white';
+    const expandFg   = isExpanded ? 'white'   : '#7C3AED';
+    const expandIcon = isExpanded ? '▲' : '▼';
+    const expandText = isExpanded ? 'Cerrar pipeline'
+                                  : `Generar contenido para ${escapeHtml(v.name)}`;
+
+    return `
+      <div class="cb-brand-vertical-row" style="padding:10px 12px; background:white; border:1px solid ${isExpanded ? '#7C3AED' : '#E9D5FF'}; border-radius:10px;${isExpanded ? ' box-shadow:0 4px 18px rgba(124,58,237,0.18);' : ''}">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="font-size:9.5px; font-weight:700; color:${badgeColor}; background:${badgeBg}; padding:2px 6px; border-radius:99px; letter-spacing:0.3px; text-transform:uppercase;">${badgeText}</span>
+          <strong style="color:#4C1D95; font-size:13px;">${escapeHtml(v.name)}</strong>
+          ${desc}
+          <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
+            <span style="font-size:10.5px; color:var(--text-muted); background:#FAF5FF; border:1px solid #E9D5FF; padding:2px 8px; border-radius:99px;"><strong style="color:#4C1D95">${totalPosts}</strong> posts/mes</span>
+            <button onclick="editBrandVerticalDesc(${i})" title="Editar descripción" style="background:none;border:1px solid var(--border);color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">edit</button>
+            <button onclick="removeBrandVertical(${i})" title="Eliminar" style="background:none;border:1px solid var(--border);color:#991B1B;cursor:pointer;padding:3px 8px;font-size:13px;line-height:1;border-radius:5px;">×</button>
+          </span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+          ${channelChips}
+        </div>
+        <div style="margin-top:10px; display:flex; justify-content:center;">
+          <button onclick="toggleVerticalExpansion(${i})" style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; background:${expandBg}; color:${expandFg}; border:1px solid #7C3AED; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
+            <span>${expandIcon}</span>
+            <span>${expandText}</span>
+          </button>
+        </div>
+        ${isExpanded ? `<div id="cb-vertical-pipeline-slot-${i}" style="margin-top:12px;"></div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // After re-rendering the verticals list, put the pipeline back where it
+  // belongs — inside the expanded vertical's slot, or back at the anchor.
+  reattachPipelineToActiveSlot();
+}
+
+function reattachPipelineToActiveSlot() {
+  const pipeline = document.getElementById('cb-pipeline-card');
+  if (!pipeline) return;
+  if (cbExpandedVerticalIdx !== null) {
+    const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
+    if (slot) { slot.appendChild(pipeline); return; }
+  }
+  const anchor = document.getElementById('cb-pipeline-anchor');
+  if (anchor) anchor.appendChild(pipeline);
+}
+
+function toggleVerticalExpansion(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  if (cbExpandedVerticalIdx === idx) {
+    // Collapse — go back to "mix all" mode
+    cbExpandedVerticalIdx = null;
+    cbActiveVertical = null;
+  } else {
+    // Expand this vertical — also set it as the active vertical so n8n payloads
+    // and the channel tab auto-switch reflect the user's intent.
+    cbExpandedVerticalIdx = idx;
+    cbActiveVertical = v.name;
+
+    // Auto-switch the channel tab to the first channel enabled for this vertical
+    // (skip the matrix if everything is disabled).
+    ensureVerticalChannels(v);
+    const firstEnabled = CB_VERTICAL_CHANNELS.find(c => v.channels[c.key]?.enabled);
+    if (firstEnabled && typeof setContentBuilderTab === 'function') {
+      setContentBuilderTab(firstEnabled.key);
+    }
+  }
+  renderBrandVerticals();
+  renderActiveVerticalSelect();
+  // Scroll the expanded row into view so the pipeline is visible without manual scrolling.
+  if (cbExpandedVerticalIdx !== null) {
+    setTimeout(() => {
+      const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
+      if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+}
+
+function toggleVerticalChannel(idx, channelKey) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  ensureVerticalChannels(v);
+  const slot = v.channels[channelKey];
+  slot.enabled = !slot.enabled;
+  if (slot.enabled && (!slot.postsPerMonth || slot.postsPerMonth <= 0)) slot.postsPerMonth = 4;
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function setVerticalChannelPosts(idx, channelKey, value) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  ensureVerticalChannels(v);
+  const n = Math.max(0, Math.min(60, parseInt(value, 10) || 0));
+  v.channels[channelKey].postsPerMonth = n;
+  if (n === 0) v.channels[channelKey].enabled = false;
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function addBrandVertical() {
+  const nameInput = document.getElementById('cb-brand-vertical-name');
+  const descInput = document.getElementById('cb-brand-vertical-desc');
+  if (!nameInput) return;
+  const name = (nameInput.value || '').trim();
+  if (!name) return;
+  const desc = (descInput?.value || '').trim();
+  brandKitData.verticals = brandKitData.verticals || [];
+  if (brandKitData.verticals.some(v => v.name.toLowerCase() === name.toLowerCase())) {
+    showToast(`"${name}" ya existe en las verticales.`);
+    return;
+  }
+  brandKitData.verticals.push({ name, desc, source: 'manual', channels: defaultVerticalChannels() });
+  nameInput.value = '';
+  if (descInput) descInput.value = '';
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function removeBrandVertical(idx) {
+  if (!brandKitData.verticals?.[idx]) return;
+  brandKitData.verticals.splice(idx, 1);
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function editBrandVerticalDesc(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  const newDesc = prompt(`Descripción para "${v.name}" (audiencia + valor en 1 oración):`, v.desc || '');
+  if (newDesc === null) return;
+  v.desc = newDesc.trim();
+  v.source = v.source === 'scraper' ? 'edited' : (v.source || 'manual');
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+// Merge-and-upsert: read current brand_profiles.data_json, replace only the
+// `verticals` field, write back. Falls back to no-op if there's no brandId yet
+// (e.g. demo state before Branding Bio has been saved).
+async function persistBrandVerticals() {
+  if (!brandKitData.brandId) return; // nothing to persist against yet
+  try {
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const current = rows?.[0]?.data_json || {};
+    current.verticals = brandKitData.verticals || [];
+    await supabaseUpsert('brand_profiles', {
+      brand_id:   brandKitData.brandId,
+      data_json:  current,
+      updated_at: new Date().toISOString(),
+    }, 'brand_id');
+  } catch (e) {
+    console.warn('[verticals] persist failed:', e);
+  }
+}
+
+// Active vertical = which product/business unit the next Generate Brief / Build Draft call targets.
+// `null` means "all" (sends the full verticals list to n8n; default behaviour).
+let cbActiveVertical = null;
+
+function setActiveVertical(name) {
+  cbActiveVertical = name && name !== '__all__' ? name : null;
+}
+
+function renderActiveVerticalSelect() {
+  const sel = document.getElementById('cb-active-vertical');
+  if (!sel) return;
+  const verticals = brandKitData.verticals || [];
+  const current = cbActiveVertical;
+  const options = ['<option value="__all__">Todas las verticales (mix)</option>']
+    .concat(verticals.map(v => `<option value="${escapeHtml(v.name)}"${v.name === current ? ' selected' : ''}>${escapeHtml(v.name)}</option>`));
+  sel.innerHTML = options.join('');
+  sel.onchange = (e) => setActiveVertical(e.target.value);
+}
+
+// Pull verticals from brand_profiles into brandKitData if the local copy is empty
+// (e.g. when the user lands on ContentBuilder before scanning the website).
+async function hydrateBrandVerticalsFromSupabase() {
+  if (!brandKitData.brandId) return;
+  if ((brandKitData.verticals || []).length) return; // local copy wins
+  try {
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const remote = rows?.[0]?.data_json?.verticals;
+    if (Array.isArray(remote) && remote.length) {
+      brandKitData.verticals = remote;
+      renderBrandVerticals();
+    }
+  } catch (e) {
+    console.warn('[verticals] hydrate failed:', e);
+  }
+}
+
+// Force a re-pull from brand_profiles — overrides local copy with whatever's
+// in Supabase right now. Triggered by the "Sync Branding Bio" button so the user
+// can pick up changes made in Branding Bio without reloading the page.
+async function syncFromBrandingBio() {
+  const btn = document.getElementById('cb-sync-brand');
+  if (!brandKitData.brandId) {
+    showToast('Branding Bio aún no fue guardado. Andá a Branding Bio → Save & Sync primero.');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Sincronizando…';
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+  }
+  try {
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const remote = rows?.[0]?.data_json;
+    if (!remote) {
+      showToast('No hay brand profile guardado para este brand_id. Guardá desde Branding Bio.');
+      return;
+    }
+    // Verticals — replace local with remote (this is the WHOLE point of the sync)
+    const verticals = Array.isArray(remote.verticals) ? remote.verticals : [];
+    brandKitData.verticals = verticals.map(ensureVerticalChannels);
+    // Identity fields — keep ContentBuilder's header / tag chips in sync too
+    if (remote.identity?.company_name) brandKitData.name     = remote.identity.company_name;
+    if (remote.identity?.industry)     brandKitData.industry = remote.identity.industry;
+    if (remote.identity?.tagline)      brandKitData.tagline  = remote.identity.tagline;
+    if (Array.isArray(remote.personas) && remote.personas.length) brandKitData.personas = remote.personas;
+
+    renderBrandVerticals();
+    renderActiveVerticalSelect();
+    showToast(`Sincronizado: ${verticals.length} vertical${verticals.length === 1 ? '' : 'es'} desde Branding Bio.`);
+  } catch (e) {
+    console.error('[sync] failed:', e);
+    showToast('Error al sincronizar: ' + (e.message || e));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio';
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+    }
+  }
+}
+
 function useSampleVisualPrompt() {
   const ta = document.getElementById('cb-visual-prompt');
   if (!ta) return;
@@ -2596,6 +2946,10 @@ function useSampleVisualPrompt() {
 function hydrateContentBuilderCampaign() {
   // Activate the current tab so verticales, persona, format and visual prompt all reflect it
   if (typeof setContentBuilderTab === 'function') setContentBuilderTab(contentBuilderActiveTab || 'Instagram');
+  // Brand-wide verticales — render local copy first, then try to pull from Supabase
+  renderBrandVerticals();
+  renderActiveVerticalSelect();
+  hydrateBrandVerticalsFromSupabase().then(renderActiveVerticalSelect);
 }
 
 // ── ContentBuilder · channel profiles (Instagram / TikTok / LinkedIn) ─
@@ -3395,7 +3749,20 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
     return { __error: 'brand_id_missing', message: 'Branding Bio aún no fue guardada. Andá a Branding Bio → Save & Sync antes de generar contenido.' };
   }
   try {
-    const payload = { brand_id: brandKitData.brandId, channel, persona };
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
+    const payload = {
+      brand_id: brandKitData.brandId,
+      channel,
+      persona,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical:  selectedVertical,
+    };
     console.log('[WF06] sending payload:', payload);
     const res = await fetch(WF06_URL, {
       method: 'POST',
@@ -3495,10 +3862,23 @@ async function generateDraft() {
     const channel = contentBuilderActiveTab || document.getElementById('cb-channel')?.value || 'LinkedIn';
     const slot = getCbCampaign(channel);
     const verticals = [...(slot.verticals || [])];
+
+    // Brand-wide verticals (productos / unidades de negocio) — single source of truth in brandKitData,
+    // hydrated by WF00 scraper and editable in the Verticales del cliente card.
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
+
     const payload = {
       brand_id: brandKitData.brandId,
       channel,
       verticals: verticals.length ? verticals : null,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical: selectedVertical,
     };
     console.log('[WF07] sending payload:', payload);
     const res = await fetch(WF07_URL, {
@@ -3671,6 +4051,13 @@ async function generateVisualBrief(draftId, extra = {}) {
     const slot = getCbCampaign(channel);
     const visualPrompt = (document.getElementById('cb-visual-prompt')?.value || slot.visualPrompt || '').trim();
     const verticals = [...(slot.verticals || [])];
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
 
     const payload = {
       brand_id: brandKitData.brandId,
@@ -3678,6 +4065,8 @@ async function generateVisualBrief(draftId, extra = {}) {
       visual_prompt: visualPrompt || null,
       channel:       channel || null,
       verticals:     verticals.length ? verticals : null,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical:  selectedVertical,
       ...extra,
     };
     console.log('[WF09] sending payload:', payload);
@@ -7700,6 +8089,37 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">86 hrs</div><div class="agent-stat-lbl">Team Hours Saved (30d)</div></div>
         </div>
 
+        <!-- ─── Verticales del cliente (productos / unidades de negocio) ─── -->
+        <div class="card" style="margin-top:24px; border:1px solid #E9D5FF; background:linear-gradient(180deg,#FAF5FF 0%, white 70%);">
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <div>
+              <h3 class="card-title" style="margin:0;"><i data-lucide="layers"></i> Verticales del cliente</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0; max-width:680px;">
+                Productos, unidades de negocio o campañas que el cliente quiere comunicar. El <strong>WebScrapper</strong> los detecta del website y los guarda en <code style="font-size:11px;background:#F1F5F9;padding:1px 6px;border-radius:4px;">brand_profiles.data_json.verticals</code>. Editalos abajo — ContentBuilder genera 1 post × <em>vertical × canal</em>.
+              </p>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button id="cb-sync-brand" onclick="syncFromBrandingBio()" title="Pull desde brand_profiles — sobreescribe la copia local con lo último guardado en Branding Bio" style="display:inline-flex; align-items:center; padding:6px 12px; background:#6366F1; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio</button>
+              <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vertical activa</label>
+              <select id="cb-active-vertical" style="font-size:12px; padding:6px 10px; border:1px solid #E9D5FF; border-radius:6px; background:white; color:#4C1D95; font-weight:600;">
+                <option value="__all__">Todas las verticales (mix)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="cb-brand-vertical-list" style="display:flex; flex-direction:column; gap:8px; min-height:32px; margin-bottom:14px;"></div>
+
+          <div style="display:grid; grid-template-columns: 1fr 2fr auto; gap:8px; align-items:center;">
+            <input id="cb-brand-vertical-name" type="text" placeholder="Nombre de la vertical (ej. Hamburguesas)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
+            <input id="cb-brand-vertical-desc" type="text" placeholder="Descripción corta — audiencia + valor (opcional)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
+            <button onclick="addBrandVertical()" style="padding:8px 14px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:12px"></i> Add vertical</button>
+          </div>
+          <p style="margin:10px 0 0 0; font-size:10.5px; color:var(--text-muted);">
+            <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>
+            Las verticales viajan en el payload a <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf07-content-builder</code> y <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf09-creative-brain</code> para que el copy y el visual sean específicos del producto seleccionado.
+          </p>
+        </div>
+
         <!-- Competitor Insights from Social Media App -->
         <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.25); background:linear-gradient(180deg,white,#FFF7ED);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -7713,8 +8133,12 @@ function generateViewHTML(view) {
 
         <!-- ─────────────────────────────────────────── -->
         <!-- Generation Pipeline — 3 sequential n8n steps -->
+        <!-- The pipeline card lives in this HIDDEN anchor until the user expands
+             a vertical above. On expand, JS moves the DOM into that vertical's
+             slot. On collapse, it comes back here (still hidden). -->
         <!-- ─────────────────────────────────────────── -->
-        <div class="card" style="margin-top:24px; border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
+        <div id="cb-pipeline-anchor" style="display:none;">
+        <div id="cb-pipeline-card" class="card" style="border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="git-branch"></i> Pipeline de generación — <span id="cb-pipeline-channel" style="color:#0A66C2">💼 LinkedIn</span></h3>
             <select id="cb-persona" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
@@ -7869,6 +8293,7 @@ function generateViewHTML(view) {
             <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
           </div>
         </div>
+        </div><!-- /#cb-pipeline-anchor -->
 
         <!-- Content queue + channel split -->
         <div class="kpi-grid" style="grid-template-columns: 2fr 1fr; margin-top:24px;">
