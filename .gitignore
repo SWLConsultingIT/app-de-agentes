@@ -11,3 +11,4 @@ _project/
 
 # Skills (repos externos — demasiado pesados para subir)
 skills/
+.vercel
