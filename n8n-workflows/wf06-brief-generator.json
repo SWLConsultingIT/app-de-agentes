@@ -1,227 +1,626 @@
 {
-  "name": "WF06 — Brief Generator (with competitor hooks)",
+  "name": "WF06 — Brief Generator",
   "nodes": [
     {
-      "id": "c3d4e5f6-0006-0006-0006-000000000001",
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [100, 300],
       "parameters": {
-        "path": "wf06-brief-generator",
         "httpMethod": "POST",
-        "responseMode": "responseNode"
+        "path": "wf06-brief-generator",
+        "responseMode": "responseNode",
+        "options": {}
       },
-      "webhookId": "wf06-brief-generator"
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-96, 0],
+      "id": "caefab92-e19e-4aae-a334-35ad90c3bdb1",
+      "name": "Webhook",
+      "webhookId": "4099d4bd-f9ae-451c-b56b-0f98134dbc2c"
     },
     {
-      "id": "c3d4e5f6-0006-0006-0006-000000000002",
-      "name": "Fetch Brand Profile",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 200],
       "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/brand_profiles",
-        "method": "GET",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2cd6aa71-ba31-4998-ad58-3f74bd3204d9",
+              "name": "brand_id",
+              "value": "={{ $json.body.brand_id }}",
+              "type": "string"
+            },
+            {
+              "id": "336e18e1-e317-44de-81ff-7f2c24fde3df",
+              "name": "channel_filter",
+              "value": "={{ $json.body.channel || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a87b628c-329e-49ef-8558-01b26e00f7fa",
+              "name": "persona_filter",
+              "value": "={{ $json.body.persona || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "b14d0fb6-2c1f-4f5f-9f6d-7e5e3a8b2e10",
+              "name": "verticals",
+              "value": "={{ $json.body.verticals }}",
+              "type": "array"
+            }
           ]
         },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "brand_id", "value": "=eq.{{$json.brand_id}}" },
-            { "name": "select", "value": "data_json" }
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [112, 0],
+      "id": "e7207c7a-fed8-4774-a816-d4657c5b9881",
+      "name": "SET Normalize Input",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b9844506-6778-43c5-abfd-c9f8c70f8515",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "yes",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [496, 0],
+      "id": "60b92a80-c71d-4ebd-86ea-eef33ead8f43",
+      "name": "IF Brand Profile Exists"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "social_media_analyses",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            },
+            {
+              "keyName": "channel",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.channel_filter }}"
+            }
           ]
         }
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000003",
-      "name": "Fetch Voice Rules",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 400],
-      "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/brand_voice_rules",
-        "method": "GET",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "brand_id", "value": "=eq.{{$('Webhook').item.json.brand_id}}" },
-            { "name": "order", "value": "created_at.desc" },
-            { "name": "limit", "value": "1" }
-          ]
-        }
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000004",
-      "name": "Fetch Competitor Hooks",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 600],
-      "parameters": {
-        "url": "={{$vars.SOCIAL_MEDIA_APP_URL}}/api/videos",
-        "method": "GET",
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "limit", "value": "20" }
-          ]
-        }
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000005",
-      "name": "Build Brief Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [560, 400],
-      "parameters": {
-        "jsCode": "const webhookData = $('Webhook').item.json;\nconst channel = webhookData.channel || 'LinkedIn';\nconst persona = webhookData.persona || 'Decision Maker';\n\nconst profileRow = $('Fetch Brand Profile').all()[0]?.json || {};\nconst brandData = profileRow.data_json || {};\nconst identity = brandData.identity || {};\n\nconst voiceRow = $('Fetch Voice Rules').all()[0]?.json || {};\nconst rules = voiceRow.rules_json || {};\nconst alwaysRules = (rules.always_rules || []).slice(0, 5).join('\\n- ');\nconst neverRules = (rules.never_rules || []).slice(0, 5).join('\\n- ');\n\n// Extract top hooks from competitor videos\nconst videos = $('Fetch Competitor Hooks').all().map(i => i.json).slice(0, 20);\nconst competitorHooks = [];\nvideos.forEach(v => {\n  if (v.analysis) {\n    const m = v.analysis.match(/\\*\\*VISUAL:\\*\\*\\s*(.+?)(?:\\n|$)/);\n    if (m && m[1].length > 10) competitorHooks.push(`- [${v.creator}, ${Math.round(v.views/1000)}K views] ${m[1].trim()}`);\n  }\n  if (v.newConcepts) {\n    const matches = [...v.newConcepts.matchAll(/\\*\\*SPOKEN[^:]*:\\*\\*[^\"]*\"([^\"]{15,120})\"/g)];\n    matches.slice(0, 2).forEach(m2 => competitorHooks.push(`- [${v.creator}, AI concept] \"${m2[1].trim()}\"`));\n  }\n});\nconst hooksContext = competitorHooks.slice(0, 8).join('\\n') || '- No competitor hooks available yet (run pipeline first)';\n\nconst toneForChannel = (brandData.tone_by_channel || []).find(t => t.channel === channel) || {};\n\n// Business verticals — payload takes precedence, fallback to brand_profiles.data_json.verticals.\nconst payloadSelected = webhookData.selected_vertical || null;\nconst payloadList = Array.isArray(webhookData.business_verticals) ? webhookData.business_verticals : [];\nconst profileList = Array.isArray(brandData.verticals) ? brandData.verticals : [];\nconst verticals = payloadList.length ? payloadList : profileList;\n\nlet verticalContext = '';\nif (payloadSelected && payloadSelected.name) {\n  verticalContext = `\\n\\nFOCUSED VERTICAL — write this brief specifically for the product/business unit \"${payloadSelected.name}\"${payloadSelected.desc ? ` (${payloadSelected.desc})` : ''}. Hook, body and CTA all anchor on this vertical. Do NOT cover the full portfolio.`;\n} else if (verticals.length) {\n  const list = verticals.map(v => `- ${v.name}${v.desc ? `: ${v.desc}` : ''}`).join('\\n');\n  verticalContext = `\\n\\nBUSINESS VERTICALS (full client portfolio — pick the single most relevant one for this ${channel} brief and anchor the hook on it):\\n${list}`;\n}\n\nconst systemPrompt = `You are an expert content strategist for ${identity.company_name || 'the brand'} in the ${identity.industry || 'B2B'} space.\n\nBrand voice rules:\nALWAYS: ${alwaysRules || 'Be direct, specific, value-first'}\nNEVER: ${neverRules || 'Use jargon, hype, or vague claims'}\n\nChannel: ${channel}\nPersona: ${persona}\nTone for ${channel}: ${toneForChannel.tone || 'Professional'} (${toneForChannel.formality || 'Mid-formal'})\n${toneForChannel.examples ? `Examples: ${toneForChannel.examples}` : ''}${verticalContext}\n\nTop hooks from competitor analysis (adapt these for the brand — do NOT copy):\n${hooksContext}\n\nGenerate a content BRIEF with this structure (JSON):\n{\n  \"hook\": \"Opening line — scroll-stopping, brand-voice compliant, under 15 words\",\n  \"opening\": \"First paragraph — 1-2 sentences expanding the hook\",\n  \"body\": [\"Point 1\", \"Point 2\", \"Point 3\"],\n  \"cta\": \"Closing call-to-action — specific, no fluff\",\n  \"hook_type\": \"Contrarian|Specific Number|How-We-Do-X|Open-Loop|Persona-Aware\",\n  \"hook_score\": 0-100,\n  \"vertical\": \"name of the vertical this brief anchors on (or empty if generic)\",\n  \"channel\": \"${channel}\",\n  \"persona\": \"${persona}\"\n}\n\nReturn ONLY valid JSON. No markdown, no explanation.`;\n\nreturn [{ json: { systemPrompt, channel, persona, brand_id: $('Webhook').item.json.brand_id } }];"
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000006",
-      "name": "Call Claude — Generate Brief",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [780, 400],
-      "parameters": {
-        "url": "https://api.anthropic.com/v1/messages",
-        "method": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "x-api-key", "value": "={{$vars.ANTHROPIC_API_KEY}}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6-20251001\",\n  \"max_tokens\": 1024,\n  \"system\": \"You are a content strategist. Respond with valid JSON only.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.systemPrompt}}\"\n    }\n  ]\n}"
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000007",
-      "name": "Parse Brief + Save",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1000, 400],
-      "parameters": {
-        "jsCode": "const claudeResponse = $input.first().json;\nconst rawText = claudeResponse.content?.[0]?.text || '{}';\n\nlet brief;\ntry {\n  const jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n  brief = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);\n} catch (e) {\n  brief = { hook: rawText.slice(0, 200), body: [], cta: '' };\n}\n\nconst briefId = crypto.randomUUID();\n\nreturn [{ json: {\n  brief_id: briefId,\n  brief,\n  brand_id: $('Build Brief Prompt').item.json.brand_id,\n  channel: $('Build Brief Prompt').item.json.channel,\n  persona: $('Build Brief Prompt').item.json.persona,\n} }];"
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000008",
-      "name": "Save Brief to Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1220, 400],
-      "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_briefs",
-        "method": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=representation" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"id\": \"{{$json.brief_id}}\",\n  \"brand_id\": \"{{$json.brand_id}}\",\n  \"channel\": \"{{$json.channel}}\",\n  \"goal\": \"{{$json.persona}}\",\n  \"brief_json\": {{JSON.stringify($json.brief)}},\n  \"status\": \"ready\",\n  \"created_at\": \"{{$now.toISO()}}\"\n}"
-      }
-    },
-    {
-      "id": "c3d4e5f6-0006-0006-0006-000000000009",
-      "name": "Respond to App",
-      "type": "n8n-nodes-base.respondToWebhook",
+      },
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1440, 400],
+      "position": [304, 0],
+      "id": "5a241b9c-c1c2-4199-98d5-7f6c94f083f0",
+      "name": "SUPABASE Get SocialMediaBios",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "content_insights",
+        "limit": 10,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [704, -96],
+      "id": "0d5a5b14-1d6a-4ff6-825f-f22af9c6e8de",
+      "name": "SUPABASE Get Top Insights",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "hook_library",
+        "limit": 10,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [912, -96],
+      "id": "8daa4830-b7db-4d90-8709-f183e08a875e",
+      "name": "SUPABASE Get Top Hooks",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "brand_profiles",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "id": "0825bcba-a4ed-48d8-9473-0acbe9f7176d",
+      "name": "SUPABASE Get Brand Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1120, -96],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "sm_videos",
+        "limit": 15,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1216, -96],
+      "id": "a1b2c3d4-e5f6-7890-abcd-fetch-comp-01",
+      "name": "Fetch Competitor Videos",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Traer outputs de los nodos previos\nconst setData = $('SET Normalize Input').first().json;\nconst smbRows = $('SUPABASE Get SocialMediaBios').all().map(i => i.json).filter(x => x && x.id);\nconst insights = $('SUPABASE Get Top Insights').all().map(i => i.json).filter(x => x && x.id);\nconst hooks = $('SUPABASE Get Top Hooks').all().map(i => i.json).filter(x => x && x.id);\nconst profileRow = $('SUPABASE Get Brand Profile').first().json;\n\n// Competitor videos from social media pipeline (optional)\nlet competitorVideos = [];\ntry {\n  competitorVideos = $('Fetch Competitor Videos').all().map(i => i.json).filter(x => x && x.link);\n  competitorVideos.sort((a, b) => (b.views || 0) - (a.views || 0));\n  competitorVideos = competitorVideos.slice(0, 10);\n} catch(e) { competitorVideos = []; }\n\n// Extract competitor hooks from analysis + concepts\nconst competitorHooks = [];\ncompetitorVideos.forEach(v => {\n  if (v.analysis) {\n    const visualMatch = v.analysis.match(/\\*\\*VISUAL[^:]*:\\*\\*\\s*(.+?)(?:\\n|$)/i);\n    if (visualMatch && visualMatch[1].length > 10) {\n      competitorHooks.push({ text: visualMatch[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'visual_hook' });\n    }\n    const spokenMatch = v.analysis.match(/\\*\\*SPOKEN[^:]*:\\*\\*[^\"]*\"([^\"]{15,150})\"/);\n    if (spokenMatch) {\n      competitorHooks.push({ text: spokenMatch[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'spoken_hook' });\n    }\n  }\n  if (v.new_concepts) {\n    const spokenMatches = [...String(v.new_concepts).matchAll(/\\*\\*SPOKEN[^:]*:\\*\\*[^\"]*\"([^\"]{15,150})\"/g)];\n    spokenMatches.slice(0, 2).forEach(m => {\n      competitorHooks.push({ text: m[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'claude_concept' });\n    });\n  }\n});\ncompetitorHooks.sort((a, b) => (b.views || 0) - (a.views || 0));\nconst topCompetitorHooks = competitorHooks.slice(0, 8);\n\nconst channelFilter = setData.channel_filter || null;\nconst personaFilter = setData.persona_filter || null;\nconst verticals     = Array.isArray(setData.verticals) ? setData.verticals : [];\n\n// ── SocialMediaBios per-channel ──\nlet smbRow = null;\nif (channelFilter && smbRows.length) {\n  smbRow = smbRows.find(r => (r.channel || '').toLowerCase() === channelFilter.toLowerCase()) || smbRows[0];\n} else {\n  smbRow = smbRows[0] || null;\n}\nif (!smbRow) {\n  throw new Error('No hay análisis de SocialMediaBios para esta marca. Coré WF-02 sobre Instagram/TikTok primero.');\n}\n\nlet analysis = smbRow.analysis_json || {};\nif (typeof analysis === 'string') {\n  try { analysis = JSON.parse(analysis); } catch (e) { analysis = {}; }\n}\nconst voiceRules  = analysis.voiceRules || { always: [], never: [] };\nconst tone        = analysis.tone || null;\nconst toneSummary = analysis.toneSummary || '';\nconst topPosts    = Array.isArray(analysis.topPosts) ? analysis.topPosts : [];\n\n// ── Brand profile (identity, mission, services, tone_by_channel, content_samples) ──\nlet profile = profileRow?.data_json || {};\nif (typeof profile === 'string') {\n  try { profile = JSON.parse(profile); } catch (e) { profile = {}; }\n}\nconst identity = profile.identity || {};\nconst services = Array.isArray(profile.services) ? profile.services : [];\nconst toneByChannel = Array.isArray(profile.tone_by_channel) ? profile.tone_by_channel : [];\nconst contentSamples = Array.isArray(profile.content_samples) ? profile.content_samples : [];\nconst personasArr = Array.isArray(profile.personas) ? profile.personas : [];\nconst competitorsArr = Array.isArray(profile.competitors) ? profile.competitors.slice(0, 8).map(c => ({ name: c.name, positioning: c.positioning, tier: c.tier })) : [];\n\nconst targetChannel = channelFilter || smbRow.channel || 'LinkedIn';\nconst toneForChannel = toneByChannel.find(t => (t.channel || '').toLowerCase() === targetChannel.toLowerCase()) || null;\nconst samplesForChannel = contentSamples.filter(s => (s.channel || '').toLowerCase() === targetChannel.toLowerCase()).slice(0, 3);\n\n// ── Insights ──\nlet chosenInsight = null;\nlet sourceInsightIds = [];\nif (insights.length) {\n  const insightsForChannel = insights.filter(i => i.channel === targetChannel);\n  chosenInsight = insightsForChannel[0] || insights[0];\n  sourceInsightIds = [chosenInsight.id];\n} else if (topPosts.length) {\n  const best = topPosts[0];\n  chosenInsight = {\n    id: null,\n    title: `Replicar el ángulo que más engagement tuvo en ${targetChannel}`,\n    insight_type: 'own_top_post_pattern',\n    score: best.score || best.engagementRate || 0,\n    payload_json: {\n      reference_post: (best.text || best.snippet || '').slice(0, 240),\n      why_it_worked: best.whyItWorked || null,\n      target_persona_guess: null,\n    },\n    channel: targetChannel,\n  };\n} else {\n  chosenInsight = {\n    id: null,\n    title: `Generic brief for ${targetChannel}`,\n    insight_type: 'fallback',\n    score: 0,\n    payload_json: {},\n    channel: targetChannel,\n  };\n}\n\nlet chosenHook = null;\nif (hooks.length) {\n  const hooksForChannel = hooks.filter(h => h.channel === targetChannel);\n  chosenHook = hooksForChannel[0] || hooks[0];\n} else {\n  chosenHook = { id: null, hook_text: null, framework: 'auto', channel: targetChannel };\n}\n\nconst personaGuess =\n  personaFilter ||\n  (chosenInsight.payload_json && chosenInsight.payload_json.target_persona_guess) ||\n  'Primary buyer';\n\nconst ownTopPosts = topPosts.slice(0, 3).map(p => ({\n  format: p.format,\n  text: (p.text || p.snippet || '').slice(0, 200),\n  why_it_worked: p.whyItWorked || null,\n  engagement_rate: p.engagementRate || null,\n}));\n\nreturn [{\n  json: {\n    brand_id: setData.brand_id,\n    hook_id: chosenHook.id,\n    source_insight_ids: sourceInsightIds,\n    channel: targetChannel,\n    persona: personaGuess,\n    verticals,\n    model_input: {\n      identity: {\n        company_name: identity.company_name || 'SWL Consulting',\n        tagline: identity.tagline || '',\n        mission: identity.mission || '',\n        industry: identity.industry || '',\n        website: identity.website_url || '',\n      },\n      services,\n      personas: personasArr.slice(0, 6),\n      competitors_short: competitorsArr,\n      brand_voice_rules: voiceRules,\n      tone_dimensions: tone,\n      tone_summary: toneSummary,\n      tone_by_channel: toneForChannel,\n      own_top_posts: ownTopPosts,\n      content_samples_for_channel: samplesForChannel,\n      top_insight: {\n        title: chosenInsight.title,\n        insight_type: chosenInsight.insight_type,\n        score: chosenInsight.score,\n        payload: chosenInsight.payload_json,\n      },\n      selected_hook: {\n        text: chosenHook.hook_text,\n        framework: chosenHook.framework,\n        channel: chosenHook.channel,\n      },\n      competitor_hooks: topCompetitorHooks,\n      target_channel: targetChannel,\n      target_persona: personaGuess,\n      verticals,\n    },\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1312, -96],
+      "id": "cd3d211e-fe19-48ae-8826-5be2a770bdab",
+      "name": "CODE Build Brief Context"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an in-house editor for a specific company. You will be given a JSON payload describing that company's identity, services, personas, competitors, brand voice rules, top posts, and channel-specific style.\n\nABSOLUTE RULES (do not violate under any circumstance):\n1. Stay STRICTLY inside the company's actual business. If identity.mission says the company does AI agents for revenue operations, do NOT invent topics about construction, contractors, real estate, or any unrelated industry. If you cannot find an angle inside the company's services, write a brief about one of the listed services verbatim.\n2. Use the persona, channel and tone provided. Do not write LinkedIn-length essays for Instagram and vice-versa.\n3. Apply brand_voice_rules: every item in `always` is required, every item in `never` is forbidden.\n4. If `content_samples_for_channel` is provided, mimic the structural pattern of those samples — not their literal text.\n5. If `competitor_hooks` is provided and non-empty, use the best-performing hooks as INSPIRATION for the hook and opening fields — adapt the format and emotion to the brand's voice. NEVER copy competitor content or topic verbatim.\n6. Respond in English (field values). Channel-specific Spanish/voseo handling happens downstream in WF07.\n\nOutput JSON only matching the schema: topic, hook, target_persona, pain_points (array), desired_outcomes (array), opening, body (array), cta."
+            },
+            {
+              "content": "={{ JSON.stringify($json.model_input) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 1500,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema",
+              "schema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"required\": [\n    \"topic\",\n    \"hook\",\n    \"target_persona\",\n    \"pain_points\",\n    \"desired_outcomes\",\n    \"opening\",\n    \"body\",\n    \"cta\"\n  ],\n  \"properties\": {\n    \"topic\": {\n      \"type\": \"string\",\n      \"description\": \"Tema principal del post, en una frase corta\"\n    },\n    \"hook\": {\n      \"type\": \"string\",\n      \"description\": \"Primera línea que captura atención. Founder POV, frase directa.\"\n    },\n    \"target_persona\": {\n      \"type\": \"string\",\n      \"description\": \"Persona específica a la que le hablamos (ej: VP Engineering)\"\n    },\n    \"pain_points\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" },\n      \"description\": \"Lista de dolores concretos del persona, 3-5 ítems\"\n    },\n    \"desired_outcomes\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" },\n      \"description\": \"Resultados que el persona quiere conseguir, 3-5 ítems\"\n    },\n    \"opening\": {\n      \"type\": \"string\",\n      \"description\": \"Primera oración del post tras el hook. Incluye una métrica concreta si es posible.\"\n    },\n    \"body\": {\n      \"type\": \"array\",\n      \"items\": { \"type\": \"string\" },\n      \"description\": \"Párrafos centrales del post (2-4 párrafos)\"\n    },\n    \"cta\": {\n      \"type\": \"string\",\n      \"description\": \"Una sola oración con el próximo paso concreto. Siempre se llama 'cta'.\"\n    }\n  }\n}\n"
+            }
+          },
+          "temperature": 0.3
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1504, -96],
+      "id": "d9cb080e-d624-4a42-92f0-db97f29ec6f4",
+      "name": "AI Generate Brief",
+      "credentials": {
+        "openAiApi": {
+          "id": "Y8OavhGlnZpshOwT",
+          "name": "Open AI SWL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.first().json;\n\nlet brief;\ntry {\n  // OpenAI con json_schema responde el contenido en .text directamente como objeto,\n  // o como string que hay que parsear.\n  const content = aiOutput.output?.[0]?.content?.[0]?.text\n               ?? aiOutput.choices?.[0]?.message?.content\n               ?? aiOutput.text\n               ?? aiOutput;\n\n  brief = (typeof content === 'string') ? JSON.parse(content) : content;\n  // Si vino envuelto en {brief: {...}}, desenvolvelo\n  if (brief.brief) brief = brief.brief;\n\n} catch (e) {\n  throw new Error('No se pudo parsear la respuesta de OpenAI: ' + e.message);\n}\n\nconst ctx = $('CODE Build Brief Context').first().json;\n\nreturn [{\n  json: {\n    brand_id: ctx.brand_id,\n    topic: brief.topic,\n    channel: ctx.channel,\n    persona: brief.target_persona,\n    goal: brief.cta,\n    hook_id: ctx.hook_id,\n    source_insight_ids: ctx.source_insight_ids,\n    brief_json: brief,\n    status: 'ready',\n  },\n}];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1840, -96],
+      "id": "7d4e3498-b318-4a2f-aa66-13bafcd2307f",
+      "name": "CODE Parse & Validate Brief"
+    },
+    {
+      "parameters": {
+        "tableId": "content_briefs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brand_id",
+              "fieldValue": "={{ $json.brand_id }}"
+            },
+            {
+              "fieldId": "topic",
+              "fieldValue": "={{ $json.topic }}"
+            },
+            {
+              "fieldId": "channel",
+              "fieldValue": "={{ $json.channel }}"
+            },
+            {
+              "fieldId": "persona",
+              "fieldValue": "={{ $json.persona }}"
+            },
+            {
+              "fieldId": "goal",
+              "fieldValue": "={{ $json.goal }}"
+            },
+            {
+              "fieldId": "hook_id",
+              "fieldValue": "={{ $json.hook_id }}"
+            },
+            {
+              "fieldId": "source_insight_ids",
+              "fieldValue": "={{ JSON.stringify($json.source_insight_ids) }}"
+            },
+            {
+              "fieldId": "brief_json",
+              "fieldValue": "={{ JSON.stringify($json.brief_json) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "ready"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2048, -96],
+      "id": "4f8a3959-3dca-41ff-a263-6fa65c209a73",
+      "name": "SUPABASE Insert Content Brief",
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "workflow_jobs",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brand_id",
+              "fieldValue": "={{ $('CODE Parse & Validate Brief').item.json.brand_id }}"
+            },
+            {
+              "fieldId": "job_type",
+              "fieldValue": "draft_generation"
+            },
+            {
+              "fieldId": "payload_json",
+              "fieldValue": "={{ JSON.stringify({ brief_id: $json.id }) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "queued"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2256, -96],
+      "id": "024251df-64d3-42fa-b498-331c9df2ae2e",
+      "name": "SUPABASE Queue Draft Job",
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33bcd0b4-61c7-443f-b1f0-f29de9cba9c0",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "f821896c-8507-4c70-9f71-8a131f3f6d2c",
+              "name": "brief_id",
+              "value": "={{ $('SUPABASE Insert Content Brief').first().json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "419489b4-8ff2-4172-8cc9-5e663ad508cd",
+              "name": "=status",
+              "value": "ready",
+              "type": "string"
+            },
+            {
+              "id": "e1084629-6cff-45ef-a39f-6bdf6ba6f99c",
+              "name": "draft_job_queued",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "cfd9666e-ac1f-4370-a96f-f9edaaa7fd99",
+              "name": "brief",
+              "value": "={{ $('CODE Parse & Validate Brief').first().json.brief_json }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2464, -96],
+      "id": "2f718779-49f1-4977-9a82-04a02ae8859f",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [2704, -96],
+      "id": "202c4322-5417-4080-839d-f33c2b6f75bb",
+      "name": "Respond to Webhook"
+    },
+    {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={\n  \"ok\": true,\n  \"brief_id\": \"{{$('Parse Brief + Save').item.json.brief_id}}\",\n  \"brief\": {{JSON.stringify($('Parse Brief + Save').item.json.brief)}}\n}"
-      }
+        "responseBody": "{\n  \"ok\": false,\n  \"reason\": \"no_social_media_bios\",\n  \"message\": \"Esta marca aún no tiene análisis de SocialMediaBios para este canal. Coré WF-02 (SocialMediaBios) sobre Instagram/TikTok primero.\"\n}",
+        "options": {
+          "responseCode": 409
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [704, 96],
+      "id": "ab1d8cf9-12d9-4427-a5e8-0da1e2f97db0",
+      "name": "Respond to Webhook1"
     }
   ],
   "connections": {
     "Webhook": {
       "main": [
         [
-          { "node": "Fetch Brand Profile", "type": "main", "index": 0 },
-          { "node": "Fetch Voice Rules", "type": "main", "index": 0 },
-          { "node": "Fetch Competitor Hooks", "type": "main", "index": 0 }
+          {
+            "node": "SET Normalize Input",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Fetch Brand Profile": {
+    "SET Normalize Input": {
       "main": [
         [
-          { "node": "Build Brief Prompt", "type": "main", "index": 0 }
+          {
+            "node": "SUPABASE Get SocialMediaBios",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Fetch Voice Rules": {
+    "SUPABASE Get SocialMediaBios": {
       "main": [
         [
-          { "node": "Build Brief Prompt", "type": "main", "index": 0 }
+          {
+            "node": "IF Brand Profile Exists",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Fetch Competitor Hooks": {
+    "IF Brand Profile Exists": {
       "main": [
         [
-          { "node": "Build Brief Prompt", "type": "main", "index": 0 }
+          {
+            "node": "SUPABASE Get Top Insights",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Build Brief Prompt": {
+    "SUPABASE Get Top Insights": {
       "main": [
         [
-          { "node": "Call Claude — Generate Brief", "type": "main", "index": 0 }
+          {
+            "node": "SUPABASE Get Top Hooks",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Call Claude — Generate Brief": {
+    "SUPABASE Get Top Hooks": {
       "main": [
         [
-          { "node": "Parse Brief + Save", "type": "main", "index": 0 }
+          {
+            "node": "SUPABASE Get Brand Profile",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Parse Brief + Save": {
+    "SUPABASE Get Brand Profile": {
       "main": [
         [
-          { "node": "Save Brief to Supabase", "type": "main", "index": 0 }
+          {
+            "node": "Fetch Competitor Videos",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Save Brief to Supabase": {
+    "Fetch Competitor Videos": {
       "main": [
         [
-          { "node": "Respond to App", "type": "main", "index": 0 }
+          {
+            "node": "CODE Build Brief Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE Build Brief Context": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Brief": {
+      "main": [
+        [
+          {
+            "node": "CODE Parse & Validate Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE Parse & Validate Brief": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Insert Content Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Insert Content Brief": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Queue Draft Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Queue Draft Job": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
+  "pinData": {},
   "meta": {
-    "notes": "SETUP: Set n8n variables SUPABASE_URL, SUPABASE_ANON, SOCIAL_MEDIA_APP_URL, ANTHROPIC_API_KEY. This workflow: (1) fetches brand profile + voice rules from Supabase, (2) fetches top competitor videos/hooks from social media app, (3) builds a Claude prompt that includes brand voice rules + competitor hook examples, (4) calls Claude to generate a channel-specific content brief, (5) saves to content_briefs table, (6) responds to app.js with the brief. Requires WF05 to have run first to populate competitor videos."
+    "templateCredsSetupCompleted": true,
+    "instanceId": "250f37a53250736be8af461c3752e7652027cf011896ba5176c1c6100ed4f0a0"
   }
 }

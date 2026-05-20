@@ -173,14 +173,6 @@ const brandKitData = {
     { code: 'P5', role: 'Founder / CEO',         label: 'SMB · mid-market buyer',           size: 'Founder-led sales · Series Seed–A · 10–80 empleados',     pains: 'Equipo chico que no escala, agencias externas genéricas que no entregan, founder-led sales tocando techo, dependencia de 1–2 SDRs estrella',             triggers: 'Cierre de Series A, presión de inversores por GTM repetible, founder cansado de hacer outreach manual, contratación de primer Head of Sales' },
     { code: 'P6', role: 'IT / Head of Eng',      label: 'Technical gatekeeper',             size: 'Aprueba o veta vendors de software',                       pains: 'Riesgo de vendor lock-in, seguridad de datos del CRM, complejidad de integración con stack propio, mantenimiento post-implementación',                   triggers: 'Nuevo stack AI a aprobar, mandato de consolidar vendors, audit de seguridad anual, política interna de data residency' },
   ],
-  // Verticales del cliente — product lines / business units / campañas que ContentBuilder usa para
-  // generar contenido por-vertical × por-canal. Se hidratan desde WF00 (scraper) y se editan en ContentBuilder.
-  // `source` distingue lo detectado por el agente vs. lo agregado a mano por el usuario.
-  verticals: [
-    { name: 'Arqy Build',   desc: 'Plataforma de project management para constructoras: obras en tiempo real, sin Excel.',                                    source: 'seed', channels: { Instagram: { enabled: true,  postsPerMonth: 4 }, TikTok: { enabled: true,  postsPerMonth: 4 }, LinkedIn: { enabled: true,  postsPerMonth: 8 } } },
-    { name: 'Arqy State',   desc: 'Vista de obra real para compradores en pozo y residentes — fotos, hitos, transparencia.',                                  source: 'seed', channels: { Instagram: { enabled: true,  postsPerMonth: 8 }, TikTok: { enabled: true,  postsPerMonth: 4 }, LinkedIn: { enabled: false, postsPerMonth: 0 } } },
-    { name: 'Arqy Capital', desc: 'Reporting institucional para inversores: rentabilidad por proyecto, exposición y due diligence.',                          source: 'seed', channels: { Instagram: { enabled: false, postsPerMonth: 0 }, TikTok: { enabled: false, postsPerMonth: 0 }, LinkedIn: { enabled: true,  postsPerMonth: 8 } } },
-  ],
   competitors: [
     { name: 'Globant',              url: 'https://www.globant.com',                 linkedin_url: 'https://www.linkedin.com/company/globant',         instagram_url: 'https://instagram.com/globant',         tiktok_url: 'https://tiktok.com/@globant',     youtube_url: 'https://youtube.com/@globant',                positioning: 'Tech consulting LATAM · AI + cultura interna fuerte',    tier: 'Premium', diff: 'Eventos propios (Converge) bien producidos. TikTok activo de innovación. Daily LI · 4x/sem IG.' },
     { name: 'BairesDev',            url: 'https://www.bairesdev.com',               linkedin_url: 'https://www.linkedin.com/company/bairesdev',       instagram_url: 'https://instagram.com/bairesdev',       tiktok_url: 'https://tiktok.com/@bairesdev',   youtube_url: 'https://youtube.com/@bairesdev',              positioning: 'Top 1% talent · outbound conversion-led',                tier: 'Premium', diff: 'Posts muy directos con CTA — "contratá developers en 48hs". Referente de outbound en LATAM.' },
@@ -299,7 +291,6 @@ function buildBrandProfilePayloadFromKit() {
     typography:       brandKitData.typography,
     values:           brandKitData.values,
     personas:         brandKitData.personas,
-    verticals:        brandKitData.verticals || [],
     competitors,
     channels:         brandKitData.channels,
     tone_by_channel:  brandKitData.toneByChannel,
@@ -394,9 +385,6 @@ async function scanBrandingBio() {
 }
 
 function applyScrapedBrandData(data) {
-  // Debug: surface what WF00 actually returned so we can tell whether the new
-  // verticals prompt is live on the n8n side.
-  console.log('[WF00] response received. verticals field:', data?.verticals, '· keys:', data ? Object.keys(data) : '(null)');
   if (data.name)            brandKitData.name = data.name;
   if (data.websiteUrl)      brandKitData.websiteUrl = data.websiteUrl;
   if (data.industry)        brandKitData.industry = data.industry;
@@ -427,12 +415,6 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
-  if (data.verticals?.length) brandKitData.verticals = data.verticals.map(v => ({
-    name:   v.name || v.title || 'Vertical',
-    desc:   v.desc || v.description || '',
-    source: 'scraper',
-    channels: defaultVerticalChannels(),
-  }));
   brandKitData.brandId = crypto.randomUUID();
   switchView(state.currentView);
 }
@@ -706,8 +688,11 @@ function renderSocialBiosComparison(channels) {
         <div class="smb-channel-card-tone">${c.toneSummary || 'Run a scan to populate.'}</div>
         ${top ? `
           <div class="smb-channel-card-bestpost">
-            <div class="smb-bestpost-label"><i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%</div>
-            <div class="smb-bestpost-text">${top.url ? `<a href="${top.url}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${top.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : top.snippet}</div>
+            <div class="smb-bestpost-label">
+              <i data-lucide="trending-up" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Best post · ER ${top.engagementRate ?? 0}%
+              ${top.url ? `<a href="${top.url}" target="_blank" rel="noopener" style="margin-left:auto;color:${c.color};font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">View<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+            </div>
+            <div class="smb-bestpost-text">${top.snippet}</div>
           </div>` : ''}
       </div>
     `;
@@ -767,13 +752,14 @@ function renderSocialBiosComparison(channels) {
           <span style="color:${c.color};font-weight:700;">${c.name}</span>
           <span class="smb-best-card-er">ER ${best.engagementRate ?? 0}%</span>
         </div>
-        <div class="smb-best-card-snippet">${best.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="color:inherit; text-decoration:none;">${best.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : best.snippet}</div>
+        <div class="smb-best-card-snippet">${best.snippet}</div>
         ${best.whyItWorked ? `<div class="smb-best-card-why">↳ ${best.whyItWorked}</div>` : ''}
         <div class="smb-best-card-meta">
           <span style="text-transform:capitalize;">${best.format}</span>
           <span>· ${best.metrics?.likes ?? 0} likes</span>
           <span>· ${best.metrics?.comments ?? 0} comments</span>
           <span>· ${best.metrics?.shares ?? 0} shares</span>
+          ${best.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:${c.color};font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">Ver post<i data-lucide="external-link" style="width:11px;"></i></a>` : ''}
         </div>
       </div>
     `;
@@ -808,20 +794,18 @@ async function hydrateSocialBiosView() {
   // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
   if (!document.getElementById('smb-root')) return;
 
-  // Supabase-first: on the first hydrate of the session, try to load the latest scan from
-  // social_media_analyses. If anything is there, that wins over the mock and the DEMO banner hides.
-  if (!socialBiosData.channels || !socialBiosData.channels.length) {
-    const stored = await fetchSocialBios(brandKitData.brandId);
-    if (stored && stored.channels.length) {
-      socialBiosData.lastScannedAt = stored.scanned_at;
-      socialBiosData.channels = stored.channels;
-      socialBiosData.isMock = false;
-    } else {
-      const mock = loadMockSocialBios();
-      socialBiosData.lastScannedAt = mock.scanned_at;
-      socialBiosData.channels = mock.channels;
-      socialBiosData.isMock = true;
-    }
+  // Always refetch from Supabase on each hydrate — the n8n workflow can write new analyses
+  // between mounts, and a stale in-memory cache would otherwise hide them.
+  const stored = await fetchSocialBios(brandKitData.brandId);
+  if (stored && stored.channels.length) {
+    socialBiosData.lastScannedAt = stored.scanned_at;
+    socialBiosData.channels = stored.channels;
+    socialBiosData.isMock = false;
+  } else if (!socialBiosData.channels || !socialBiosData.channels.length) {
+    const mock = loadMockSocialBios();
+    socialBiosData.lastScannedAt = mock.scanned_at;
+    socialBiosData.channels = mock.channels;
+    socialBiosData.isMock = true;
   }
 
   // Mock-data badge — visible until a real scan from WF02 lands.
@@ -904,7 +888,12 @@ async function hydrateSocialBiosView() {
     // Top posts table
     setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
       <tr class="smb-post-row">
-        <td style="max-width:340px;"><div style="color:var(--text-main);">${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none; border-bottom:1px dashed var(--border);">${p.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : p.snippet}</div>${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}</td>
+        <td style="max-width:340px;">
+          ${p.url
+            ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${p.snippet}<i data-lucide="external-link" style="width:11px;flex-shrink:0;color:${focus.color};"></i></a>`
+            : `<div style="color:var(--text-main);">${p.snippet}</div>`}
+          ${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}
+        </td>
         <td style="text-transform:capitalize;">${p.format}</td>
         <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
         <td>${p.metrics?.likes ?? 0}</td>
@@ -924,13 +913,19 @@ async function hydrateSocialBiosView() {
     setHTML('smb-rules-action', `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;">✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${best.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : (best?.snippet || '—')}</div>
+          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            <span>✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</span>
+            ${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#047857;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          </div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
           <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
         </div>
         <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;">✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${worst.snippet} <i data-lucide="external-link" style="width:11px;vertical-align:middle;opacity:0.55;"></i></a>` : (worst?.snippet || '—')}</div>
+          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+            <span>✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</span>
+            ${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#B91C1C;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          </div>
+          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
           <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
         </div>
       </div>
@@ -2397,12 +2392,12 @@ async function runHookMiner() {
 
 // ── Social Media — Supabase-backed (sm_videos / sm_creators / sm_configs) ──
 async function fetchCompetitorVideos() {
-  const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  const brandId = brandKitData?.brandId;
   const params = new URLSearchParams({
     order: 'views.desc',
-    select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
+    select: 'id,link,thumbnail,creator,competitor_name,platform,views,likes,comments,analysis,new_concepts,date_posted,date_added,brand_id,starred',
   });
-  if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
+  if (brandId) params.append('brand_id', `eq.${brandId}`);
   return supabaseGet(`sm_videos?${params}`);
 }
 
@@ -2425,7 +2420,6 @@ function calcHookScore(views) {
 }
 
 function parseHooksFromVideos(videos) {
-  const hooks = [];
   const FW_COLORS = {
     'Contrarian':      'background:#FEE2E2;color:#991B1B',
     'Specific Number': 'background:#EFF6FF;color:#1D4ED8',
@@ -2435,114 +2429,348 @@ function parseHooksFromVideos(videos) {
     'Visual-Led':      'background:#F0FDF4;color:#166534',
   };
 
+  const hooks = [];
+  const seen  = new Set();
+
+  function push(text, type, video, scoreDelta) {
+    const clean = text.replace(/^["'`«»\s]+|["'`«»\s]+$/g, '').trim();
+    const key   = clean.slice(0, 60).toLowerCase();
+    if (!clean || clean.length < 10 || seen.has(key)) return;
+    seen.add(key);
+    const fw = classifyHook(clean);
+    const baseScore = calcHookScore(Number(video.views) || 0);
+    hooks.push({
+      text:       clean,
+      type,
+      framework:  fw,
+      fwStyle:    FW_COLORS[fw] || 'background:#F3F4F6;color:#374151',
+      score:      baseScore + (scoreDelta || 0),
+      platform:   (video.platform || 'instagram').toLowerCase(),
+      creator:    video.creator || video.competitor_name || '—',
+      competitor: video.competitor_name || video.creator || '—',
+      views:      Number(video.views) || 0,
+      thumbnail:  video.thumbnail || '',
+      link:       video.link || '#',
+      videoId:    video.id || '',
+    });
+  }
+
   videos.forEach(video => {
-    // Extract hook from Gemini analysis — "-> This creates..." lines reveal the hook mechanic
+    // ── Gemini analysis ──
     if (video.analysis) {
-      const visualMatch = video.analysis.match(/\*\*VISUAL:\*\*\s*(.+?)(?:\n|$)/);
-      const arrowMatch  = video.analysis.match(/->\s*(.+?)(?:\n|$)/);
-      const hookText    = (visualMatch ? visualMatch[1] : '') || (arrowMatch ? arrowMatch[1] : '');
-      if (hookText.length > 10) {
-        const fw = classifyHook(hookText);
-        hooks.push({ text: hookText.trim(), creator: video.creator, views: video.views,
-          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views),
-          thumbnail: video.thumbnail, link: video.link, isConcept: false });
-      }
+      const a = video.analysis;
+      // **VISUAL HOOK:** / **VISUAL:** / **VISUAL HOOK (Frame N):**
+      [...a.matchAll(/\*\*VISUAL[^:*]{0,20}:\*\*\s*([^\n*]{10,220})/gi)].slice(0, 2)
+        .forEach(m => push(m[1], 'visual', video, 0));
+      // **SPOKEN HOOK:** "..." or «...»
+      [...a.matchAll(/\*\*SPOKEN[^:*]{0,20}:\*\*[^"«\n]*["«]([^"»\n]{15,200})["»]/gi)].slice(0, 2)
+        .forEach(m => push(m[1], 'spoken', video, +3));
+      // -> arrow mechanism lines (reveals hook intent)
+      [...a.matchAll(/^->\s*(.{20,160})/gm)].slice(0, 2)
+        .forEach(m => push(m[1], 'visual', video, -2));
     }
-    // Extract spoken hooks from Claude-generated concepts — these are ready-to-adapt lines
+
+    // ── Claude new_concepts ──
     if (video.new_concepts) {
-      const spokenMatches = [...video.new_concepts.matchAll(/\*\*SPOKEN[^:]*:\*\*[^"]*"([^"]{15,150})"/g)];
-      spokenMatches.forEach(m => {
-        const fw = classifyHook(m[1]);
-        hooks.push({ text: m[1].trim(), creator: video.creator, views: video.views,
-          framework: fw, fwStyle: FW_COLORS[fw], score: calcHookScore(video.views) + 2,
-          thumbnail: video.thumbnail, link: video.link, isConcept: true });
-      });
+      const c = video.new_concepts;
+      // Spoken hooks inside concept blocks (highest value — already adapted)
+      [...c.matchAll(/\*\*SPOKEN[^:*]{0,20}:\*\*[^"«\n]*["«]([^"»\n]{15,200})["»]/gi)].slice(0, 5)
+        .forEach(m => push(m[1], 'concept', video, +6));
+      // Visual descriptions inside concept blocks
+      [...c.matchAll(/\*\*VISUAL[^:*]{0,20}:\*\*\s*([^\n*]{15,220})/gi)].slice(0, 3)
+        .forEach(m => push(m[1], 'concept', video, +3));
     }
   });
 
   return hooks.sort((a, b) => b.score - a.score || b.views - a.views);
 }
 
-async function hydrateHookMinerView() {
-  const tbody     = document.getElementById('hm-hook-tbody');
-  const tableTitle = document.getElementById('hm-table-title');
-  const statHooks = document.getElementById('hm-stat-hooks');
-  const statVideos = document.getElementById('hm-stat-videos');
-  const recEl     = document.getElementById('hm-recommended');
+// ── HookMiner — global state & per-platform renderers ───────────────
 
-  // Load config selector in parallel
-  loadSocialMediaConfigs();
+let _hmData = { videos: [], hooks: [], activePlatform: 'all' };
 
-  if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">
-      <i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px"></i>
-      Connecting to social media app...</td></tr>`;
-    lucide.createIcons({ nodes: [tbody] });
+const HM_COMP_COLORS = ['#F97316','#8B5CF6','#0EA5E9','#10B981','#EF4444','#F59E0B','#EC4899','#14B8A6'];
+function hmCompColor(name) {
+  let h = 0;
+  for (let i = 0; i < (name || '').length; i++) h = (h * 31 + (name || '').charCodeAt(i)) & 0xffffffff;
+  return HM_COMP_COLORS[Math.abs(h) % HM_COMP_COLORS.length];
+}
+
+function hmThumbContent(thumbnail, competitorName, platform) {
+  const color    = hmCompColor(competitorName);
+  const initials = (competitorName || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const platEmoji = { instagram: '📸', tiktok: '🎵', linkedin: '💼', twitter: '🐦' }[(platform || 'instagram').toLowerCase()] || '📱';
+  // Placeholder always renders behind; image (if present) floats on top and hides on error
+  const placeholder = `<div style="position:absolute;inset:0;background:${color}18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid ${color}30;">
+    <div style="font-size:18px;font-weight:800;color:${color};line-height:1;">${escapeHtml(initials)}</div>
+    <div style="font-size:10px;">${platEmoji}</div>
+  </div>`;
+  const img = thumbnail
+    ? `<img src="${escapeHtml(thumbnail)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;" onerror="this.style.display='none'">`
+    : '';
+  return placeholder + img;
+}
+
+function hmPlatformBadge(platform) {
+  const p = (platform || 'instagram').toLowerCase();
+  const cfg = {
+    instagram: { color: '#E4405F', emoji: '📸', label: 'Instagram' },
+    tiktok:    { color: '#010101', emoji: '🎵', label: 'TikTok'    },
+    linkedin:  { color: '#0A66C2', emoji: '💼', label: 'LinkedIn'  },
+    twitter:   { color: '#1D9BF0', emoji: '🐦', label: 'Twitter/X' },
+  };
+  const c = cfg[p] || { color: '#6B7280', emoji: '📱', label: platform || 'Social' };
+  return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${c.color}20;color:${c.color};border:1px solid ${c.color}30;">${c.emoji} ${escapeHtml(c.label)}</span>`;
+}
+
+function hmTypeLabel(type) {
+  const map = {
+    spoken:  '<span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:#EFF6FF;color:#1D4ED8;">🎤 Spoken</span>',
+    visual:  '<span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:#FFF7ED;color:#C2410C;">👁 Visual</span>',
+    concept: '<span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600;background:#F3E8FF;color:#7C3AED;">✨ AI Concept</span>',
+  };
+  return map[type] || map.visual;
+}
+
+function hmScoreBar(score) {
+  const w = Math.max(5, Math.min(100, score));
+  const color = score >= 88 ? '#10B981' : score >= 78 ? '#F59E0B' : '#94A3B8';
+  return `<div style="display:flex;align-items:center;gap:6px;">
+    <div style="width:44px;height:5px;border-radius:3px;background:#F1F5F9;overflow:hidden;flex-shrink:0;">
+      <div style="height:100%;width:${w}%;background:${color};border-radius:3px;"></div>
+    </div>
+    <strong style="font-size:12px;color:${color};">${score}</strong>
+  </div>`;
+}
+
+function hmShowPlatform(platform, btn) {
+  _hmData.activePlatform = platform;
+  document.querySelectorAll('.hm-ptab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const content = document.getElementById('hm-platform-content');
+  if (!content) return;
+  content.innerHTML = hmRenderPlatformContent(platform);
+  lucide.createIcons({ nodes: [content] });
+}
+
+function hmRenderPlatformContent(platform) {
+  const { videos, hooks } = _hmData;
+  const pfVideos = platform === 'all' ? videos : videos.filter(v => (v.platform || 'instagram').toLowerCase() === platform);
+  const pfHooks  = platform === 'all' ? hooks  : hooks.filter(h => h.platform === platform);
+
+  if (!pfVideos.length) {
+    const names = { all: 'ninguna plataforma todavía', instagram: 'Instagram', tiktok: 'TikTok', linkedin: 'LinkedIn', twitter: 'Twitter/X' };
+    return `<div style="text-align:center;padding:48px;color:var(--text-muted);">
+      <div style="font-size:36px;margin-bottom:12px;">📭</div>
+      <strong>No hay videos de ${escapeHtml(names[platform] || platform)}</strong><br>
+      <span style="font-size:12px;margin-top:6px;display:block;">Corré el pipeline para comenzar a scrapearlo.</span>
+    </div>`;
   }
+
+  const totalViews  = pfVideos.reduce((s, v) => s + (Number(v.views) || 0), 0);
+  const avgViews    = Math.round(totalViews / pfVideos.length);
+  const competitors = [...new Set(pfVideos.map(v => v.competitor_name).filter(Boolean))];
+
+  // Framework bars
+  const fwCounts = {};
+  pfHooks.forEach(h => { fwCounts[h.framework] = (fwCounts[h.framework] || 0) + 1; });
+  const topFw = Object.entries(fwCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topFwTotal = pfHooks.length || 1;
+
+  const platEmoji = { instagram: '📸', tiktok: '🎵', linkedin: '💼', twitter: '🐦' };
+
+  const topHooksRows = pfHooks.slice(0, 8).map(h => {
+    const s = frameworkStyle(h.framework);
+    const thumb = `<div style="position:relative;width:36px;height:22px;border-radius:3px;overflow:hidden;flex-shrink:0;margin-right:7px;border:1px solid var(--border);">${hmThumbContent(h.thumbnail, h.competitor, h.platform)}</div>`;
+    return `<tr class="hm-hook-row">
+      <td style="max-width:260px;padding:8px 10px;">
+        <div style="display:flex;align-items:flex-start;">
+          ${thumb}
+          <div>
+            <div style="font-size:12px;font-weight:600;line-height:1.4;">"${escapeHtml(h.text.slice(0, 90))}${h.text.length > 90 ? '…' : ''}"</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">@${escapeHtml(h.creator)} · ${fmtViews(h.views)} views${h.type === 'concept' ? ' · ✨ AI' : ''}</div>
+          </div>
+        </div>
+      </td>
+      <td><span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${s.bg};color:${s.fg};">${escapeHtml(h.framework)}</span></td>
+      <td>${hmScoreBar(h.score)}</td>
+    </tr>`;
+  }).join('');
+
+  const videoThumbs = pfVideos.slice(0, 10).map(v => {
+    const safeId = escapeHtml(v.id || '');
+    return `<div style="position:relative;aspect-ratio:9/16;border-radius:8px;overflow:hidden;cursor:pointer;transition:transform .15s;"
+        onclick="openSwipeModal('${safeId}','analysis')"
+        onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform=''">
+      ${hmThumbContent(v.thumbnail, v.competitor_name, v.platform)}
+      <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.75));padding:10px 5px 4px;text-align:center;z-index:2;">
+        <span style="color:white;font-size:9px;font-weight:700;">▶ ${fmtViews(v.views)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const fwBars = topFw.map(([name, count]) => {
+    const s   = frameworkStyle(name);
+    const pct = Math.round(count / topFwTotal * 100);
+    return `<div style="margin-bottom:9px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="font-size:11px;font-weight:700;color:${s.fg};">${escapeHtml(name)}</span>
+        <span style="font-size:11px;color:var(--text-muted);">${count} (${pct}%)</span>
+      </div>
+      <div style="height:7px;border-radius:4px;background:#F1F5F9;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${s.border};border-radius:4px;"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px;">
+      <div class="hm-mini-stat"><div class="hm-mini-stat-val">${pfVideos.length}</div><div class="hm-mini-stat-lbl">Videos</div></div>
+      <div class="hm-mini-stat"><div class="hm-mini-stat-val">${fmtViews(avgViews)}</div><div class="hm-mini-stat-lbl">Avg Views</div></div>
+      <div class="hm-mini-stat"><div class="hm-mini-stat-val">${pfHooks.length}</div><div class="hm-mini-stat-lbl">Hooks</div></div>
+      <div class="hm-mini-stat"><div class="hm-mini-stat-val">${competitors.length}</div><div class="hm-mini-stat-lbl">Competidores</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:24px;align-items:start;">
+      <div>
+        <h4 style="font-size:13px;font-weight:700;color:var(--text-main);margin:0 0 10px;display:flex;align-items:center;gap:6px;">
+          <i data-lucide="zap" style="width:14px;height:14px;color:#F97316;"></i> Top Hooks
+        </h4>
+        ${pfHooks.length
+          ? `<table class="lm-table" style="font-size:12px;"><thead><tr><th>Hook</th><th>Framework</th><th>Score</th></tr></thead><tbody>${topHooksRows}</tbody></table>`
+          : `<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px;background:#F8FAFC;border-radius:8px;">No se extrajeron hooks — el análisis puede estar en un formato no reconocido.</div>`}
+      </div>
+      <div>
+        ${topFw.length ? `<h4 style="font-size:13px;font-weight:700;color:var(--text-main);margin:0 0 10px;display:flex;align-items:center;gap:6px;"><i data-lucide="bar-chart-2" style="width:14px;height:14px;color:#6B7280;"></i> Framework Distribution</h4><div style="margin-bottom:20px;">${fwBars}</div>` : ''}
+        <h4 style="font-size:13px;font-weight:700;color:var(--text-main);margin:0 0 10px;display:flex;align-items:center;gap:6px;">
+          <i data-lucide="film" style="width:14px;height:14px;color:#6B7280;"></i> Videos Analizados
+        </h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:6px;">${videoThumbs}</div>
+      </div>
+    </div>`;
+}
+
+function hmRenderHookTable() {
+  const tbody = document.getElementById('hm-hook-tbody');
+  if (!tbody) return;
+  const fw   = document.getElementById('hm-fw-filter')?.value   || '';
+  const plat = document.getElementById('hm-plat-filter')?.value || '';
+  const type = document.getElementById('hm-type-filter')?.value || '';
+
+  const filtered = _hmData.hooks.filter(h =>
+    (!fw   || h.framework === fw) &&
+    (!plat || h.platform  === plat) &&
+    (!type || h.type      === type)
+  );
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No hay hooks para estos filtros.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.slice(0, 30).map(h => {
+    const s = frameworkStyle(h.framework);
+    const thumb = `<div style="position:relative;width:36px;height:22px;border-radius:3px;overflow:hidden;flex-shrink:0;margin-right:7px;border:1px solid var(--border);">${hmThumbContent(h.thumbnail, h.competitor, h.platform)}</div>`;
+    return `<tr class="hm-hook-row">
+      <td style="max-width:320px;">
+        <div style="display:flex;align-items:center;">${thumb}
+          <div>
+            <strong>${escapeHtml(h.text.slice(0, 100))}${h.text.length > 100 ? '…' : ''}</strong>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">@${escapeHtml(h.creator)} · ${fmtViews(h.views)} views</div>
+          </div>
+        </div>
+      </td>
+      <td><span style="padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;background:${s.bg};color:${s.fg};">${escapeHtml(h.framework)}</span></td>
+      <td>${hmPlatformBadge(h.platform)}</td>
+      <td>${hmTypeLabel(h.type)}</td>
+      <td>${hmScoreBar(h.score)}</td>
+      <td><a href="${escapeHtml(h.link)}" target="_blank" style="font-size:11px;color:#3B82F6;">Ver ↗</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function hmRenderCompetitors() {
+  const grid = document.getElementById('hm-competitors-grid');
+  if (!grid) return;
+  const { videos, hooks } = _hmData;
+  const competitors = [...new Set(videos.map(v => v.competitor_name).filter(Boolean))].sort();
+
+  if (!competitors.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:24px;">No hay competidores analizados aún.</div>`;
+    return;
+  }
+
+  grid.innerHTML = competitors.map(comp => {
+    const cv   = videos.filter(v => v.competitor_name === comp);
+    const ch   = hooks.filter(h => h.competitor === comp);
+    const tv   = cv.reduce((s, v) => s + (Number(v.views) || 0), 0);
+    const avgV = cv.length ? Math.round(tv / cv.length) : 0;
+    const plats = [...new Set(cv.map(v => (v.platform || 'instagram').toLowerCase()))];
+    const topH  = ch[0];
+    const avgSc = ch.length ? Math.round(ch.reduce((s, h) => s + (h.score || 0), 0) / ch.length) : 0;
+    const scColor = avgSc >= 88 ? '#10B981' : avgSc >= 78 ? '#F59E0B' : '#94A3B8';
+
+    return `<div class="hm-comp-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+        <strong style="font-size:14px;">${escapeHtml(comp)}</strong>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">${plats.map(p => hmPlatformBadge(p)).join('')}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="text-align:center;padding:8px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:18px;font-weight:800;line-height:1;">${cv.length}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Videos</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:18px;font-weight:800;line-height:1;">${fmtViews(avgV)}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Avg Views</div>
+        </div>
+        <div style="text-align:center;padding:8px;background:#F8FAFC;border-radius:8px;">
+          <div style="font-size:18px;font-weight:800;line-height:1;color:${scColor};">${avgSc || '—'}</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">Hook Score</div>
+        </div>
+      </div>
+      ${topH
+        ? `<div style="padding:9px 11px;background:#FFF7ED;border-radius:8px;border-left:3px solid #F97316;">
+            <div style="font-size:10px;font-weight:700;color:#92400E;margin-bottom:4px;">🏆 Top Hook</div>
+            <div style="font-size:12px;font-weight:600;line-height:1.4;">"${escapeHtml(topH.text.slice(0, 80))}${topH.text.length > 80 ? '…' : ''}"</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:3px;">${fmtViews(topH.views)} views · score ${topH.score}</div>
+          </div>`
+        : `<div style="padding:9px;background:#F8FAFC;border-radius:8px;text-align:center;font-size:11px;color:var(--text-muted);">No se extrajeron hooks</div>`}
+    </div>`;
+  }).join('');
+}
+
+async function hydrateHookMinerView() {
+  loadSocialMediaConfigs();
 
   try {
     const videos = await fetchCompetitorVideos();
+    const hooks  = parseHooksFromVideos(videos);
 
-    if (!videos.length) {
-      if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">
-        No competitor videos analyzed yet. Run the pipeline first.</td></tr>`;
-      return;
+    _hmData = { videos, hooks, activePlatform: _hmData.activePlatform || 'all' };
+
+    const totalViews  = videos.reduce((s, v) => s + (Number(v.views) || 0), 0);
+    const competitors = [...new Set(videos.map(v => v.competitor_name).filter(Boolean))];
+
+    setText('hm-stat-hooks',       String(hooks.length));
+    setText('hm-stat-videos',      String(videos.length));
+    setText('hm-stat-total-views', fmtViews(totalViews));
+    setText('hm-stat-competitors', String(competitors.length));
+    setText('hm-header-tag',       `${hooks.length} hooks · ${videos.length} videos`);
+
+    const content = document.getElementById('hm-platform-content');
+    if (content) {
+      content.innerHTML = hmRenderPlatformContent(_hmData.activePlatform);
+      lucide.createIcons({ nodes: [content] });
     }
 
-    const hooks = parseHooksFromVideos(videos);
-    if (statHooks)  statHooks.textContent  = hooks.length;
-    if (statVideos) statVideos.textContent = videos.length;
-    if (tableTitle) tableTitle.textContent = `Top ${Math.min(10, hooks.length)} de ${hooks.length} (${videos.length} videos)`;
-    const headerTag = document.getElementById('hm-header-tag');
-    if (headerTag) headerTag.textContent = `${hooks.length} hooks · ${videos.length} videos`;
-
-    if (tbody) {
-      tbody.innerHTML = hooks.slice(0, 10).map(h => {
-        const sc = h.score >= 85 ? '#10B981' : h.score >= 75 ? '#F59E0B' : '#9CA3AF';
-        const thumb = h.thumbnail
-          ? `<img src="${escapeHtml(h.thumbnail)}" style="width:48px;height:28px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:8px;border:1px solid var(--border);" onerror="this.style.display='none'">`
-          : '';
-        return `<tr>
-          <td style="max-width:340px;">${thumb}
-            <strong>${escapeHtml(h.text.slice(0, 100))}${h.text.length > 100 ? '…' : ''}</strong>
-            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">@${escapeHtml(h.creator)} · ${(h.views/1000).toFixed(0)}K views${h.isConcept ? ' · AI concept' : ''}</div>
-          </td>
-          <td><span class="lm-tag" style="${h.fwStyle}">${h.framework}</span></td>
-          <td>Instagram</td>
-          <td><strong style="color:${sc}">${h.score}</strong></td>
-          <td><a href="${escapeHtml(h.link)}" target="_blank" style="font-size:11px;color:#3B82F6;">Ver ↗</a></td>
-        </tr>`;
-      }).join('');
-    }
-
-    if (recEl) {
-      recEl.innerHTML = hooks.slice(0, 4).map(h => `
-        <div style="padding:14px; border:1px solid var(--border); background:white; border-radius:8px;">
-          <div style="display:flex; gap:6px; margin-bottom:8px;">
-            <span class="lm-tag" style="${h.fwStyle}">${h.framework}</span>
-            <span class="lm-tag" style="background:#FEF3C7;color:#B45309">Instagram</span>
-            <span class="lm-tag" style="background:#F0FDF4;color:#166534">Score ${h.score}</span>
-          </div>
-          <strong style="font-size:13px;">"${escapeHtml(h.text.slice(0, 120))}${h.text.length > 120 ? '…' : ''}"</strong>
-          <p style="font-size:12px;color:var(--text-muted);margin-top:6px;">@${escapeHtml(h.creator)} · ${(h.views/1000).toFixed(0)}K views · <a href="${escapeHtml(h.link)}" target="_blank" style="color:#3B82F6;">ver video ↗</a></p>
-        </div>
-      `).join('');
-    }
+    hmRenderHookTable();
+    hmRenderCompetitors();
 
   } catch (err) {
-    console.error('[HookMiner] social-media app error:', err);
-    const errHTML = `<tr><td colspan="5" style="text-align:center;padding:20px;">
-      <strong style="color:#EF4444;">Error cargando hooks: ${escapeHtml(String(err?.message || err))}</strong><br>
-      <span style="font-size:11px;color:var(--text-muted);">Verificá la consola para más detalles.</span>
-      </td></tr>`;
-    if (tbody) tbody.innerHTML = errHTML;
-    if (recEl) recEl.innerHTML = `<p style="color:var(--text-muted);font-size:12px;padding:12px;">
-      <i data-lucide="wifi-off" style="width:12px;vertical-align:middle;margin-right:4px"></i>
-      Social media app offline.</p>`;
-    lucide.createIcons();
+    console.error('[HookMiner] error:', err);
+    setText('hm-header-tag', 'error cargando datos');
   }
 
-  // Load the Foreplay.co-style swipe file (runs independently, uses its own try/catch)
   initSwipeFile();
 }
 
@@ -2602,338 +2830,6 @@ function removeContentBuilderVertical(idx) {
   renderContentBuilderVerticals();
 }
 
-// ── ContentBuilder · Brand-wide verticales (productos / unidades de negocio) ─
-// Single source of truth = brandKitData.verticals, hydrated by WF00 scraper and
-// persisted into brand_profiles.data_json.verticals so WF07 can read them.
-// Each vertical carries a `channels` map (Instagram/TikTok/LinkedIn) with
-// {enabled, postsPerMonth} so ContentBuilder can build a per-channel × per-vertical
-// editorial plan.
-
-// Channel metadata for the per-vertical matrix. Single source of truth for the
-// 3 channels ContentBuilder currently supports.
-const CB_VERTICAL_CHANNELS = [
-  { key: 'Instagram', emoji: '📷', color: '#E1306C', gradient: 'linear-gradient(135deg,#833AB4,#FD1D1D 60%,#FCB045)' },
-  { key: 'TikTok',    emoji: '🎵', color: '#0F172A', gradient: 'linear-gradient(135deg,#25F4EE,#FE2C55)' },
-  { key: 'LinkedIn',  emoji: '💼', color: '#0A66C2', gradient: 'linear-gradient(135deg,#0A66C2,#004182)' },
-];
-
-function defaultVerticalChannels() {
-  // Sensible default: all channels enabled at 4 posts/mo. User can tweak per-vertical.
-  return CB_VERTICAL_CHANNELS.reduce((acc, c) => {
-    acc[c.key] = { enabled: true, postsPerMonth: 4 };
-    return acc;
-  }, {});
-}
-
-function ensureVerticalChannels(v) {
-  // Back-fill for older entries (or scraper output) that don't yet carry a channels map.
-  if (!v.channels || typeof v.channels !== 'object') v.channels = defaultVerticalChannels();
-  for (const c of CB_VERTICAL_CHANNELS) {
-    if (!v.channels[c.key]) v.channels[c.key] = { enabled: false, postsPerMonth: 0 };
-  }
-  return v;
-}
-
-// Which vertical (index) is currently expanded — i.e. has the pipeline DOM moved
-// underneath it. `null` means the pipeline sits in its default anchor at the bottom.
-let cbExpandedVerticalIdx = null;
-
-function renderBrandVerticals() {
-  const list = document.getElementById('cb-brand-vertical-list');
-  if (!list) return;
-  const verticals = (brandKitData.verticals || []).map(ensureVerticalChannels);
-
-  // Detach the pipeline card from wherever it lives so the upcoming innerHTML
-  // reset doesn't destroy it. Park it in a hidden limbo div on <body>.
-  const pipeline = document.getElementById('cb-pipeline-card');
-  if (pipeline) {
-    let limbo = document.getElementById('cb-pipeline-limbo');
-    if (!limbo) {
-      limbo = document.createElement('div');
-      limbo.id = 'cb-pipeline-limbo';
-      limbo.style.display = 'none';
-      document.body.appendChild(limbo);
-    }
-    limbo.appendChild(pipeline);
-  }
-
-  if (!verticals.length) {
-    list.innerHTML = '<span style="font-size:11px; color:var(--text-muted); font-style:italic;">El scraper aún no detectó verticales — escribí los productos/unidades de negocio del cliente abajo y dale Enter.</span>';
-    cbExpandedVerticalIdx = null;
-    reattachPipelineToActiveSlot();
-    return;
-  }
-  list.innerHTML = verticals.map((v, i) => {
-    const badgeColor = v.source === 'scraper' ? '#7C3AED' : (v.source === 'manual' ? '#0EA5E9' : '#64748B');
-    const badgeBg    = v.source === 'scraper' ? '#F3E8FF' : (v.source === 'manual' ? '#E0F2FE' : '#F1F5F9');
-    const badgeText  = v.source === 'scraper' ? 'Detectado' : (v.source === 'manual' ? 'Manual' : 'Default');
-    const desc = v.desc ? `<span style="color:var(--text-muted)"> — ${escapeHtml(v.desc)}</span>` : '';
-
-    // Channel matrix: one pill per channel with toggle + posts/month number input
-    const totalPosts = CB_VERTICAL_CHANNELS.reduce((s, c) => s + (v.channels[c.key].enabled ? Number(v.channels[c.key].postsPerMonth) || 0 : 0), 0);
-    const channelChips = CB_VERTICAL_CHANNELS.map(c => {
-      const slot = v.channels[c.key];
-      const on = !!slot.enabled;
-      const bg = on ? c.gradient : 'white';
-      const fg = on ? 'white' : '#64748B';
-      const border = on ? 'transparent' : 'var(--border)';
-      return `
-        <div class="cb-vchan" data-vidx="${i}" data-ch="${c.key}" style="display:inline-flex; align-items:center; gap:6px; padding:5px 4px 5px 10px; background:${bg}; color:${fg}; border:1px solid ${border}; border-radius:999px; font-size:11.5px; font-weight:600;">
-          <span onclick="toggleVerticalChannel(${i}, '${c.key}')" style="display:inline-flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
-            <span style="font-size:13px; line-height:1;">${c.emoji}</span>
-            <span>${c.key}</span>
-            <span style="opacity:${on ? 1 : 0.6}; font-size:10px; padding:1px 6px; border-radius:99px; background:${on ? 'rgba(255,255,255,0.18)' : '#F1F5F9'};">${on ? 'ON' : 'OFF'}</span>
-          </span>
-          <input type="number" min="0" max="60" value="${slot.postsPerMonth || 0}"
-                 onchange="setVerticalChannelPosts(${i}, '${c.key}', this.value)"
-                 ${on ? '' : 'disabled'}
-                 title="Posts por mes"
-                 style="width:38px; padding:2px 4px; border:1px solid ${on ? 'rgba(255,255,255,0.35)' : 'var(--border)'}; border-radius:5px; font-size:11px; font-weight:700; text-align:center; background:${on ? 'rgba(255,255,255,0.18)' : '#F8FAFC'}; color:${on ? 'white' : '#64748B'}; outline:none;" />
-          <span style="font-size:10px; opacity:0.85; padding-right:6px;">/mes</span>
-        </div>
-      `;
-    }).join('');
-
-    const isExpanded = cbExpandedVerticalIdx === i;
-    const expandBg   = isExpanded ? '#7C3AED' : 'white';
-    const expandFg   = isExpanded ? 'white'   : '#7C3AED';
-    const expandIcon = isExpanded ? '▲' : '▼';
-    const expandText = isExpanded ? 'Cerrar pipeline'
-                                  : `Generar contenido para ${escapeHtml(v.name)}`;
-
-    return `
-      <div class="cb-brand-vertical-row" style="padding:10px 12px; background:white; border:1px solid ${isExpanded ? '#7C3AED' : '#E9D5FF'}; border-radius:10px;${isExpanded ? ' box-shadow:0 4px 18px rgba(124,58,237,0.18);' : ''}">
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <span style="font-size:9.5px; font-weight:700; color:${badgeColor}; background:${badgeBg}; padding:2px 6px; border-radius:99px; letter-spacing:0.3px; text-transform:uppercase;">${badgeText}</span>
-          <strong style="color:#4C1D95; font-size:13px;">${escapeHtml(v.name)}</strong>
-          ${desc}
-          <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
-            <span style="font-size:10.5px; color:var(--text-muted); background:#FAF5FF; border:1px solid #E9D5FF; padding:2px 8px; border-radius:99px;"><strong style="color:#4C1D95">${totalPosts}</strong> posts/mes</span>
-            <button onclick="editBrandVerticalDesc(${i})" title="Editar descripción" style="background:none;border:1px solid var(--border);color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">edit</button>
-            <button onclick="removeBrandVertical(${i})" title="Eliminar" style="background:none;border:1px solid var(--border);color:#991B1B;cursor:pointer;padding:3px 8px;font-size:13px;line-height:1;border-radius:5px;">×</button>
-          </span>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
-          ${channelChips}
-        </div>
-        <div style="margin-top:10px; display:flex; justify-content:center;">
-          <button onclick="toggleVerticalExpansion(${i})" style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; background:${expandBg}; color:${expandFg}; border:1px solid #7C3AED; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
-            <span>${expandIcon}</span>
-            <span>${expandText}</span>
-          </button>
-        </div>
-        ${isExpanded ? `<div id="cb-vertical-pipeline-slot-${i}" style="margin-top:12px;"></div>` : ''}
-      </div>
-    `;
-  }).join('');
-
-  // After re-rendering the verticals list, put the pipeline back where it
-  // belongs — inside the expanded vertical's slot, or back at the anchor.
-  reattachPipelineToActiveSlot();
-}
-
-function reattachPipelineToActiveSlot() {
-  const pipeline = document.getElementById('cb-pipeline-card');
-  if (!pipeline) return;
-  if (cbExpandedVerticalIdx !== null) {
-    const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
-    if (slot) { slot.appendChild(pipeline); return; }
-  }
-  const anchor = document.getElementById('cb-pipeline-anchor');
-  if (anchor) anchor.appendChild(pipeline);
-}
-
-function toggleVerticalExpansion(idx) {
-  const v = brandKitData.verticals?.[idx];
-  if (!v) return;
-  if (cbExpandedVerticalIdx === idx) {
-    // Collapse — go back to "mix all" mode
-    cbExpandedVerticalIdx = null;
-    cbActiveVertical = null;
-  } else {
-    // Expand this vertical — also set it as the active vertical so n8n payloads
-    // and the channel tab auto-switch reflect the user's intent.
-    cbExpandedVerticalIdx = idx;
-    cbActiveVertical = v.name;
-
-    // Auto-switch the channel tab to the first channel enabled for this vertical
-    // (skip the matrix if everything is disabled).
-    ensureVerticalChannels(v);
-    const firstEnabled = CB_VERTICAL_CHANNELS.find(c => v.channels[c.key]?.enabled);
-    if (firstEnabled && typeof setContentBuilderTab === 'function') {
-      setContentBuilderTab(firstEnabled.key);
-    }
-  }
-  renderBrandVerticals();
-  renderActiveVerticalSelect();
-  // Scroll the expanded row into view so the pipeline is visible without manual scrolling.
-  if (cbExpandedVerticalIdx !== null) {
-    setTimeout(() => {
-      const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
-      if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
-  }
-}
-
-function toggleVerticalChannel(idx, channelKey) {
-  const v = brandKitData.verticals?.[idx];
-  if (!v) return;
-  ensureVerticalChannels(v);
-  const slot = v.channels[channelKey];
-  slot.enabled = !slot.enabled;
-  if (slot.enabled && (!slot.postsPerMonth || slot.postsPerMonth <= 0)) slot.postsPerMonth = 4;
-  renderBrandVerticals();
-  persistBrandVerticals();
-}
-
-function setVerticalChannelPosts(idx, channelKey, value) {
-  const v = brandKitData.verticals?.[idx];
-  if (!v) return;
-  ensureVerticalChannels(v);
-  const n = Math.max(0, Math.min(60, parseInt(value, 10) || 0));
-  v.channels[channelKey].postsPerMonth = n;
-  if (n === 0) v.channels[channelKey].enabled = false;
-  renderBrandVerticals();
-  persistBrandVerticals();
-}
-
-function addBrandVertical() {
-  const nameInput = document.getElementById('cb-brand-vertical-name');
-  const descInput = document.getElementById('cb-brand-vertical-desc');
-  if (!nameInput) return;
-  const name = (nameInput.value || '').trim();
-  if (!name) return;
-  const desc = (descInput?.value || '').trim();
-  brandKitData.verticals = brandKitData.verticals || [];
-  if (brandKitData.verticals.some(v => v.name.toLowerCase() === name.toLowerCase())) {
-    showToast(`"${name}" ya existe en las verticales.`);
-    return;
-  }
-  brandKitData.verticals.push({ name, desc, source: 'manual', channels: defaultVerticalChannels() });
-  nameInput.value = '';
-  if (descInput) descInput.value = '';
-  renderBrandVerticals();
-  persistBrandVerticals();
-}
-
-function removeBrandVertical(idx) {
-  if (!brandKitData.verticals?.[idx]) return;
-  brandKitData.verticals.splice(idx, 1);
-  renderBrandVerticals();
-  persistBrandVerticals();
-}
-
-function editBrandVerticalDesc(idx) {
-  const v = brandKitData.verticals?.[idx];
-  if (!v) return;
-  const newDesc = prompt(`Descripción para "${v.name}" (audiencia + valor en 1 oración):`, v.desc || '');
-  if (newDesc === null) return;
-  v.desc = newDesc.trim();
-  v.source = v.source === 'scraper' ? 'edited' : (v.source || 'manual');
-  renderBrandVerticals();
-  persistBrandVerticals();
-}
-
-// Merge-and-upsert: read current brand_profiles.data_json, replace only the
-// `verticals` field, write back. Falls back to no-op if there's no brandId yet
-// (e.g. demo state before Branding Bio has been saved).
-async function persistBrandVerticals() {
-  if (!brandKitData.brandId) return; // nothing to persist against yet
-  try {
-    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
-    const current = rows?.[0]?.data_json || {};
-    current.verticals = brandKitData.verticals || [];
-    await supabaseUpsert('brand_profiles', {
-      brand_id:   brandKitData.brandId,
-      data_json:  current,
-      updated_at: new Date().toISOString(),
-    }, 'brand_id');
-  } catch (e) {
-    console.warn('[verticals] persist failed:', e);
-  }
-}
-
-// Active vertical = which product/business unit the next Generate Brief / Build Draft call targets.
-// `null` means "all" (sends the full verticals list to n8n; default behaviour).
-let cbActiveVertical = null;
-
-function setActiveVertical(name) {
-  cbActiveVertical = name && name !== '__all__' ? name : null;
-}
-
-function renderActiveVerticalSelect() {
-  const sel = document.getElementById('cb-active-vertical');
-  if (!sel) return;
-  const verticals = brandKitData.verticals || [];
-  const current = cbActiveVertical;
-  const options = ['<option value="__all__">Todas las verticales (mix)</option>']
-    .concat(verticals.map(v => `<option value="${escapeHtml(v.name)}"${v.name === current ? ' selected' : ''}>${escapeHtml(v.name)}</option>`));
-  sel.innerHTML = options.join('');
-  sel.onchange = (e) => setActiveVertical(e.target.value);
-}
-
-// Pull verticals from brand_profiles into brandKitData if the local copy is empty
-// (e.g. when the user lands on ContentBuilder before scanning the website).
-async function hydrateBrandVerticalsFromSupabase() {
-  if (!brandKitData.brandId) return;
-  if ((brandKitData.verticals || []).length) return; // local copy wins
-  try {
-    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
-    const remote = rows?.[0]?.data_json?.verticals;
-    if (Array.isArray(remote) && remote.length) {
-      brandKitData.verticals = remote;
-      renderBrandVerticals();
-    }
-  } catch (e) {
-    console.warn('[verticals] hydrate failed:', e);
-  }
-}
-
-// Force a re-pull from brand_profiles — overrides local copy with whatever's
-// in Supabase right now. Triggered by the "Sync Branding Bio" button so the user
-// can pick up changes made in Branding Bio without reloading the page.
-async function syncFromBrandingBio() {
-  const btn = document.getElementById('cb-sync-brand');
-  if (!brandKitData.brandId) {
-    showToast('Branding Bio aún no fue guardado. Andá a Branding Bio → Save & Sync primero.');
-    return;
-  }
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Sincronizando…';
-    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
-  }
-  try {
-    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
-    const remote = rows?.[0]?.data_json;
-    if (!remote) {
-      showToast('No hay brand profile guardado para este brand_id. Guardá desde Branding Bio.');
-      return;
-    }
-    // Verticals — replace local with remote (this is the WHOLE point of the sync)
-    const verticals = Array.isArray(remote.verticals) ? remote.verticals : [];
-    brandKitData.verticals = verticals.map(ensureVerticalChannels);
-    // Identity fields — keep ContentBuilder's header / tag chips in sync too
-    if (remote.identity?.company_name) brandKitData.name     = remote.identity.company_name;
-    if (remote.identity?.industry)     brandKitData.industry = remote.identity.industry;
-    if (remote.identity?.tagline)      brandKitData.tagline  = remote.identity.tagline;
-    if (Array.isArray(remote.personas) && remote.personas.length) brandKitData.personas = remote.personas;
-
-    renderBrandVerticals();
-    renderActiveVerticalSelect();
-    showToast(`Sincronizado: ${verticals.length} vertical${verticals.length === 1 ? '' : 'es'} desde Branding Bio.`);
-  } catch (e) {
-    console.error('[sync] failed:', e);
-    showToast('Error al sincronizar: ' + (e.message || e));
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio';
-      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
-    }
-  }
-}
-
 function useSampleVisualPrompt() {
   const ta = document.getElementById('cb-visual-prompt');
   if (!ta) return;
@@ -2946,10 +2842,6 @@ function useSampleVisualPrompt() {
 function hydrateContentBuilderCampaign() {
   // Activate the current tab so verticales, persona, format and visual prompt all reflect it
   if (typeof setContentBuilderTab === 'function') setContentBuilderTab(contentBuilderActiveTab || 'Instagram');
-  // Brand-wide verticales — render local copy first, then try to pull from Supabase
-  renderBrandVerticals();
-  renderActiveVerticalSelect();
-  hydrateBrandVerticalsFromSupabase().then(renderActiveVerticalSelect);
 }
 
 // ── ContentBuilder · channel profiles (Instagram / TikTok / LinkedIn) ─
@@ -3438,7 +3330,7 @@ async function runCompetitorPipeline() {
     fetch(SM_PIPELINE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ config_name: configName, max_videos: 10, top_k: 3, n_days: 30 }),
+      body: JSON.stringify({ config_name: configName, max_videos: 30, top_k: 5, n_days: 60 }),
     }).catch(e => console.error('[sm-pipeline] webhook error:', e));
 
     showToast(`Pipeline lanzado para "${configName}" — puede tardar varios minutos.`);
@@ -3557,16 +3449,13 @@ function openSwipeModal(videoId, section) {
   document.getElementById('swipe-modal-link').href = video.link;
   document.getElementById('swipe-modal-stats').textContent =
     '▶ ' + fmtViews(video.views) + ' views · ♥ ' + fmtViews(video.likes) + ' · 💬 ' + fmtViews(video.comments) + (video.datePosted ? ' · ' + video.datePosted : '');
-  document.getElementById('swipe-modal-config').innerHTML = video.configName
-    ? `<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:#FEF3C7;color:#B45309;">${escapeHtml(video.configName)}</span>`
+  document.getElementById('swipe-modal-config').innerHTML = (video.competitor_name || video.platform)
+    ? `<span style="padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;background:#FEF3C7;color:#B45309;text-transform:capitalize;">${escapeHtml(video.competitor_name || '')}${video.competitor_name && video.platform ? ' · ' : ''}${escapeHtml(video.platform || '')}</span>`
     : '';
 
   const thumbEl = document.getElementById('swipe-modal-thumb');
-  if (video.thumbnail) {
-    thumbEl.innerHTML = `<img src="${escapeHtml(video.thumbnail)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.innerHTML='🎬'">`;
-  } else {
-    thumbEl.innerHTML = '🎬';
-  }
+  thumbEl.style.cssText = 'width:44px;height:60px;border-radius:8px;overflow:hidden;flex-shrink:0;position:relative;';
+  thumbEl.innerHTML = hmThumbContent(video.thumbnail, video.competitor_name, video.platform);
 
   swipeModalTab(section);
   document.getElementById('swipe-modal').style.display = 'block';
@@ -3630,8 +3519,8 @@ function getSwipeFiltered() {
   const sort = document.getElementById('hm-swipe-sort')?.value || 'views';
 
   let videos = _swipeVideos.filter(v =>
-    (!configFilter  || v.config_name === configFilter) &&
-    (!creatorFilter || v.creator     === creatorFilter)
+    (!configFilter  || v.competitor_name === configFilter) &&
+    (!creatorFilter || v.creator         === creatorFilter)
   );
 
   if (sort === 'views')            videos.sort((a, b) => (Number(b.views) || 0) - (Number(a.views) || 0));
@@ -3660,17 +3549,14 @@ function renderSwipeGrid() {
   }
 
   grid.innerHTML = visible.map(v => {
-    const imgSrc = v.thumbnail || '';
     const starColor = v.starred ? '#F59E0B' : '#9CA3AF';
     const starIcon  = v.starred ? '★' : '☆';
     const safeId = escapeHtml(v.id);
     return `<div style="border-radius:12px;overflow:hidden;border:1px solid var(--border);background:white;transition:transform .15s;">
       <a href="${escapeHtml(v.link)}" target="_blank" rel="noopener"
-        style="display:block;position:relative;aspect-ratio:9/16;background:#F3F4F6;overflow:hidden;text-decoration:none;">
-        ${imgSrc
-          ? `<img src="${imgSrc}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'">`
-          : '<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:28px;">🎬</div>'}
-        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:14px 8px 6px;">
+        style="display:block;position:relative;aspect-ratio:9/16;overflow:hidden;text-decoration:none;">
+        ${hmThumbContent(v.thumbnail, v.competitor_name, v.platform)}
+        <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:14px 8px 6px;z-index:2;">
           <span style="color:white;font-size:12px;font-weight:700;">▶ ${fmtViews(v.views)}</span>
         </div>
       </a>
@@ -3680,7 +3566,7 @@ function renderSwipeGrid() {
           <button data-star="${safeId}" onclick="event.stopPropagation();toggleSwipeStar('${safeId}',${!!v.starred})"
             style="background:none;border:none;cursor:pointer;font-size:16px;color:${starColor};padding:0;line-height:1;flex-shrink:0;">${starIcon}</button>
         </div>
-        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(v.config_name || '—')}</div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:capitalize;">${escapeHtml(v.competitor_name || v.creator || '—')} · ${escapeHtml(v.platform || 'instagram')}</div>
         <div style="display:flex;gap:4px;">
           <button onclick="openSwipeModal('${safeId}','analysis')"
             style="flex:1;padding:4px 0;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;background:white;color:#374151;transition:background .12s;"
@@ -3709,19 +3595,19 @@ async function initSwipeFile() {
   _swipeDisplayed = SWIPE_PER_PAGE;
   _swipeVideos = [];
   try {
-    const currentConfig = (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
+    const brandId = brandKitData?.brandId;
     const params = new URLSearchParams({
       order: 'views.desc',
-      select: 'id,link,thumbnail,creator,views,likes,comments,analysis,new_concepts,date_posted,date_added,config_name,starred',
+      select: 'id,link,thumbnail,creator,competitor_name,platform,views,likes,comments,analysis,new_concepts,date_posted,date_added,brand_id,starred',
     });
-    if (currentConfig) params.append('config_name', `eq.${currentConfig}`);
+    if (brandId) params.append('brand_id', `eq.${brandId}`);
     _swipeVideos = await supabaseGet(`sm_videos?${params}`);
 
     const configSel  = document.getElementById('hm-swipe-config');
     const creatorSel = document.getElementById('hm-swipe-creator');
     if (configSel) {
-      const configs = [...new Set(_swipeVideos.map(v => v.config_name).filter(Boolean))].sort();
-      configSel.innerHTML = '<option value="">All Configs</option>' +
+      const configs = [...new Set(_swipeVideos.map(v => v.competitor_name).filter(Boolean))].sort();
+      configSel.innerHTML = '<option value="">All Competitors</option>' +
         configs.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
     }
     if (creatorSel) {
@@ -3749,20 +3635,7 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
     return { __error: 'brand_id_missing', message: 'Branding Bio aún no fue guardada. Andá a Branding Bio → Save & Sync antes de generar contenido.' };
   }
   try {
-    const brandVerticals = (brandKitData.verticals || []).map(v => {
-      ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
-    });
-    const selectedVertical = cbActiveVertical
-      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
-      : null;
-    const payload = {
-      brand_id: brandKitData.brandId,
-      channel,
-      persona,
-      business_verticals: brandVerticals.length ? brandVerticals : null,
-      selected_vertical:  selectedVertical,
-    };
+    const payload = { brand_id: brandKitData.brandId, channel, persona };
     console.log('[WF06] sending payload:', payload);
     const res = await fetch(WF06_URL, {
       method: 'POST',
@@ -3862,23 +3735,10 @@ async function generateDraft() {
     const channel = contentBuilderActiveTab || document.getElementById('cb-channel')?.value || 'LinkedIn';
     const slot = getCbCampaign(channel);
     const verticals = [...(slot.verticals || [])];
-
-    // Brand-wide verticals (productos / unidades de negocio) — single source of truth in brandKitData,
-    // hydrated by WF00 scraper and editable in the Verticales del cliente card.
-    const brandVerticals = (brandKitData.verticals || []).map(v => {
-      ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
-    });
-    const selectedVertical = cbActiveVertical
-      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
-      : null;
-
     const payload = {
       brand_id: brandKitData.brandId,
       channel,
       verticals: verticals.length ? verticals : null,
-      business_verticals: brandVerticals.length ? brandVerticals : null,
-      selected_vertical: selectedVertical,
     };
     console.log('[WF07] sending payload:', payload);
     const res = await fetch(WF07_URL, {
@@ -4051,13 +3911,6 @@ async function generateVisualBrief(draftId, extra = {}) {
     const slot = getCbCampaign(channel);
     const visualPrompt = (document.getElementById('cb-visual-prompt')?.value || slot.visualPrompt || '').trim();
     const verticals = [...(slot.verticals || [])];
-    const brandVerticals = (brandKitData.verticals || []).map(v => {
-      ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
-    });
-    const selectedVertical = cbActiveVertical
-      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
-      : null;
 
     const payload = {
       brand_id: brandKitData.brandId,
@@ -4065,8 +3918,6 @@ async function generateVisualBrief(draftId, extra = {}) {
       visual_prompt: visualPrompt || null,
       channel:       channel || null,
       verticals:     verticals.length ? verticals : null,
-      business_verticals: brandVerticals.length ? brandVerticals : null,
-      selected_vertical:  selectedVertical,
       ...extra,
     };
     console.log('[WF09] sending payload:', payload);
@@ -7875,11 +7726,24 @@ function generateViewHTML(view) {
 
     'hook-miner': `
       <div class="view-section active">
+        <style>
+          .hm-ptab { padding:9px 16px; border:none; background:none; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; border-bottom:3px solid transparent; transition:all .15s; white-space:nowrap; }
+          .hm-ptab:hover { color:var(--text-main); }
+          .hm-ptab.active { color:#F97316; border-bottom-color:#F97316; }
+          .hm-mini-stat { padding:12px 10px; background:#F8FAFC; border-radius:10px; text-align:center; border:1px solid var(--border); }
+          .hm-mini-stat-val { font-size:22px; font-weight:800; color:var(--text-main); line-height:1; }
+          .hm-mini-stat-lbl { font-size:10px; color:var(--text-muted); margin-top:4px; }
+          .hm-comp-card { padding:14px; border:1px solid var(--border); border-radius:10px; background:white; transition:box-shadow .15s; }
+          .hm-comp-card:hover { box-shadow:0 4px 14px rgba(0,0,0,.07); }
+          .hm-hook-row:hover td { background:#FFF7ED; }
+        </style>
+
+        <!-- Header -->
         <div class="agent-header" style="background: linear-gradient(135deg, #F97316 0%, #DC2626 100%)">
           <div class="agent-bigicon">🎣</div>
           <div class="agent-header-text">
             <h2>HookMiner</h2>
-            <p>Extracts the opening hooks and narrative frameworks driving engagement in your industry. Every hook classified by channel, format, and proven performance — ready for ContentBuilder to use.</p>
+            <p>Analiza los videos de tus competidores y extrae hooks de apertura, frameworks narrativos y patrones de engagement — clasificados por plataforma y listos para ContentBuilder.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
@@ -7888,99 +7752,107 @@ function generateViewHTML(view) {
         </div>
 
         <!-- Pipeline control bar -->
-        <div style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; padding:12px 14px; background:#FFF7ED; border:1px solid rgba(249,115,22,0.2); border-radius:10px;">
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span style="font-size:12px; font-weight:600; color:#92400E;">Pipeline config:</span>
-            <select id="hm-config-select" style="padding:5px 10px; border:1px solid #FCD34D; border-radius:6px; font-size:12px; background:white; color:var(--text-main);">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;margin-top:12px;gap:10px;padding:12px 14px;background:#FFF7ED;border:1px solid rgba(249,115,22,.2);border-radius:10px;">
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:600;color:#92400E;">Pipeline config:</span>
+            <select id="hm-config-select" style="padding:5px 10px;border:1px solid #FCD34D;border-radius:6px;font-size:12px;background:white;color:var(--text-main);">
               <option>Cargando configs…</option>
             </select>
-            <button id="hm-sync-competitors-btn" onclick="syncCompetitorCreators()" style="padding:6px 12px; background:white; color:#92400E; border:1px solid #FCD34D; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+            <button id="hm-sync-competitors-btn" onclick="syncCompetitorCreators()" style="padding:6px 12px;background:white;color:#92400E;border:1px solid #FCD34D;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
               <i data-lucide="users" style="width:12px;vertical-align:middle;margin-right:4px"></i>Sync Competitors
             </button>
-            <button id="hm-run-pipeline-btn" onclick="runCompetitorPipeline()" style="padding:6px 14px; background:#F97316; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+            <button id="hm-run-pipeline-btn" onclick="runCompetitorPipeline()" style="padding:6px 14px;background:#F97316;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">
               <i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline
             </button>
-            <span id="hm-pipeline-status" style="font-size:11px; color:var(--text-muted);">Guardá Branding Bio para auto-generar config →</span>
-          </div>
-          <button id="wf05-mine-btn" onclick="runHookMiner()" style="padding:7px 14px; background:#DC2626; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
-            <i data-lucide="zap" style="width:12px;vertical-align:middle;margin-right:4px"></i>Mine Hooks (WF05)
-          </button>
-        </div>
-
-        <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-hooks">—</div><div class="agent-stat-lbl">Hooks Mined</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-frameworks">—</div><div class="agent-stat-lbl">Frameworks Identified</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981" id="hm-stat-avg-score">—</div><div class="agent-stat-lbl">Avg Hook Score</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-top-channel">—</div><div class="agent-stat-lbl">Top Channel</div></div>
-        </div>
-
-        <!-- Framework distribution + top categories -->
-        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
-          <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Hook Category Share</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpHookCategoryChart"></canvas></div>
-          </div>
-          <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Avg Hook Score by Channel</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpHookChannelChart"></canvas></div>
+            <span id="hm-pipeline-status" style="font-size:11px;color:var(--text-muted);">Guardá Branding Bio para auto-generar config →</span>
           </div>
         </div>
 
-        <!-- Hook library -->
+        <!-- Stats -->
+        <div class="agent-stats" style="margin-top:16px;">
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-hooks">—</div><div class="agent-stat-lbl">Hooks Extraídos</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-videos">—</div><div class="agent-stat-lbl">Videos Analizados</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-total-views">—</div><div class="agent-stat-lbl">Vistas Analizadas</div></div>
+          <div class="agent-stat"><div class="agent-stat-val" id="hm-stat-competitors">—</div><div class="agent-stat-lbl">Competidores</div></div>
+        </div>
+
+        <!-- Platform Tabs -->
+        <div class="card" style="margin-top:24px;padding-top:0;overflow:hidden;">
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--border);padding:0 8px;background:#FAFAFA;border-radius:12px 12px 0 0;overflow-x:auto;">
+            <button class="hm-ptab active" onclick="hmShowPlatform('all',this)">🌐 All Platforms</button>
+            <button class="hm-ptab" onclick="hmShowPlatform('instagram',this)">📸 Instagram</button>
+            <button class="hm-ptab" onclick="hmShowPlatform('tiktok',this)">🎵 TikTok</button>
+            <button class="hm-ptab" onclick="hmShowPlatform('linkedin',this)">💼 LinkedIn</button>
+            <button class="hm-ptab" onclick="hmShowPlatform('twitter',this)">🐦 Twitter/X</button>
+          </div>
+          <div id="hm-platform-content" style="padding:20px;min-height:180px;">
+            <div style="text-align:center;color:var(--text-muted);padding:40px;">
+              <i data-lucide="loader-2" style="width:20px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:8px;"></i>
+              Cargando análisis…
+            </div>
+          </div>
+        </div>
+
+        <!-- Full Hook Library -->
         <div class="card" style="margin-top:24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="book-open"></i> <span id="hm-library-title">Hook Library</span></h3>
-            <select id="hm-channel-filter" onchange="hydrateHookMinerView()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
-              <option value="">All channels</option>
-              <option>LinkedIn</option>
-              <option>WhatsApp</option>
-              <option>Email</option>
-              <option>Instagram</option>
-              <option>Blog</option>
-            </select>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="book-open"></i> Hook Library</h3>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <select id="hm-fw-filter" onchange="hmRenderHookTable()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:white;">
+                <option value="">All Frameworks</option>
+                <option>Contrarian</option>
+                <option>Specific Number</option>
+                <option>How-We-Do-X</option>
+                <option>Open-Loop</option>
+                <option>Persona-Aware</option>
+                <option>Visual-Led</option>
+              </select>
+              <select id="hm-plat-filter" onchange="hmRenderHookTable()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:white;">
+                <option value="">All Platforms</option>
+                <option value="instagram">Instagram</option>
+                <option value="tiktok">TikTok</option>
+                <option value="linkedin">LinkedIn</option>
+                <option value="twitter">Twitter/X</option>
+              </select>
+              <select id="hm-type-filter" onchange="hmRenderHookTable()" style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:white;">
+                <option value="">All Types</option>
+                <option value="spoken">Spoken</option>
+                <option value="visual">Visual</option>
+                <option value="concept">AI Concept</option>
+              </select>
+            </div>
           </div>
           <table class="lm-table">
-            <thead><tr><th>Hook</th><th>Framework</th><th>Channel</th><th>Score</th><th>Persona</th></tr></thead>
-            <tbody id="hm-library-tbody">
-              <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
+            <thead><tr><th>Hook</th><th>Framework</th><th>Platform</th><th>Tipo</th><th>Score</th><th>Link</th></tr></thead>
+            <tbody id="hm-hook-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:20px;">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Frameworks breakdown -->
+        <!-- Competitor Leaderboard -->
         <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="layout-grid"></i> <span id="hm-frameworks-title">Frameworks Identified</span></h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-top:14px;" id="hm-frameworks-container">
-            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
+          <h3 class="card-title"><i data-lucide="trophy"></i> Competitor Leaderboard</h3>
+          <div id="hm-competitors-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-top:14px;">
+            <div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:20px;">Cargando…</div>
           </div>
         </div>
 
-        <!-- Recommended hooks — populated from social media app -->
-        <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.3); background:linear-gradient(180deg, white, #FFF7ED);">
-          <h3 class="card-title"><i data-lucide="target"></i> Recommended Hooks This Week — auto-queued for ContentBuilder</h3>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:14px;" id="hm-recommended-container">
-            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
-          </div>
-        </div>
-
-        <!-- Creative Library — Swipe File (Foreplay.co style) -->
+        <!-- Creative Library — Swipe File -->
         <div class="card" style="margin-top:24px;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
             <div>
-              <h3 class="card-title" style="margin:0;">
-                <i data-lucide="film" style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>
-                Creative Library — Swipe File
-              </h3>
-              <p style="font-size:11px; color:var(--text-muted); margin:4px 0 0 0;" id="hm-swipe-subtitle">conectando con social media app…</p>
+              <h3 class="card-title" style="margin:0;"><i data-lucide="film" style="width:16px;height:16px;vertical-align:middle;margin-right:6px"></i>Creative Library — Swipe File</h3>
+              <p style="font-size:11px;color:var(--text-muted);margin:4px 0 0 0;" id="hm-swipe-subtitle">conectando…</p>
             </div>
-            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <select id="hm-swipe-config" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
-                <option value="">All Configs</option>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+              <select id="hm-swipe-config" onchange="renderSwipeGrid()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:white;">
+                <option value="">All Competitors</option>
               </select>
-              <select id="hm-swipe-creator" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
+              <select id="hm-swipe-creator" onchange="renderSwipeGrid()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:white;">
                 <option value="">All Creators</option>
               </select>
-              <select id="hm-swipe-sort" onchange="renderSwipeGrid()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px; background:white;">
+              <select id="hm-swipe-sort" onchange="renderSwipeGrid()" style="padding:4px 8px;border:1px solid var(--border);border-radius:4px;font-size:12px;background:white;">
                 <option value="views">Most Views</option>
                 <option value="starred">Starred First</option>
                 <option value="date-posted">Date Posted</option>
@@ -7988,33 +7860,19 @@ function generateViewHTML(view) {
               </select>
             </div>
           </div>
-          <div id="hm-swipe-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px;">
-            <div style="grid-column:1/-1; text-align:center; color:var(--text-muted); padding:28px; font-size:13px;">
+          <div id="hm-swipe-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:10px;">
+            <div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:28px;font-size:13px;">
               <i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:6px"></i>
-              Conectando al social media app…
+              Cargando videos…
             </div>
           </div>
-          <div id="hm-swipe-loadmore" style="text-align:center; margin-top:14px; display:none;">
-            <button onclick="loadMoreSwipeVideos()" style="padding:6px 20px; border:1px solid var(--border); border-radius:6px; font-size:12px; cursor:pointer; background:white; color:var(--text-main);">
+          <div id="hm-swipe-loadmore" style="text-align:center;margin-top:14px;display:none;">
+            <button onclick="loadMoreSwipeVideos()" style="padding:6px 20px;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;background:white;color:var(--text-main);">
               Ver más <span id="hm-swipe-remaining"></span>
             </button>
           </div>
         </div>
 
-        <!-- Hook performance trend -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="trending-up"></i> Hook Performance — Your 10 Most-Used Hooks (last 90d)</h3>
-          <table class="lm-table" style="margin-top:14px;">
-            <thead><tr><th>Hook</th><th>Used in</th><th>Avg engagement</th><th>Trend</th><th>Verdict</th></tr></thead>
-            <tbody>
-              <tr><td><strong>"We killed X% of [thing]…"</strong></td><td>4 posts</td><td><strong style="color:#10B981;">4.8x</strong></td><td style="color:#10B981;">↑ +22% vs 30d ago</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"I cut X from Y to Z"</strong></td><td>6 posts</td><td><strong style="color:#10B981;">4.2x</strong></td><td style="color:#10B981;">↑ +15%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"Stop [common practice]…"</strong></td><td>5 posts</td><td><strong style="color:#10B981;">3.7x</strong></td><td style="color:#F59E0B;">→ steady</td><td><span class="lm-tag" style="background:#FEF3C7;color:#B45309">Rotate variants</span></td></tr>
-              <tr><td><strong>"Here's the question I ask…"</strong></td><td>3 posts</td><td><strong style="color:#10B981;">3.1x</strong></td><td style="color:#10B981;">↑ +8%</td><td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">Keep using</span></td></tr>
-              <tr><td><strong>"In today's fast-paced world…"</strong></td><td>2 posts</td><td style="color:#EF4444;">0.4x</td><td style="color:#EF4444;">↓ -62%</td><td><span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Retire — violates voice</span></td></tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     `,
 
@@ -8089,37 +7947,6 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">86 hrs</div><div class="agent-stat-lbl">Team Hours Saved (30d)</div></div>
         </div>
 
-        <!-- ─── Verticales del cliente (productos / unidades de negocio) ─── -->
-        <div class="card" style="margin-top:24px; border:1px solid #E9D5FF; background:linear-gradient(180deg,#FAF5FF 0%, white 70%);">
-          <div style="display:flex; justify-content:space-between; align-items:start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-            <div>
-              <h3 class="card-title" style="margin:0;"><i data-lucide="layers"></i> Verticales del cliente</h3>
-              <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0; max-width:680px;">
-                Productos, unidades de negocio o campañas que el cliente quiere comunicar. El <strong>WebScrapper</strong> los detecta del website y los guarda en <code style="font-size:11px;background:#F1F5F9;padding:1px 6px;border-radius:4px;">brand_profiles.data_json.verticals</code>. Editalos abajo — ContentBuilder genera 1 post × <em>vertical × canal</em>.
-              </p>
-            </div>
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <button id="cb-sync-brand" onclick="syncFromBrandingBio()" title="Pull desde brand_profiles — sobreescribe la copia local con lo último guardado en Branding Bio" style="display:inline-flex; align-items:center; padding:6px 12px; background:#6366F1; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio</button>
-              <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vertical activa</label>
-              <select id="cb-active-vertical" style="font-size:12px; padding:6px 10px; border:1px solid #E9D5FF; border-radius:6px; background:white; color:#4C1D95; font-weight:600;">
-                <option value="__all__">Todas las verticales (mix)</option>
-              </select>
-            </div>
-          </div>
-
-          <div id="cb-brand-vertical-list" style="display:flex; flex-direction:column; gap:8px; min-height:32px; margin-bottom:14px;"></div>
-
-          <div style="display:grid; grid-template-columns: 1fr 2fr auto; gap:8px; align-items:center;">
-            <input id="cb-brand-vertical-name" type="text" placeholder="Nombre de la vertical (ej. Hamburguesas)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
-            <input id="cb-brand-vertical-desc" type="text" placeholder="Descripción corta — audiencia + valor (opcional)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
-            <button onclick="addBrandVertical()" style="padding:8px 14px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:12px"></i> Add vertical</button>
-          </div>
-          <p style="margin:10px 0 0 0; font-size:10.5px; color:var(--text-muted);">
-            <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>
-            Las verticales viajan en el payload a <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf07-content-builder</code> y <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf09-creative-brain</code> para que el copy y el visual sean específicos del producto seleccionado.
-          </p>
-        </div>
-
         <!-- Competitor Insights from Social Media App -->
         <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.25); background:linear-gradient(180deg,white,#FFF7ED);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -8133,12 +7960,8 @@ function generateViewHTML(view) {
 
         <!-- ─────────────────────────────────────────── -->
         <!-- Generation Pipeline — 3 sequential n8n steps -->
-        <!-- The pipeline card lives in this HIDDEN anchor until the user expands
-             a vertical above. On expand, JS moves the DOM into that vertical's
-             slot. On collapse, it comes back here (still hidden). -->
         <!-- ─────────────────────────────────────────── -->
-        <div id="cb-pipeline-anchor" style="display:none;">
-        <div id="cb-pipeline-card" class="card" style="border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
+        <div class="card" style="margin-top:24px; border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="git-branch"></i> Pipeline de generación — <span id="cb-pipeline-channel" style="color:#0A66C2">💼 LinkedIn</span></h3>
             <select id="cb-persona" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
@@ -8293,7 +8116,6 @@ function generateViewHTML(view) {
             <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
           </div>
         </div>
-        </div><!-- /#cb-pipeline-anchor -->
 
         <!-- Content queue + channel split -->
         <div class="kpi-grid" style="grid-template-columns: 2fr 1fr; margin-top:24px;">

@@ -1,222 +1,639 @@
 {
-  "name": "WF07 — Content Builder (draft from brief + hooks)",
+  "name": "WF07 — Content Builder",
   "nodes": [
     {
-      "id": "d4e5f6a7-0007-0007-0007-000000000001",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "wf07-content-builder",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "wf07-webhook",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [100, 300],
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "41ac01a0-a63d-4ba0-ba37-8c5889413028"
+    },
+    {
       "parameters": {
-        "path": "wf07-content-builder",
-        "httpMethod": "POST",
-        "responseMode": "responseNode"
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "brand_id",
+              "value": "={{ $json.body.brand_id }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "brief_id",
+              "value": "={{ $json.body.brief_id || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "channel_override",
+              "value": "={{ $json.body.channel || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "verticals",
+              "value": "={{ $json.body.verticals }}",
+              "type": "array"
+            }
+          ]
+        },
+        "options": {}
       },
-      "webhookId": "wf07-content-builder"
+      "id": "wf07-set-input",
+      "name": "SET Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [208, 0]
     },
     {
-      "id": "d4e5f6a7-0007-0007-0007-000000000002",
-      "name": "Fetch Latest Brief",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 200],
       "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_briefs",
-        "method": "GET",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "brand_id", "value": "=eq.{{$json.brand_id}}" },
-            { "name": "status", "value": "eq.ready" },
-            { "name": "order", "value": "created_at.desc" },
-            { "name": "limit", "value": "1" }
+        "operation": "getAll",
+        "tableId": "content_briefs",
+        "limit": 5,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
           ]
         }
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000003",
-      "name": "Fetch Voice Rules",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 400],
-      "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/brand_voice_rules",
-        "method": "GET",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "brand_id", "value": "=eq.{{$('Webhook').item.json.brand_id}}" },
-            { "name": "order", "value": "created_at.desc" },
-            { "name": "limit", "value": "1" }
-          ]
-        }
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000004",
-      "name": "Fetch Competitor Videos",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [320, 600],
-      "parameters": {
-        "url": "={{$vars.SOCIAL_MEDIA_APP_URL}}/api/videos",
-        "method": "GET"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000005",
-      "name": "Build Draft Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [560, 400],
-      "parameters": {
-        "jsCode": "const briefRow = $('Fetch Latest Brief').all()[0]?.json;\nif (!briefRow) throw new Error('No ready brief found. Run WF06 first.');\n\nconst brief = briefRow.brief_json || {};\nconst channel = briefRow.channel || 'LinkedIn';\n\nconst voiceRow = $('Fetch Voice Rules').all()[0]?.json || {};\nconst rules = voiceRow.rules_json || {};\nconst alwaysRules = (rules.always_rules || []).join('; ');\nconst neverRules = (rules.never_rules || []).join('; ');\nconst bannedTerms = (rules.banned_terms || []).join(', ');\n\n// Get top competitor concepts as style references\nconst videos = $('Fetch Competitor Videos').all().map(i => i.json).slice(0, 10);\nconst conceptExamples = [];\nvideos.forEach(v => {\n  if (v.newConcepts) {\n    const scriptMatch = v.newConcepts.match(/## SCRIPT\\n([\\s\\S]{50,400}?)(?=\\n# CONCEPT|$)/);\n    if (scriptMatch) {\n      conceptExamples.push(`[Style ref from @${v.creator}, ${Math.round(v.views/1000)}K views]:\\n${scriptMatch[1].slice(0, 300)}`);\n    }\n  }\n});\nconst styleContext = conceptExamples.slice(0, 3).join('\\n\\n') || 'No style references yet.';\n\n// Business verticals (productos / unidades de negocio) — comes from brand_profiles via the app payload.\nconst webhookBody = $('Webhook').item.json || {};\nconst selectedVertical = webhookBody.selected_vertical || null;\nconst businessVerticals = Array.isArray(webhookBody.business_verticals) ? webhookBody.business_verticals : [];\n\nlet verticalContext = '';\nif (selectedVertical && selectedVertical.name) {\n  verticalContext = `\\n\\nFOCUSED VERTICAL — write this post specifically about \"${selectedVertical.name}\"${selectedVertical.desc ? ` (${selectedVertical.desc})` : ''}. Make the hook, body and CTA all anchor on this product/business unit. Do NOT mention the other verticals.`;\n} else if (businessVerticals.length) {\n  const list = businessVerticals.map(v => `- ${v.name}${v.desc ? `: ${v.desc}` : ''}`).join('\\n');\n  verticalContext = `\\n\\nBUSINESS VERTICALS (full portfolio — pick the most relevant one for this brief and lead with it):\\n${list}`;\n}\n\nconst draftPrompt = `You are writing a complete, publish-ready ${channel} post for a brand.\n\nCONTENT BRIEF:\nHook: ${brief.hook}\nOpening: ${brief.opening}\nKey points: ${(brief.body || []).join(' | ')}\nCTA: ${brief.cta}\nHook type: ${brief.hook_type}${verticalContext}\n\nVOICE RULES:\nALWAYS: ${alwaysRules || 'Be direct, specific, value-first'}\nNEVER: ${neverRules || 'Use jargon, hype, or vague claims'}\nBANNED TERMS: ${bannedTerms || 'none'}\n\nSTYLE REFERENCES (proven formats from competitor analysis — adapt tone, NOT content):\n${styleContext}\n\nWrite the complete ${channel} post. Requirements:\n- Start with the exact hook from the brief (verbatim or sharper)\n- Follow with the opening, then key points (each as its own short paragraph)\n- End with the CTA\n- Match voice rules strictly — flag any banned terms\n- ${channel === 'LinkedIn' ? 'No hashtag spam. Max 3 relevant hashtags at the end.' : ''}\n- ${channel === 'Email' ? 'Subject line first, then body.' : ''}\n- ${channel === 'Blog' ? 'Include H2 subheadings. 400-600 words.' : 'Max 1200 characters for social.'}\n\nRespond with JSON:\n{\n  \"title\": \"short title\",\n  \"draft_text\": \"complete post text\",\n  \"char_count\": number,\n  \"hook_used\": \"exact hook opening\",\n  \"vertical\": \"name of the vertical this post anchors on (or empty if generic)\",\n  \"qa_flags\": [\"list any voice rule violations\"]\n}`;\n\nreturn [{ json: {\n  draftPrompt,\n  brief_id: briefRow.id,\n  channel,\n  brand_id: $('Webhook').item.json.brand_id,\n  selected_vertical: selectedVertical,\n} }];"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000006",
-      "name": "Call Claude — Generate Draft",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [780, 400],
-      "parameters": {
-        "url": "https://api.anthropic.com/v1/messages",
-        "method": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "x-api-key", "value": "={{$vars.ANTHROPIC_API_KEY}}" },
-            { "name": "anthropic-version", "value": "2023-06-01" },
-            { "name": "Content-Type", "value": "application/json" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6-20251001\",\n  \"max_tokens\": 2048,\n  \"system\": \"You are a brand content writer. Respond with valid JSON only.\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{$json.draftPrompt}}\"\n    }\n  ]\n}"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000007",
-      "name": "QA Score + Save",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [1000, 400],
-      "parameters": {
-        "jsCode": "const claudeResponse = $input.first().json;\nconst rawText = claudeResponse.content?.[0]?.text || '{}';\n\nlet draft;\ntry {\n  const jsonMatch = rawText.match(/\\{[\\s\\S]*\\}/);\n  draft = JSON.parse(jsonMatch ? jsonMatch[0] : rawText);\n} catch (e) {\n  draft = { title: 'Draft', draft_text: rawText.slice(0, 2000), char_count: rawText.length, qa_flags: [] };\n}\n\n// QA scoring\nconst flags = Array.isArray(draft.qa_flags) ? draft.qa_flags.length : 0;\nconst hasHook = !!draft.hook_used;\nconst hasBody = draft.draft_text && draft.draft_text.length > 100;\nconst final_score = Math.max(50, 100 - (flags * 10) - (!hasHook ? 10 : 0) - (!hasBody ? 15 : 0));\nconst status = final_score >= 75 ? 'draft' : 'needs_revision';\n\nconst draftId = crypto.randomUUID();\n\nreturn [{ json: {\n  draft_id: draftId,\n  draft,\n  final_score,\n  status,\n  brief_id: $('Build Draft Prompt').item.json.brief_id,\n  brand_id: $('Build Draft Prompt').item.json.brand_id,\n  qa_json: { final_score, flags: draft.qa_flags || [], status },\n} }];"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000008",
-      "name": "Save Draft to Supabase",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1220, 400],
-      "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_drafts",
-        "method": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Prefer", "value": "return=representation" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"id\": \"{{$json.draft_id}}\",\n  \"brand_id\": \"{{$json.brand_id}}\",\n  \"brief_id\": \"{{$json.brief_id}}\",\n  \"title\": \"{{$json.draft.title}}\",\n  \"draft_text\": \"{{$json.draft.draft_text}}\",\n  \"status\": \"{{$json.status}}\",\n  \"final_score\": {{$json.final_score}},\n  \"qa_json\": {{JSON.stringify($json.qa_json)}},\n  \"created_at\": \"{{$now.toISO()}}\"\n}"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000009",
-      "name": "Mark Brief as Used",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [1220, 560],
-      "parameters": {
-        "url": "={{$vars.SUPABASE_URL}}/rest/v1/content_briefs?id=eq.{{$('QA Score + Save').item.json.brief_id}}",
-        "method": "PATCH",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "apikey", "value": "={{$vars.SUPABASE_ANON}}" },
-            { "name": "Authorization", "value": "=Bearer {{$vars.SUPABASE_ANON}}" },
-            { "name": "Content-Type", "value": "application/json" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={ \"status\": \"used\" }"
-      }
-    },
-    {
-      "id": "d4e5f6a7-0007-0007-0007-000000000010",
-      "name": "Respond to App",
-      "type": "n8n-nodes-base.respondToWebhook",
+      },
+      "id": "wf07-get-brief",
+      "name": "SUPABASE Get Brief",
+      "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1440, 400],
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={\n  \"ok\": true,\n  \"draft_id\": \"{{$('QA Score + Save').item.json.draft_id}}\",\n  \"final_score\": {{$('QA Score + Save').item.json.final_score}},\n  \"status\": \"{{$('QA Score + Save').item.json.status}}\",\n  \"draft\": {{JSON.stringify($('QA Score + Save').item.json.draft)}}\n}"
+      "position": [416, 0],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
       }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "social_media_analyses",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            },
+            {
+              "keyName": "channel",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.channel_override }}"
+            }
+          ]
+        }
+      },
+      "id": "wf07-get-rules",
+      "name": "SUPABASE Get SocialMediaBios",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [624, 0],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "brand_profiles",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "id": "2a4b33dc-a2d9-48e8-86bd-7a0855182b29",
+      "name": "SUPABASE Get Brand Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [736, 0],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "sm_videos",
+        "limit": 15,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "brand_id",
+              "condition": "eq",
+              "keyValue": "={{ $('SET Normalize Input').item.json.brand_id }}"
+            }
+          ]
+        }
+      },
+      "id": "wf07-fetch-comp-videos",
+      "name": "Fetch Competitor Videos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [832, 0],
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const setData = $('SET Normalize Input').first().json;\nconst briefRows = $('SUPABASE Get Brief').all().map(i => i.json).filter(x => x && x.id && x.brand_id === setData.brand_id);\nconst smbRow = $('SUPABASE Get SocialMediaBios').first().json;\nconst profileRow = $('SUPABASE Get Brand Profile').first().json;\n\n// Pick latest brief with status=ready for THIS brand_id (sorted DESC by created_at)\nconst readyBriefs = briefRows.filter(b => b.status === 'ready').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));\nconst brief = readyBriefs[0] || briefRows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];\n\nif (!brief || !brief.id) {\n  throw new Error('No hay un brief disponible para esta marca. Coré WF-06 (Generate Brief) primero.');\n}\nif (brief.brand_id !== setData.brand_id) {\n  throw new Error(`BUG: brief brand_id (${brief.brand_id}) does not match request brand_id (${setData.brand_id}). Aborting to avoid cross-brand contamination.`);\n}\n\nconst channel = (setData.channel_override && String(setData.channel_override).trim()) || brief.channel || 'LinkedIn';\nconst verticals = Array.isArray(setData.verticals) ? setData.verticals : [];\n\n// brief.brief_json puede venir como string o object\nlet briefJson = brief.brief_json;\nif (typeof briefJson === 'string') {\n  try { briefJson = JSON.parse(briefJson); } catch (e) { /* leave as-is */ }\n}\n\n// SocialMediaBios per-channel\nlet analysis = smbRow?.analysis_json || {};\nif (typeof analysis === 'string') {\n  try { analysis = JSON.parse(analysis); } catch (e) { analysis = {}; }\n}\nconst voiceRules  = analysis.voiceRules || { always: [], never: [] };\nconst tone        = analysis.tone || null;\nconst toneSummary = analysis.toneSummary || '';\nconst topPosts    = Array.isArray(analysis.topPosts) ? analysis.topPosts.slice(0, 3).map(p => ({ format: p.format, snippet: (p.text || p.snippet || '').slice(0, 200), why_it_worked: p.whyItWorked || null })) : [];\n\n// Brand profile\nlet profile = profileRow?.data_json || {};\nif (typeof profile === 'string') {\n  try { profile = JSON.parse(profile); } catch (e) { profile = {}; }\n}\nconst identity = profile.identity || {};\nconst services = Array.isArray(profile.services) ? profile.services : [];\nconst toneByChannel = Array.isArray(profile.tone_by_channel) ? profile.tone_by_channel : [];\nconst contentSamples = Array.isArray(profile.content_samples) ? profile.content_samples : [];\nconst toneForChannel = toneByChannel.find(t => (t.channel || '').toLowerCase() === channel.toLowerCase()) || null;\nconst samplesForChannel = contentSamples.filter(s => (s.channel || '').toLowerCase() === channel.toLowerCase()).slice(0, 3);\n\n// Competitor videos (optional)\nlet competitorVideos = [];\ntry {\n  competitorVideos = $('Fetch Competitor Videos').all().map(i => i.json).filter(x => x && x.link);\n  competitorVideos.sort((a, b) => (b.views || 0) - (a.views || 0));\n  competitorVideos = competitorVideos.slice(0, 10);\n} catch(e) { competitorVideos = []; }\n\n// Extract competitor hooks from analysis + concepts\nconst competitorHooks = [];\ncompetitorVideos.forEach(v => {\n  if (v.analysis) {\n    const visualMatch = v.analysis.match(/\\*\\*VISUAL[^:]*:\\*\\*\\s*(.+?)(?:\\n|$)/i);\n    if (visualMatch && visualMatch[1].length > 10) {\n      competitorHooks.push({ text: visualMatch[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'visual_hook' });\n    }\n    const spokenMatch = v.analysis.match(/\\*\\*SPOKEN[^:]*:\\*\\*[^\"]*\"([^\"]{15,150})\"/);\n    if (spokenMatch) {\n      competitorHooks.push({ text: spokenMatch[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'spoken_hook' });\n    }\n  }\n  if (v.new_concepts) {\n    const spokenMatches = [...String(v.new_concepts).matchAll(/\\*\\*SPOKEN[^:]*:\\*\\*[^\"]*\"([^\"]{15,150})\"/g)];\n    spokenMatches.slice(0, 2).forEach(m => {\n      competitorHooks.push({ text: m[1].trim(), source: v.competitor_name || v.creator, platform: v.platform || 'instagram', views: v.views || 0, type: 'claude_concept' });\n    });\n  }\n});\ncompetitorHooks.sort((a, b) => (b.views || 0) - (a.views || 0));\nconst topCompetitorHooks = competitorHooks.slice(0, 8);\n\nconst CHANNEL_STYLE = {\n  Instagram: {\n    format: 'Instagram Reel caption + carousel-friendly',\n    length: '40-80 words. Max 4 short paragraphs. Hook in first line. Caption in Spanish for LATAM.',\n    rules: ['Emoji ocasional sin abusar', 'No hashtags al inicio del caption', 'Termina con pregunta o CTA \"guardalo\" / \"comentame\"'],\n  },\n  TikTok: {\n    format: 'TikTok video hook + on-screen caption',\n    length: 'Ultra corto: 1-3 frases que sirvan como gancho hablado en 30-60s.',\n    rules: ['Pattern interrupt en frame 1', 'Claim concreto con número o comparación', 'CTA \"comentame X\" o \"mirá hasta el final\"'],\n  },\n  LinkedIn: {\n    format: 'LinkedIn long-form post (Spanish)',\n    length: '150-280 palabras. Párrafos cortos (1-3 líneas). Hook con observación operativa relevante.',\n    rules: ['Sin hype words', 'Tono consultivo, operator-first', 'CTA hacia comentario o DM'],\n  },\n};\nconst channelStyle = CHANNEL_STYLE[channel] || CHANNEL_STYLE.LinkedIn;\n\nreturn [{\n  json: {\n    brand_id: setData.brand_id,\n    brief_id: brief.id,\n    channel,\n    persona: brief.persona,\n    verticals,\n    draft_input: {\n      identity: {\n        company_name: identity.company_name || 'SWL Consulting',\n        tagline: identity.tagline || '',\n        mission: identity.mission || '',\n        industry: identity.industry || '',\n      },\n      services,\n      brief: briefJson,\n      brand_voice_rules: voiceRules,\n      tone_dimensions: tone,\n      tone_summary: toneSummary,\n      tone_by_channel: toneForChannel,\n      own_top_posts: topPosts,\n      content_samples_for_channel: samplesForChannel,\n      competitor_hooks: topCompetitorHooks,\n      target_channel: channel,\n      target_persona: brief.persona,\n      verticals,\n      channel_style: channelStyle,\n    }\n  }\n}];"
+      },
+      "id": "wf07-build-prompt",
+      "name": "CODE Build Draft Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1040, 0]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are an in-house content writer for a specific company. You receive a JSON payload with: identity (company name, mission, industry, tagline), services, the brief to convert into a post, brand voice rules, channel style, and reference samples.\n\nABSOLUTE RULES:\n1. STAY STRICTLY INSIDE THE COMPANY'S BUSINESS. The draft must be about the company's actual services (listed in `services`) and the topic of `brief`. NEVER invent topics about industries the company is not in. If identity.mission says \"AI agents for revenue operations\", do NOT write about contractors, construction, real estate, hospitality, or unrelated industries.\n2. Match channel_style.format and channel_style.length EXACTLY. A LinkedIn post is 150-280 words; an Instagram caption is 40-80; a TikTok hook is 1-3 sentences. Do not mix lengths.\n3. Apply EVERY rule in channel_style.rules and brand_voice_rules.always. NEVER use anything in brand_voice_rules.never.\n4. If content_samples_for_channel is provided, mimic the structural pattern of those samples (not the literal text).\n5. Language:\n   - LinkedIn: Spanish (LATAM voseo OR Spain neutral; pick based on persona).\n   - Instagram: Spanish LATAM with voseo.\n   - TikTok: Spanish LATAM with voseo.\n6. Use the hook from `brief` as the opening line verbatim if it fits the channel; otherwise adapt it.\n7. No marketing clichés, no invented facts, no jargon. Numbers and metrics must come from the brief or stay generic (\"muchas portfolio companies\", \"varios fondos\").\n8. If `competitor_hooks` is provided and non-empty, use the best-performing hooks as INSPIRATION for the opening line — adapt the format, emotion, or structure to the brand's voice and channel. NEVER copy competitor content or topic verbatim.\n\nOutput JSON only: { title, draft_text }."
+            },
+            {
+              "content": "={{ JSON.stringify($json.draft_input) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 1500,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema",
+              "schema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"required\": [\"title\", \"draft_text\"],\n  \"properties\": {\n    \"title\": {\"type\": \"string\", \"description\": \"Title or first line of the post\"},\n    \"draft_text\": {\"type\": \"string\", \"description\": \"Full draft body, ready to post\"}\n  }\n}"
+            }
+          },
+          "temperature": 0.4
+        }
+      },
+      "id": "wf07-ai-draft",
+      "name": "AI Generate Draft",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1248, 0],
+      "credentials": {
+        "openAiApi": {
+          "id": "Y8OavhGlnZpshOwT",
+          "name": "Open AI SWL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.first().json;\nconst ctx = $('CODE Build Draft Prompt').first().json;\n\nconst content = aiOutput.output?.[0]?.content?.[0]?.text\n             ?? aiOutput.choices?.[0]?.message?.content\n             ?? aiOutput.text\n             ?? aiOutput;\n\nlet draft = (typeof content === 'string') ? JSON.parse(content) : content;\nif (draft.draft) draft = draft.draft;\n\nreturn [{\n  json: {\n    brand_id: ctx.brand_id,\n    brief_id: ctx.brief_id,\n    title: draft.title,\n    draft_text: draft.draft_text,\n    qa_input: {\n      draft: draft,\n      brand_voice_rules: ctx.draft_input.brand_voice_rules,\n      tone_dimensions: ctx.draft_input.tone_dimensions,\n      target_persona: ctx.draft_input.target_persona\n    }\n  }\n}];"
+      },
+      "id": "wf07-parse-draft",
+      "name": "CODE Parse Draft",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1456, -16]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "role": "system",
+              "content": "IMPORTANT: Always respond in English. You are a brand voice QA reviewer. Evaluate this draft strictly against the provided brand voice rules. Return scores 0-100, concrete violations, and a final recommendation. Output JSON only."
+            },
+            {
+              "content": "={{ JSON.stringify($json.qa_input) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxTokens": 800,
+          "textFormat": {
+            "textOptions": {
+              "type": "json_schema",
+              "schema": "{\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"required\": [\"tone_alignment\", \"jargon_free\", \"persona_match\", \"cta_specificity\", \"violations\", \"recommendation\", \"final_score\"],\n  \"properties\": {\n    \"tone_alignment\": {\"type\": \"number\"},\n    \"jargon_free\": {\"type\": \"number\"},\n    \"persona_match\": {\"type\": \"number\"},\n    \"cta_specificity\": {\"type\": \"number\"},\n    \"violations\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}},\n    \"recommendation\": {\"type\": \"string\", \"enum\": [\"approve\", \"approve_with_minor_edits\", \"regenerate\"]},\n    \"final_score\": {\"type\": \"number\"}\n  }\n}"
+            }
+          },
+          "temperature": 0.2
+        }
+      },
+      "id": "wf07-ai-qa",
+      "name": "AI Score Draft",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [1664, 0],
+      "credentials": {
+        "openAiApi": {
+          "id": "Y8OavhGlnZpshOwT",
+          "name": "Open AI SWL"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const qaOutput = $input.first().json;\nconst draftCtx = $('CODE Parse Draft').first().json;\n\nconst content = qaOutput.output?.[0]?.content?.[0]?.text\n             ?? qaOutput.choices?.[0]?.message?.content\n             ?? qaOutput.text\n             ?? qaOutput;\n\nlet qa = (typeof content === 'string') ? JSON.parse(content) : content;\n\nconst score = Number(qa.final_score) || 0;\nconst status = score >= 70 ? 'draft' : 'qa_failed';\nconst passQA = score >= 70;\n\nreturn [{\n  json: {\n    brand_id: draftCtx.brand_id,\n    brief_id: draftCtx.brief_id,\n    draft_type: 'social_post',\n    title: draftCtx.title,\n    draft_text: draftCtx.draft_text,\n    qa_json: qa,\n    status: status,\n    pass_qa: passQA\n  }\n}];"
+      },
+      "id": "wf07-decide",
+      "name": "CODE Decide Status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1872, 0]
+    },
+    {
+      "parameters": {
+        "tableId": "content_drafts",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brand_id",
+              "fieldValue": "={{ $json.brand_id }}"
+            },
+            {
+              "fieldId": "brief_id",
+              "fieldValue": "={{ $json.brief_id }}"
+            },
+            {
+              "fieldId": "draft_type",
+              "fieldValue": "={{ $json.draft_type }}"
+            },
+            {
+              "fieldId": "title",
+              "fieldValue": "={{ $json.title }}"
+            },
+            {
+              "fieldId": "draft_text",
+              "fieldValue": "={{ $json.draft_text }}"
+            },
+            {
+              "fieldId": "qa_json",
+              "fieldValue": "={{ JSON.stringify($json.qa_json) }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "={{ $json.status }}"
+            }
+          ]
+        }
+      },
+      "id": "wf07-insert-draft",
+      "name": "SUPABASE Insert Draft",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2080, 0],
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ifqa1",
+              "leftValue": "={{ $('CODE Decide Status').item.json.pass_qa }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "wf07-if-pass",
+      "name": "IF QA Pass",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [2288, 0]
+    },
+    {
+      "parameters": {
+        "tableId": "approval_queue",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "brand_id",
+              "fieldValue": "={{ $('CODE Decide Status').item.json.brand_id }}"
+            },
+            {
+              "fieldId": "entity_type",
+              "fieldValue": "content_draft"
+            },
+            {
+              "fieldId": "entity_id",
+              "fieldValue": "={{ $('SUPABASE Insert Draft').item.json.id }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "pending"
+            }
+          ]
+        }
+      },
+      "id": "wf07-queue-approval",
+      "name": "SUPABASE Queue Approval",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2496, -96],
+      "credentials": {
+        "supabaseApi": {
+          "id": "BDR8az1QEuSkurgW",
+          "name": "Supabase Growth Engine DEMO"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r1",
+              "name": "ok",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "r2",
+              "name": "draft_id",
+              "value": "={{ $('SUPABASE Insert Draft').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "r3",
+              "name": "status",
+              "value": "={{ $('CODE Decide Status').item.json.status }}",
+              "type": "string"
+            },
+            {
+              "id": "r4",
+              "name": "final_score",
+              "value": "={{ $('CODE Decide Status').item.json.qa_json.final_score }}",
+              "type": "number"
+            },
+            {
+              "id": "r5",
+              "name": "draft",
+              "value": "={{ JSON.stringify({title: $('CODE Decide Status').item.json.title, draft_text: $('CODE Decide Status').item.json.draft_text}) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "wf07-build-response",
+      "name": "Build Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2704, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "id": "wf07-respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [2912, 0]
     }
   ],
   "connections": {
     "Webhook": {
       "main": [
         [
-          { "node": "Fetch Latest Brief", "type": "main", "index": 0 },
-          { "node": "Fetch Voice Rules", "type": "main", "index": 0 },
-          { "node": "Fetch Competitor Videos", "type": "main", "index": 0 }
+          {
+            "node": "SET Normalize Input",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Fetch Latest Brief": {
-      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
-    },
-    "Fetch Voice Rules": {
-      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
-    },
-    "Fetch Competitor Videos": {
-      "main": [[ { "node": "Build Draft Prompt", "type": "main", "index": 0 } ]]
-    },
-    "Build Draft Prompt": {
-      "main": [[ { "node": "Call Claude — Generate Draft", "type": "main", "index": 0 } ]]
-    },
-    "Call Claude — Generate Draft": {
-      "main": [[ { "node": "QA Score + Save", "type": "main", "index": 0 } ]]
-    },
-    "QA Score + Save": {
+    "SET Normalize Input": {
       "main": [
         [
-          { "node": "Save Draft to Supabase", "type": "main", "index": 0 },
-          { "node": "Mark Brief as Used", "type": "main", "index": 0 }
+          {
+            "node": "SUPABASE Get Brief",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
-    "Save Draft to Supabase": {
-      "main": [[ { "node": "Respond to App", "type": "main", "index": 0 } ]]
+    "SUPABASE Get Brief": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Get SocialMediaBios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Get SocialMediaBios": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Get Brand Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Get Brand Profile": {
+      "main": [
+        [
+          {
+            "node": "Fetch Competitor Videos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Competitor Videos": {
+      "main": [
+        [
+          {
+            "node": "CODE Build Draft Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE Build Draft Prompt": {
+      "main": [
+        [
+          {
+            "node": "AI Generate Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Generate Draft": {
+      "main": [
+        [
+          {
+            "node": "CODE Parse Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE Parse Draft": {
+      "main": [
+        [
+          {
+            "node": "AI Score Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Score Draft": {
+      "main": [
+        [
+          {
+            "node": "CODE Decide Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CODE Decide Status": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Insert Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Insert Draft": {
+      "main": [
+        [
+          {
+            "node": "IF QA Pass",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF QA Pass": {
+      "main": [
+        [
+          {
+            "node": "SUPABASE Queue Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SUPABASE Queue Approval": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "active": false,
-  "settings": { "executionOrder": "v1" },
+  "pinData": {},
   "meta": {
-    "notes": "SETUP: Set n8n variables SUPABASE_URL, SUPABASE_ANON, SOCIAL_MEDIA_APP_URL, ANTHROPIC_API_KEY. This workflow: (1) fetches latest ready brief from WF06, (2) fetches brand voice rules, (3) fetches competitor video concepts as style references, (4) builds a draft prompt combining brief + voice rules + competitor style examples, (5) calls Claude to generate the full draft, (6) QA scores the draft against voice rules, (7) saves to content_drafts, (8) marks brief as used. Requires WF06 to have run first."
+    "instanceId": "250f37a53250736be8af461c3752e7652027cf011896ba5176c1c6100ed4f0a0"
   }
 }
