@@ -7,7 +7,7 @@
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;600;700&family=Montserrat:wght@400;600;700&family=DM+Sans:wght@400;600;700&family=Manrope:wght@400;600;700&family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600;700&family=Lato:wght@400;700&family=Nunito+Sans:wght@400;600;700&family=Work+Sans:wght@400;600;700&family=Sora:wght@400;600;700&family=Bricolage+Grotesque:wght@400;600;700&family=Onest:wght@400;600;700&family=Public+Sans:wght@400;600;700&family=Playfair+Display:wght@400;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=EB+Garamond:wght@400;700&family=Bebas+Neue&family=Oswald:wght@400;700&family=Anton&family=JetBrains+Mono:wght@400;500;600&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Mono:wght@400;700&family=Source+Code+Pro:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   
   <!-- Lightweight Icons -->
@@ -131,12 +131,12 @@
               <span class="dot" style="background:#6366F1"></span> Branding Bio
               <span class="agent-badge" style="background:#EEF2FF;color:#4338CA">Input</span>
             </button>
-            <button class="nav-item sub-item" data-view="brandvoice-optimizer">
-              <span class="dot" style="background:#EC4899"></span> BrandVoice Optimizer
-              <span class="agent-badge">AI</span>
+            <button class="nav-item sub-item" data-view="social-media-bios">
+              <span class="dot" style="background:#D946EF"></span> SocialMediaBios
+              <span class="agent-badge" style="background:#FAE8FF;color:#86198F">AI</span>
             </button>
-            <button class="nav-item sub-item" data-view="content-engine">
-              <span class="dot" style="background:#06B6D4"></span> ContentEngine
+            <button class="nav-item sub-item" data-view="competitors-views">
+              <span class="dot" style="background:#06B6D4"></span> CompetitorsViews
               <span class="agent-badge">AI</span>
             </button>
             <button class="nav-item sub-item" data-view="hook-miner">
@@ -145,10 +145,6 @@
             </button>
             <button class="nav-item sub-item" data-view="content-builder">
               <span class="dot" style="background:#22C55E"></span> ContentBuilder
-              <span class="agent-badge">AI</span>
-            </button>
-            <button class="nav-item sub-item" data-view="creative-brain">
-              <span class="dot" style="background:#A855F7"></span> CreativeBrain
               <span class="agent-badge">AI</span>
             </button>
             <button class="nav-item sub-item" data-view="auto-publisher">
@@ -209,15 +205,15 @@
 
         <!-- Right: Actions + User -->
         <div class="topbar-right">
-          <button class="tb-icon-btn" title="Notifications">
+          <button class="tb-icon-btn" id="notif-btn" title="Notifications">
             <i data-lucide="bell"></i>
-            <span class="tb-badge">3</span>
+            <span class="tb-badge" id="notif-badge">3</span>
           </button>
-          <button class="tb-icon-btn" title="Help">
+          <button class="tb-icon-btn" id="help-btn" title="Help">
             <i data-lucide="circle-help"></i>
           </button>
           <div class="tb-divider"></div>
-          <div class="tb-user">
+          <div class="tb-user" id="user-profile-btn">
             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Valeria&backgroundColor=b6e3f4" alt="User" class="tb-avatar" />
             <div class="tb-user-info">
               <span class="tb-user-name">Valeria Arzenton</span>

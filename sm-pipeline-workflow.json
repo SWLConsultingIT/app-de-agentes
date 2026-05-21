@@ -1,0 +1,645 @@
+{
+  "name": "WF 11 - SM Pipeline — Competitor Intelligence (Multi-Platform)",
+  "nodes": [
+    {
+      "id": "1e4ad639-088a-4115-8459-2b31dac90fb3",
+      "name": "TRIGGER Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [30512, -1136],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sm-pipeline",
+        "options": {}
+      },
+      "webhookId": "sm-pipeline-webhook"
+    },
+    {
+      "id": "6286854e-7fcc-45f7-94c5-4ec0606eaca5",
+      "name": "SET API Keys",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [30752, -1136],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id":"k-01","name":"APIFY_TOKEN","value":"={{ $env.APIFY_TOKEN }}","type":"string"},
+            {"id":"k-02","name":"GEMINI_API_KEY","value":"={{ $env.GEMINI_API_KEY }}","type":"string"},
+            {"id":"k-03","name":"ANTHROPIC_API_KEY","value":"={{ $env.ANTHROPIC_API_KEY }}","type":"string"},
+            {"id":"k-04","name":"SUPABASE_URL","value":"={{ $env.SUPABASE_URL }}","type":"string"},
+            {"id":"k-05","name":"SUPABASE_KEY","value":"={{ $env.SUPABASE_KEY }}","type":"string"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "df6abd4f-a126-45d0-92a7-a390bdf91587",
+      "name": "SET Input Params",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [30992, -1136],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id":"p-01","name":"brand_id","value":"={{ $('TRIGGER Webhook').first().json.body.brand_id || '' }}","type":"string"},
+            {"id":"p-05","name":"config_name","value":"={{ $('TRIGGER Webhook').first().json.body.config_name || '' }}","type":"string"},
+            {"id":"p-02","name":"max_videos","value":"={{ $('TRIGGER Webhook').first().json.body.max_videos ?? 10 }}","type":"number"},
+            {"id":"p-03","name":"top_k","value":"={{ $('TRIGGER Webhook').first().json.body.top_k ?? 3 }}","type":"number"},
+            {"id":"p-04","name":"n_days","value":"={{ $('TRIGGER Webhook').first().json.body.n_days ?? 30 }}","type":"number"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "cfg-lookup-0000-0000-0000-000000000001",
+      "name": "SUPABASE Get Config",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [31112, -1136],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "sm_configs",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {"keyName":"config_name","condition":"eq","keyValue":"={{ $json.config_name }}"}
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {"id":"BDR8az1QEuSkurgW","name":"Supabase Growth Engine DEMO"}
+      }
+    },
+    {
+      "id": "a1111111-1111-1111-1111-111111111111",
+      "name": "SUPABASE Get Brand Profile",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [31232, -1136],
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "brand_profiles",
+        "limit": 1,
+        "filters": {
+          "conditions": [
+            {"keyName":"brand_id","condition":"eq","keyValue":"={{ $json.brand_id }}"}
+          ]
+        }
+      },
+      "credentials": {
+        "supabaseApi": {"id":"BDR8az1QEuSkurgW","name":"Supabase Growth Engine DEMO"}
+      }
+    },
+    {
+      "id": "baeba620-81ec-4e8f-920c-7f755cb9f050",
+      "name": "IF Profile Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [31472, -1136],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"prof-01","leftValue":"={{ $json.brand_id }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}}
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2222222-2222-2222-2222-222222222222",
+      "name": "CODE Build Competitor Jobs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [31712, -1136],
+      "parameters": {
+        "jsCode": "const profileRow = $input.first().json || {};\nconst brandData = profileRow.data_json || {};\nconst brandId = $('SUPABASE Get Config').first().json.brand_id || $('SET Input Params').first().json.brand_id;\nconst maxVideos = $('SET Input Params').first().json.max_videos;\nconst topK = $('SET Input Params').first().json.top_k;\nconst nDays = $('SET Input Params').first().json.n_days;\n\n// Brand's active platforms from channels[] in brand_profiles.data_json\nconst channels = brandData.channels || brandData.tone_by_channel || [];\nconst activePlatforms = new Set(\n  channels.map(c => (c.name || c.channel || '').toLowerCase().trim())\n);\n\nfunction getHandle(url, platform) {\n  if (!url) return null;\n  url = String(url).trim();\n  if (platform === 'instagram') {\n    const m = url.match(/instagram\\.com\\/?@?([^/?#\\s]+)/i);\n    return m ? m[1].replace(/\\/$/, '') : null;\n  }\n  if (platform === 'tiktok') {\n    const m = url.match(/tiktok\\.com\\/?@?([^/?#\\s]+)/i);\n    return m ? m[1].replace(/^@/, '').replace(/\\/$/, '') : null;\n  }\n  if (platform === 'linkedin') return url.replace(/\\/$/, '');\n  if (platform === 'twitter') {\n    const m = url.match(/(?:twitter|x)\\.com\\/?@?([^/?#\\s]+)/i);\n    return m ? m[1].replace(/\\/$/, '') : null;\n  }\n  return null;\n}\n\nconst companyName = (brandData.identity && brandData.identity.company_name) || 'the brand';\nconst industry = (brandData.identity && brandData.identity.industry) || 'B2B';\n\nconst analysisInstruction = brandData.analysis_instruction || '# CONCEPT\\nOverall description (1-3 sentences).\\n\\n# HOOK\\n- VISUAL: first 1-2 seconds\\n- TEXT: on-screen text (max 8 words)\\n- SPOKEN: first words said (quote it)\\n- WHY IT WORKS: why this hook stops the viewer\\n\\n# RETENTION MECHANISMS\\nHow the creator retains viewers.\\n\\n# REWARD\\nValue the viewer gets.\\n\\n# SCRIPT\\nFull content (1-20 sentences). THE SHORTER THE BETTER.';\n\nconst newConceptsInstruction = brandData.new_concepts_instruction || ('Adapt this content for ' + companyName + ' in the ' + industry + ' space.\\n\\nGive 3 NEW concepts inspired by the reference — do NOT copy, translate the core idea into the brand context. Focus sharply on the HOOKS.\\n\\n# CONCEPT 1\\nDescription (1-3 sentences)\\n\\n## HOOK\\n- VISUAL: First 2 seconds\\n- SPOKEN: First line (quote it)\\n- WHY IT WORKS: Why this hook stops the viewer\\n\\n## SCRIPT\\nScene flow and spoken text (1-20 sentences)\\n\\n# CONCEPT 2\\n...\\n\\n# CONCEPT 3\\n...');\n\nconst competitors = brandData.competitors || [];\nconst jobs = [];\n\nfor (const comp of competitors) {\n  const compName = comp.name || 'Unknown';\n  if (activePlatforms.has('instagram') && comp.instagram_url) {\n    const h = getHandle(comp.instagram_url, 'instagram');\n    if (h) jobs.push({ competitor_name: compName, platform: 'instagram', handle: h });\n  }\n  if (activePlatforms.has('tiktok') && comp.tiktok_url) {\n    const h = getHandle(comp.tiktok_url, 'tiktok');\n    if (h) jobs.push({ competitor_name: compName, platform: 'tiktok', handle: h });\n  }\n  if (activePlatforms.has('linkedin') && comp.linkedin_url) {\n    const h = getHandle(comp.linkedin_url, 'linkedin');\n    if (h) jobs.push({ competitor_name: compName, platform: 'linkedin', handle: h });\n  }\n  const twUrl = comp.twitter_url || comp.x_url;\n  if ((activePlatforms.has('twitter') || activePlatforms.has('x')) && twUrl) {\n    const h = getHandle(twUrl, 'twitter');\n    if (h) jobs.push({ competitor_name: compName, platform: 'twitter', handle: h });\n  }\n}\n\nif (!jobs.length) return [{ json: { _no_jobs: true } }];\n\nreturn jobs.map(j => ({ json: { ...j, brand_id: brandId, max_videos: maxVideos, top_k: topK, n_days: nDays, analysis_instruction: analysisInstruction, new_concepts_instruction: newConceptsInstruction } }));"
+      }
+    },
+    {
+      "id": "c3333333-3333-3333-3333-333333333333",
+      "name": "IF Jobs Found",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [31952, -1136],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"jobs-01","leftValue":"={{ $json.platform }}","rightValue":"","operator":{"type":"string","operation":"notEmpty","singleValue":true}}
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "532ae79e-faef-4eb9-b2a8-d0768b2cc4d4",
+      "name": "SPLIT Jobs Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [32192, -1136],
+      "parameters": {
+        "options": {}
+      }
+    },
+    {
+      "id": "d4444444-4444-4444-4444-444444444444",
+      "name": "IF Instagram",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [32432, -1344],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"ig-01","leftValue":"={{ $json.platform }}","rightValue":"instagram","operator":{"type":"string","operation":"equals"}}
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "e5555555-5555-5555-5555-555555555555",
+      "name": "IF TikTok",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [32432, -1136],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"tt-01","leftValue":"={{ $json.platform }}","rightValue":"tiktok","operator":{"type":"string","operation":"equals"}}
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "f6666666-6666-6666-6666-666666666666",
+      "name": "IF LinkedIn",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [32432, -928],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"li-01","leftValue":"={{ $json.platform }}","rightValue":"linkedin","operator":{"type":"string","operation":"equals"}}
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "13da931c-0031-42e9-adb1-6231817ef904",
+      "name": "HTTP Apify Instagram Run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [32672, -1344],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/apify~instagram-reel-scraper/runs?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}&waitForFinish=120",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name":"Content-Type","value":"application/json"}]},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ username: [$json.handle], resultsLimit: $json.max_videos }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "1e01ea32-657e-4063-a9c1-aed70f59d4cf",
+      "name": "HTTP Apify Instagram Dataset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [32912, -1344],
+      "parameters": {
+        "url": "=https://api.apify.com/v2/datasets/{{ $json.data.defaultDatasetId }}/items?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}&limit=50",
+        "options": {}
+      }
+    },
+    {
+      "id": "94d4a09e-dc90-46ab-bf57-f232a51df0e3",
+      "name": "CODE Normalize Instagram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [33152, -1344],
+      "parameters": {
+        "jsCode": "const raw = $input.all();\nconst job = $('SPLIT Jobs Loop').first().json;\nconst topK = job.top_k || 3;\nconst nDays = job.n_days || 30;\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nconst items = raw\n  .map(i => i.json)\n  .filter(v => v && !v.error)\n  .filter(v => v.videoUrl || v.url)\n  .filter(v => { const d = v.timestamp ? new Date(v.timestamp) : null; return !d || d >= cutoff; })\n  .sort((a, b) => (b.videoPlayCount || 0) - (a.videoPlayCount || 0))\n  .slice(0, topK);\n\nif (!items.length) return [{ json: { _no_posts: true } }];\n\nreturn items.map(v => ({ json: {\n  link: v.url || (v.shortCode ? ('https://www.instagram.com/reel/' + v.shortCode + '/') : v.videoUrl),\n  video_url: v.videoUrl || '',\n  thumbnail: v.displayUrl || v.thumbnailUrl || '',\n  competitor_name: job.competitor_name,\n  platform: 'instagram',\n  views: v.videoPlayCount || 0,\n  likes: v.likesCount || 0,\n  comments: v.commentsCount || 0,\n  shares: 0,\n  text: v.caption || '',\n  date_posted: v.timestamp ? new Date(v.timestamp).toISOString().split('T')[0] : '',\n  brand_id: job.brand_id,\n  analysis_instruction: job.analysis_instruction,\n  new_concepts_instruction: job.new_concepts_instruction,\n  is_video: !!(v.videoUrl)\n} }));"
+      }
+    },
+    {
+      "id": "a7777777-7777-7777-7777-777777777777",
+      "name": "HTTP Apify TikTok",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [32672, -1136],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name":"Content-Type","value":"application/json"}]},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ profiles: [$json.handle], resultsPerPage: $json.max_videos, shouldDownloadVideos: false, shouldDownloadCovers: false, shouldDownloadSubtitles: false, proxyConfiguration: { useApifyProxy: true, apifyProxyGroups: [\"RESIDENTIAL\"] } }) }}",
+        "options": {
+          "response": {"response": {"neverError": true}},
+          "timeout": 300000
+        }
+      }
+    },
+    {
+      "id": "b8888888-8888-8888-8888-888888888888",
+      "name": "CODE Normalize TikTok",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [32912, -1136],
+      "parameters": {
+        "jsCode": "const raw = $input.all();\nconst job = $('SPLIT Jobs Loop').first().json;\nconst topK = job.top_k || 3;\nconst nDays = job.n_days || 30;\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nfunction nz(v) { return typeof v === 'number' ? v : (parseInt(v) || 0); }\n\nconst items = raw\n  .map(i => i.json)\n  .filter(v => v && (v.webVideoUrl || v.videoUrl || v.id))\n  .filter(v => {\n    const ts = v.createTimeISO || (v.createTime ? new Date(v.createTime * 1000).toISOString() : null);\n    const d = ts ? new Date(ts) : null;\n    return !d || d >= cutoff;\n  })\n  .sort((a, b) => {\n    const aV = (a.stats || {}).playCount || a.playCount || 0;\n    const bV = (b.stats || {}).playCount || b.playCount || 0;\n    return bV - aV;\n  })\n  .slice(0, topK);\n\nif (!items.length) return [{ json: { _no_posts: true } }];\n\nreturn items.map(v => {\n  const stats = v.stats || {};\n  const ts = v.createTimeISO || (v.createTime ? new Date(v.createTime * 1000).toISOString() : '');\n  return { json: {\n    link: v.webVideoUrl || v.videoUrl || ('https://tiktok.com/@' + job.handle + '/video/' + v.id),\n    video_url: v.videoUrl || v.downloadAddr || '',\n    thumbnail: (Array.isArray(v.covers) ? v.covers[0] : '') || v.cover || '',\n    competitor_name: job.competitor_name,\n    platform: 'tiktok',\n    views: nz(stats.playCount || v.playCount),\n    likes: nz(stats.diggCount || v.diggCount),\n    comments: nz(stats.commentCount || v.commentCount),\n    shares: nz(stats.shareCount || v.shareCount),\n    text: v.text || v.desc || '',\n    date_posted: ts ? new Date(ts).toISOString().split('T')[0] : '',\n    brand_id: job.brand_id,\n    analysis_instruction: job.analysis_instruction,\n    new_concepts_instruction: job.new_concepts_instruction,\n    is_video: !!(v.videoUrl || v.downloadAddr)\n  } };\n});"
+      }
+    },
+    {
+      "id": "c9999999-9999-9999-9999-999999999999",
+      "name": "HTTP Apify LinkedIn",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [32672, -928],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/harvestapi~linkedin-company-posts/run-sync-get-dataset-items?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name":"Content-Type","value":"application/json"}]},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ targetUrls: [$json.handle], maxPosts: $json.max_videos, includeReposts: false, includeQuotePosts: true, scrapeReactions: false, scrapeComments: false }) }}",
+        "options": {
+          "response": {"response": {"neverError": true}},
+          "timeout": 180000
+        }
+      }
+    },
+    {
+      "id": "daaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "CODE Normalize LinkedIn",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [32912, -928],
+      "parameters": {
+        "jsCode": "const raw = $input.all();\nconst job = $('SPLIT Jobs Loop').first().json;\nconst topK = job.top_k || 3;\nconst nDays = job.n_days || 30;\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nfunction nz(v) { return typeof v === 'number' ? v : (parseInt(v) || 0); }\nfunction isPost(p) { return p && (p.content != null || p.engagement != null || p.postedAt != null); }\n\nconst postItems = raw.map(i => i.json).filter(isPost);\n\nconst filtered = postItems.filter(p => {\n  const ts = p.postedAt && (p.postedAt.date || (p.postedAt.timestamp ? new Date(p.postedAt.timestamp).toISOString() : null));\n  if (!ts) return true;\n  const d = new Date(ts);\n  return isNaN(d.getTime()) || d >= cutoff;\n});\n\nif (!filtered.length) return [{ json: { _no_posts: true } }];\n\nconst scored = filtered\n  .map(p => {\n    const eng = p.engagement || {};\n    const l = nz(eng.likes || eng.reactions_total);\n    const c = nz(eng.comments);\n    const s = nz(eng.shares || eng.reposts);\n    return { ...p, _score: l + c * 2 + s * 3 };\n  })\n  .sort((a, b) => b._score - a._score)\n  .slice(0, topK);\n\nreturn scored.map(p => {\n  const eng = p.engagement || {};\n  const ts = p.postedAt && (p.postedAt.date || (p.postedAt.timestamp ? new Date(p.postedAt.timestamp).toISOString() : null));\n  return { json: {\n    link: p.linkedinUrl || p.url || '',\n    video_url: '',\n    thumbnail: '',\n    competitor_name: job.competitor_name,\n    platform: 'linkedin',\n    views: 0,\n    likes: nz(eng.likes || eng.reactions_total),\n    comments: nz(eng.comments),\n    shares: nz(eng.shares || eng.reposts),\n    text: String(p.content || p.text || '').slice(0, 2000),\n    date_posted: ts ? new Date(ts).toISOString().split('T')[0] : '',\n    brand_id: job.brand_id,\n    analysis_instruction: job.analysis_instruction,\n    new_concepts_instruction: job.new_concepts_instruction,\n    is_video: false\n  } };\n});"
+      }
+    },
+    {
+      "id": "ebbbbbb1-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "name": "HTTP Apify Twitter",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [32672, -720],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.apify.com/v2/acts/apidojo~tweet-scraper/run-sync-get-dataset-items?token={{ $('SET API Keys').first().json.APIFY_TOKEN }}",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name":"Content-Type","value":"application/json"}]},
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ twitterHandles: [$json.handle], maxTweets: $json.max_videos, tweetsDesired: $json.max_videos, addUserInfo: false }) }}",
+        "options": {
+          "response": {"response": {"neverError": true}},
+          "timeout": 180000
+        }
+      }
+    },
+    {
+      "id": "fcccccc1-cccc-cccc-cccc-cccccccccccc",
+      "name": "CODE Normalize Twitter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [32912, -720],
+      "parameters": {
+        "jsCode": "const raw = $input.all();\nconst job = $('SPLIT Jobs Loop').first().json;\nconst topK = job.top_k || 3;\nconst nDays = job.n_days || 30;\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - nDays);\n\nfunction nz(v) { return typeof v === 'number' ? v : (parseInt(v) || 0); }\n\nconst items = raw\n  .map(i => i.json)\n  .filter(t => t && (t.full_text || t.text))\n  .filter(t => {\n    const d = t.created_at ? new Date(t.created_at) : null;\n    return !d || isNaN(d.getTime()) || d >= cutoff;\n  })\n  .sort((a, b) => {\n    const aL = (a.public_metrics || {}).like_count || nz(a.favorite_count);\n    const bL = (b.public_metrics || {}).like_count || nz(b.favorite_count);\n    return bL - aL;\n  })\n  .slice(0, topK);\n\nif (!items.length) return [{ json: { _no_posts: true } }];\n\nreturn items.map(t => {\n  const pm = t.public_metrics || {};\n  const tweetId = t.id || t.id_str || '';\n  return { json: {\n    link: tweetId ? ('https://twitter.com/' + job.handle + '/status/' + tweetId) : (t.url || ''),\n    video_url: '',\n    thumbnail: '',\n    competitor_name: job.competitor_name,\n    platform: 'twitter',\n    views: nz(pm.impression_count || t.views_count),\n    likes: nz(pm.like_count || t.favorite_count),\n    comments: nz(pm.reply_count || t.reply_count),\n    shares: nz(pm.retweet_count || t.retweet_count),\n    text: String(t.full_text || t.text || '').slice(0, 1000),\n    date_posted: t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : '',\n    brand_id: job.brand_id,\n    analysis_instruction: job.analysis_instruction,\n    new_concepts_instruction: job.new_concepts_instruction,\n    is_video: false\n  } };\n});"
+      }
+    },
+    {
+      "id": "53c4348c-ad74-4b91-b9c4-740b12b5e5e7",
+      "name": "IF Has Posts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [33392, -1136],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"hp-01","leftValue":"={{ $json._no_posts }}","rightValue":"","operator":{"type":"boolean","operation":"true","singleValue":true}}
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "adddddd1-dddd-dddd-dddd-dddddddddddd",
+      "name": "IF Is Video Platform",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [33632, -1136],
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive":true,"leftValue":"","typeValidation":"strict","version":3},
+          "conditions": [
+            {"id":"vid-01","leftValue":"={{ $json.is_video }}","rightValue":"","operator":{"type":"boolean","operation":"true","singleValue":true}}
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "cf9eb1a4-3295-453f-907b-86e339712f57",
+      "name": "HTTP Download Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [33872, -1344],
+      "continueOnFail": true,
+      "parameters": {
+        "url": "={{ $json.video_url }}",
+        "sendHeaders": true,
+        "headerParameters": {"parameters": [{"name":"User-Agent","value":"Mozilla/5.0"}]},
+        "options": {
+          "response": {"response": {"responseFormat":"file","outputPropertyName":"videoData"}}
+        }
+      }
+    },
+    {
+      "id": "4d59310c-c93c-4527-8b4f-858b6bef4ca3",
+      "name": "CODE Store Video Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [34112, -1344],
+      "parameters": {
+        "jsCode": "const binary = $input.first().binary;\nconst videoData = binary && binary.videoData;\nif (!videoData) return [];\n\nconst mimeType = (videoData.mimeType || 'video/mp4').split(';')[0].trim();\nconst vid = $input.first().json;\n\nreturn [{\n  json: {\n    mime_type: mimeType,\n    link: vid.link,\n    video_url: vid.video_url,\n    thumbnail: vid.thumbnail,\n    competitor_name: vid.competitor_name,\n    platform: vid.platform,\n    views: vid.views,\n    likes: vid.likes,\n    comments: vid.comments,\n    shares: vid.shares || 0,\n    text: vid.text || '',\n    date_posted: vid.date_posted,\n    brand_id: vid.brand_id,\n    analysis_instruction: vid.analysis_instruction,\n    new_concepts_instruction: vid.new_concepts_instruction\n  },\n  binary: { videoData: videoData }\n}];"
+      }
+    },
+    {
+      "id": "99d0e4da-bcb6-4a37-9f40-2a01b29449dc",
+      "name": "Gemini Analyze Video",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [34352, -1344],
+      "parameters": {
+        "resource": "video",
+        "operation": "analyze",
+        "modelId": {"__rl":true,"mode":"id","value":"gemini-1.5-pro"},
+        "text": "={{ $json.analysis_instruction }}",
+        "inputType": "binary",
+        "binaryPropertyName": "videoData",
+        "options": {}
+      },
+      "credentials": {
+        "googlePalmApi": {"id":"k70XVSg6bUTjTFJk","name":"Google Gemini(PaLM) Api account 2"}
+      }
+    },
+    {
+      "id": "ce297367-0500-4a89-a666-251bf0f6f308",
+      "name": "SET Extract Video Analysis",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [34592, -1344],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {"id":"va-01","name":"analysis","value":"={{ ($json.content && $json.content.parts && $json.content.parts[0]) ? $json.content.parts[0].text : ($json.text || '') }}","type":"string"},
+            {"id":"va-02","name":"link","value":"={{ $('CODE Store Video Meta').item.json.link }}","type":"string"},
+            {"id":"va-03","name":"thumbnail","value":"={{ $('CODE Store Video Meta').item.json.thumbnail }}","type":"string"},
+            {"id":"va-04","name":"competitor_name","value":"={{ $('CODE Store Video Meta').item.json.competitor_name }}","type":"string"},
+            {"id":"va-05","name":"platform","value":"={{ $('CODE Store Video Meta').item.json.platform }}","type":"string"},
+            {"id":"va-06","name":"views","value":"={{ $('CODE Store Video Meta').item.json.views }}","type":"number"},
+            {"id":"va-07","name":"likes","value":"={{ $('CODE Store Video Meta').item.json.likes }}","type":"number"},
+            {"id":"va-08","name":"comments","value":"={{ $('CODE Store Video Meta').item.json.comments }}","type":"number"},
+            {"id":"va-09","name":"shares","value":"={{ $('CODE Store Video Meta').item.json.shares }}","type":"number"},
+            {"id":"va-10","name":"date_posted","value":"={{ $('CODE Store Video Meta').item.json.date_posted }}","type":"string"},
+            {"id":"va-11","name":"brand_id","value":"={{ $('CODE Store Video Meta').item.json.brand_id }}","type":"string"},
+            {"id":"va-12","name":"new_concepts_instruction","value":"={{ $('CODE Store Video Meta').item.json.new_concepts_instruction }}","type":"string"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "beeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+      "name": "CODE Build Text Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [33872, -928],
+      "parameters": {
+        "jsCode": "const post = $input.first().json;\nconst text = post.text || '';\nconst firstLine = text.split(/[.!?\\n]/)[0].trim().slice(0, 200);\nconst platformLabel = { linkedin: 'LinkedIn', twitter: 'Twitter/X' }[post.platform] || post.platform;\n\nconst analysis = '**CONCEPT**\\nHigh-engagement ' + platformLabel + ' post from ' + post.competitor_name + '.\\n\\n**HOOK**\\n- VISUAL: Text post opening\\n- SPOKEN: \"' + firstLine + '\"\\n- WHY IT WORKS: Strong engagement — ' + post.likes + ' likes, ' + post.comments + ' comments\\n\\n**CONTENT**\\n' + text.slice(0, 800);\n\nreturn [{ json: {\n  analysis,\n  link: post.link,\n  thumbnail: post.thumbnail || '',\n  competitor_name: post.competitor_name,\n  platform: post.platform,\n  views: post.views,\n  likes: post.likes,\n  comments: post.comments,\n  shares: post.shares || 0,\n  date_posted: post.date_posted,\n  brand_id: post.brand_id,\n  new_concepts_instruction: post.new_concepts_instruction\n} }];"
+      }
+    },
+    {
+      "id": "31540257-ccf5-4e8a-afa5-6151d5d88912",
+      "name": "HTTP Claude Concepts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [34832, -1136],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name":"x-api-key","value":"={{ $('SET API Keys').first().json.ANTHROPIC_API_KEY }}"},
+            {"name":"anthropic-version","value":"2023-06-01"},
+            {"name":"content-type","value":"application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ ({ model: 'claude-sonnet-4-6', max_tokens: 2048, messages: [{ role: 'user', content: $json.new_concepts_instruction + '\\n\\n=== REFERENCE POST ===\\nCompetitor: @' + $json.competitor_name + '\\nPlatform: ' + $json.platform + '\\nViews: ' + $json.views + '\\nLikes: ' + $json.likes + '\\nPosted: ' + $json.date_posted + '\\nLink: ' + $json.link + ($json.analysis && $json.analysis.trim() ? '\\n\\nContent analysis:\\n' + $json.analysis : '\\n\\n[Video analysis unavailable — base concepts on brand context and engagement metrics above]') }] }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "74979c10-2517-4628-a516-dc243f38dd54",
+      "name": "CODE Build Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [35072, -1136],
+      "parameters": {
+        "jsCode": "const inputs = $input.all();\n\n// Get metadata from whichever analysis path fired\nlet analysisItems = [];\ntry { analysisItems = $('SET Extract Video Analysis').all(); } catch(e) {}\nif (!analysisItems.length) {\n  try { analysisItems = $('CODE Build Text Analysis').all(); } catch(e) {}\n}\n\nreturn inputs.map((input, i) => {\n  const claudeResponse = input.json;\n  const meta = analysisItems[i] ? analysisItems[i].json : {};\n\n  const conceptsText = claudeResponse.content && claudeResponse.content[0] && claudeResponse.content[0].text\n    ? claudeResponse.content[0].text\n    : '';\n\n  return { json: {\n    link: meta.link || '',\n    thumbnail: meta.thumbnail || '',\n    creator: meta.competitor_name || '',\n    competitor_name: meta.competitor_name || '',\n    platform: meta.platform || 'instagram',\n    views: meta.views || 0,\n    likes: meta.likes || 0,\n    comments: meta.comments || 0,\n    shares: meta.shares || 0,\n    analysis: meta.analysis || '',\n    new_concepts: conceptsText,\n    date_posted: meta.date_posted || '',\n    date_added: new Date().toISOString().split('T')[0],\n    config_name: meta.brand_id || '',\n    brand_id: meta.brand_id || '',\n    starred: false\n  } };\n});"
+      }
+    },
+    {
+      "id": "48455f8a-41aa-4246-bcfb-760f66a6993e",
+      "name": "HTTP Supabase Upsert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [35312, -1136],
+      "parameters": {
+        "method": "POST",
+        "url": "https://lvgqecbibzqkmemecskr.supabase.co/rest/v1/sm_videos?on_conflict=link",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name":"apikey","value":"={{ $('SET API Keys').first().json.SUPABASE_KEY }}"},
+            {"name":"Authorization","value":"={{ 'Bearer ' + $('SET API Keys').first().json.SUPABASE_KEY }}"},
+            {"name":"Content-Type","value":"application/json"},
+            {"name":"Prefer","value":"return=representation,resolution=merge-duplicates"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "0dec8812-178b-439f-8ad7-36b8c0fea5ed",
+      "name": "CODE Merge Loop",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [35552, -1136],
+      "parameters": {
+        "jsCode": "return [{ json: { loop_back: true } }];"
+      }
+    }
+  ],
+  "connections": {
+    "TRIGGER Webhook": {
+      "main": [[{"node":"SET API Keys","type":"main","index":0}]]
+    },
+    "SET API Keys": {
+      "main": [[{"node":"SET Input Params","type":"main","index":0}]]
+    },
+    "SET Input Params": {
+      "main": [[{"node":"SUPABASE Get Config","type":"main","index":0}]]
+    },
+    "SUPABASE Get Config": {
+      "main": [[{"node":"SUPABASE Get Brand Profile","type":"main","index":0}]]
+    },
+    "SUPABASE Get Brand Profile": {
+      "main": [[{"node":"IF Profile Found","type":"main","index":0}]]
+    },
+    "IF Profile Found": {
+      "main": [
+        [{"node":"CODE Build Competitor Jobs","type":"main","index":0}],
+        []
+      ]
+    },
+    "CODE Build Competitor Jobs": {
+      "main": [[{"node":"IF Jobs Found","type":"main","index":0}]]
+    },
+    "IF Jobs Found": {
+      "main": [
+        [{"node":"SPLIT Jobs Loop","type":"main","index":0}],
+        []
+      ]
+    },
+    "SPLIT Jobs Loop": {
+      "main": [
+        [],
+        [{"node":"IF Instagram","type":"main","index":0}]
+      ]
+    },
+    "IF Instagram": {
+      "main": [
+        [{"node":"HTTP Apify Instagram Run","type":"main","index":0}],
+        [{"node":"IF TikTok","type":"main","index":0}]
+      ]
+    },
+    "IF TikTok": {
+      "main": [
+        [{"node":"HTTP Apify TikTok","type":"main","index":0}],
+        [{"node":"IF LinkedIn","type":"main","index":0}]
+      ]
+    },
+    "IF LinkedIn": {
+      "main": [
+        [{"node":"HTTP Apify LinkedIn","type":"main","index":0}],
+        [{"node":"HTTP Apify Twitter","type":"main","index":0}]
+      ]
+    },
+    "HTTP Apify Instagram Run": {
+      "main": [[{"node":"HTTP Apify Instagram Dataset","type":"main","index":0}]]
+    },
+    "HTTP Apify Instagram Dataset": {
+      "main": [[{"node":"CODE Normalize Instagram","type":"main","index":0}]]
+    },
+    "CODE Normalize Instagram": {
+      "main": [[{"node":"IF Has Posts","type":"main","index":0}]]
+    },
+    "HTTP Apify TikTok": {
+      "main": [[{"node":"CODE Normalize TikTok","type":"main","index":0}]]
+    },
+    "CODE Normalize TikTok": {
+      "main": [[{"node":"IF Has Posts","type":"main","index":0}]]
+    },
+    "HTTP Apify LinkedIn": {
+      "main": [[{"node":"CODE Normalize LinkedIn","type":"main","index":0}]]
+    },
+    "CODE Normalize LinkedIn": {
+      "main": [[{"node":"IF Has Posts","type":"main","index":0}]]
+    },
+    "HTTP Apify Twitter": {
+      "main": [[{"node":"CODE Normalize Twitter","type":"main","index":0}]]
+    },
+    "CODE Normalize Twitter": {
+      "main": [[{"node":"IF Has Posts","type":"main","index":0}]]
+    },
+    "IF Has Posts": {
+      "main": [
+        [{"node":"SPLIT Jobs Loop","type":"main","index":0}],
+        [{"node":"IF Is Video Platform","type":"main","index":0}]
+      ]
+    },
+    "IF Is Video Platform": {
+      "main": [
+        [{"node":"HTTP Download Video","type":"main","index":0}],
+        [{"node":"CODE Build Text Analysis","type":"main","index":0}]
+      ]
+    },
+    "HTTP Download Video": {
+      "main": [[{"node":"CODE Store Video Meta","type":"main","index":0}]]
+    },
+    "CODE Store Video Meta": {
+      "main": [[{"node":"Gemini Analyze Video","type":"main","index":0}]]
+    },
+    "Gemini Analyze Video": {
+      "main": [[{"node":"SET Extract Video Analysis","type":"main","index":0}]]
+    },
+    "SET Extract Video Analysis": {
+      "main": [[{"node":"HTTP Claude Concepts","type":"main","index":0}]]
+    },
+    "CODE Build Text Analysis": {
+      "main": [[{"node":"HTTP Claude Concepts","type":"main","index":0}]]
+    },
+    "HTTP Claude Concepts": {
+      "main": [[{"node":"CODE Build Record","type":"main","index":0}]]
+    },
+    "CODE Build Record": {
+      "main": [[{"node":"HTTP Supabase Upsert","type":"main","index":0}]]
+    },
+    "HTTP Supabase Upsert": {
+      "main": [[{"node":"CODE Merge Loop","type":"main","index":0}]]
+    },
+    "CODE Merge Loop": {
+      "main": [[{"node":"SPLIT Jobs Loop","type":"main","index":0}]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "250f37a53250736be8af461c3752e7652027cf011896ba5176c1c6100ed4f0a0",
+    "notes": "MULTI-PLATFORM competitor intelligence pipeline. Trigger: POST /sm-pipeline with { brand_id, max_videos?, top_k?, n_days? }. Reads competitors + active platforms from brand_profiles.data_json. Competitor fields: instagram_url, tiktok_url, linkedin_url, twitter_url/x_url. Active platforms: data_json.channels[].name. Skips platforms the brand is NOT on. Video platforms (IG/TikTok): downloads video → Gemini analysis → Claude concepts. Text platforms (LinkedIn/Twitter): extracts hook from post text → Claude concepts. Saves to sm_videos with brand_id, competitor_name, platform fields. SUPABASE: add columns platform (text), competitor_name (text), brand_id (uuid), shares (int) to sm_videos if not present. Twitter actor: apidojo~tweet-scraper — adjust actor name if unavailable on your Apify plan. LinkedIn actor: harvestapi~linkedin-company-posts ($2/1k). TikTok actor: clockworks~tiktok-scraper."
+  }
+}
+

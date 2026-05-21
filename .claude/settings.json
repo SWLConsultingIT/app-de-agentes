@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout *)",
+      "Bash(curl -X POST https://n8n.srv949269.hstgr.cloud/webhook/socialmedia-bios -H 'Content-Type: application/json' -d '{ *)",
+      "Bash(curl -sSL --max-time 15 -A \"Mozilla/5.0\" \"https://apify.com/benjarapi/linkedin-company-posts\" -o /tmp/bj_li.html)",
+      "Bash(python3)",
+      "Read(//tmp/**)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "n8n"
+  ]
+}
