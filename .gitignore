@@ -3,6 +3,7 @@ _project/
 .env
 *.env
 .mcp.json
+n8n-workflows/
 
 # macOS
 .DS_Store

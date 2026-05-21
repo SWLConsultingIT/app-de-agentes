@@ -173,18 +173,19 @@ const brandKitData = {
     { code: 'P5', role: 'Founder / CEO',         label: 'SMB · mid-market buyer',           size: 'Founder-led sales · Series Seed–A · 10–80 empleados',     pains: 'Equipo chico que no escala, agencias externas genéricas que no entregan, founder-led sales tocando techo, dependencia de 1–2 SDRs estrella',             triggers: 'Cierre de Series A, presión de inversores por GTM repetible, founder cansado de hacer outreach manual, contratación de primer Head of Sales' },
     { code: 'P6', role: 'IT / Head of Eng',      label: 'Technical gatekeeper',             size: 'Aprueba o veta vendors de software',                       pains: 'Riesgo de vendor lock-in, seguridad de datos del CRM, complejidad de integración con stack propio, mantenimiento post-implementación',                   triggers: 'Nuevo stack AI a aprobar, mandato de consolidar vendors, audit de seguridad anual, política interna de data residency' },
   ],
-  competitors: [
-    { name: 'Globant',              url: 'https://www.globant.com',                 linkedin_url: 'https://www.linkedin.com/company/globant',         instagram_url: 'https://instagram.com/globant',         tiktok_url: 'https://tiktok.com/@globant',     youtube_url: 'https://youtube.com/@globant',                positioning: 'Tech consulting LATAM · AI + cultura interna fuerte',    tier: 'Premium', diff: 'Eventos propios (Converge) bien producidos. TikTok activo de innovación. Daily LI · 4x/sem IG.' },
-    { name: 'BairesDev',            url: 'https://www.bairesdev.com',               linkedin_url: 'https://www.linkedin.com/company/bairesdev',       instagram_url: 'https://instagram.com/bairesdev',       tiktok_url: 'https://tiktok.com/@bairesdev',   youtube_url: 'https://youtube.com/@bairesdev',              positioning: 'Top 1% talent · outbound conversion-led',                tier: 'Premium', diff: 'Posts muy directos con CTA — "contratá developers en 48hs". Referente de outbound en LATAM.' },
-    { name: 'Accenture',            url: 'https://www.accenture.com',               linkedin_url: 'https://www.linkedin.com/company/accenture',       instagram_url: 'https://instagram.com/accenture',       tiktok_url: 'https://tiktok.com/@accenture',   youtube_url: 'https://youtube.com/@accenture',              positioning: 'Tech consulting outcomes-driven · AI at scale',          tier: 'Premium', diff: 'Muy fuerte en TikTok con contenido educativo de AI. Referente de presencia omnicanal enterprise.' },
-    { name: 'McKinsey & Company',   url: 'https://www.mckinsey.com',                linkedin_url: 'https://www.linkedin.com/company/mckinsey',        instagram_url: 'https://instagram.com/mckinsey',                                                       youtube_url: 'https://youtube.com/@McKinsey',                positioning: 'Strategy consulting · alto ticket · autoridad',          tier: 'Premium', diff: 'Estructura post: insight → dato → conclusión. Minimalismo visual premium. Sin TikTok.' },
-    { name: 'Deloitte',             url: 'https://www2.deloitte.com',                linkedin_url: 'https://www.linkedin.com/company/deloitte',        instagram_url: 'https://instagram.com/deloitte',                                                       youtube_url: 'https://youtube.com/@DeloitteUS',              positioning: 'Big 4 · Advisory + Tech + Compliance enterprise',        tier: 'Premium', diff: 'Consistencia visual muy alta. Case studies con métricas. Daily LI · 3x/sem IG.' },
-    { name: 'EPAM Systems',         url: 'https://www.epam.com',                    linkedin_url: 'https://www.linkedin.com/company/epam-systems',    instagram_url: 'https://instagram.com/epamsystems',                                                    youtube_url: 'https://youtube.com/@EPAM',                    positioning: 'Enterprise nearshore tech consulting',                    tier: 'Mid',     diff: 'Institucional, enterprise, tech-heavy. Foco en recruitment + AI capabilities.' },
-    { name: 'Softtek',              url: 'https://www.softtek.com',                 linkedin_url: 'https://www.linkedin.com/company/softtek',         instagram_url: 'https://instagram.com/softtek',                                                        youtube_url: 'https://youtube.com/@softtek',                 positioning: 'Nearshore LATAM tech consulting',                         tier: 'Mid',     diff: 'Institucional, LATAM-oriented. Posts de cultura + casos enterprise.' },
-    { name: 'Darwin AI',            url: 'https://www.darwin-ai.com',               linkedin_url: 'https://www.linkedin.com/company/darwin-ai',       instagram_url: 'https://instagram.com/darwin.ai.latam', tiktok_url: 'https://tiktok.com/@darwinai',                                                                positioning: 'AI Agents startup LATAM · dinámico',                     tier: 'Mid',     diff: 'Competidor directo regional. Tono startup. Foco LATAM, escalando rápido.' },
-    { name: 'Artisan (AI)',         url: 'https://www.artisan.co',                  linkedin_url: 'https://www.linkedin.com/company/artisan-ai',                                                              tiktok_url: 'https://tiktok.com/@artisan_ai',                                                               positioning: 'AI SDR Platform · viral product-led',                     tier: 'Mid',     diff: 'Competidor directo USA en AI agents para sales. Viral en TikTok. Posts product-led benefit-focused.' },
-    { name: 'Salesforce Agentforce',url: 'https://www.salesforce.com/agentforce',   linkedin_url: 'https://www.linkedin.com/company/salesforce',      instagram_url: 'https://instagram.com/salesforce',      tiktok_url: 'https://tiktok.com/@salesforce',  youtube_url: 'https://youtube.com/@salesforce',             positioning: 'Enterprise AI Agents Platform',                          tier: 'Premium', diff: 'Plataforma de agentes AI integrada al CRM. Tono enterprise futuro-del-trabajo. Presencia omnicanal masiva.' },
-  ],
+  competitors: [],
+  // competitors: [
+  //   { name: 'Globant',              url: 'https://www.globant.com',                 linkedin_url: 'https://www.linkedin.com/company/globant',         instagram_url: 'https://instagram.com/globant',         tiktok_url: 'https://tiktok.com/@globant',     youtube_url: 'https://youtube.com/@globant',                positioning: 'Tech consulting LATAM · AI + cultura interna fuerte',    tier: 'Premium', diff: 'Eventos propios (Converge) bien producidos. TikTok activo de innovación. Daily LI · 4x/sem IG.' },
+  //   { name: 'BairesDev',            url: 'https://www.bairesdev.com',               linkedin_url: 'https://www.linkedin.com/company/bairesdev',       instagram_url: 'https://instagram.com/bairesdev',       tiktok_url: 'https://tiktok.com/@bairesdev',   youtube_url: 'https://youtube.com/@bairesdev',              positioning: 'Top 1% talent · outbound conversion-led',                tier: 'Premium', diff: 'Posts muy directos con CTA — "contratá developers en 48hs". Referente de outbound en LATAM.' },
+  //   { name: 'Accenture',            url: 'https://www.accenture.com',               linkedin_url: 'https://www.linkedin.com/company/accenture',       instagram_url: 'https://instagram.com/accenture',       tiktok_url: 'https://tiktok.com/@accenture',   youtube_url: 'https://youtube.com/@accenture',              positioning: 'Tech consulting outcomes-driven · AI at scale',          tier: 'Premium', diff: 'Muy fuerte en TikTok con contenido educativo de AI. Referente de presencia omnicanal enterprise.' },
+  //   { name: 'McKinsey & Company',   url: 'https://www.mckinsey.com',                linkedin_url: 'https://www.linkedin.com/company/mckinsey',        instagram_url: 'https://instagram.com/mckinsey',                                                       youtube_url: 'https://youtube.com/@McKinsey',                positioning: 'Strategy consulting · alto ticket · autoridad',          tier: 'Premium', diff: 'Estructura post: insight → dato → conclusión. Minimalismo visual premium. Sin TikTok.' },
+  //   { name: 'Deloitte',             url: 'https://www2.deloitte.com',                linkedin_url: 'https://www.linkedin.com/company/deloitte',        instagram_url: 'https://instagram.com/deloitte',                                                       youtube_url: 'https://youtube.com/@DeloitteUS',              positioning: 'Big 4 · Advisory + Tech + Compliance enterprise',        tier: 'Premium', diff: 'Consistencia visual muy alta. Case studies con métricas. Daily LI · 3x/sem IG.' },
+  //   { name: 'EPAM Systems',         url: 'https://www.epam.com',                    linkedin_url: 'https://www.linkedin.com/company/epam-systems',    instagram_url: 'https://instagram.com/epamsystems',                                                    youtube_url: 'https://youtube.com/@EPAM',                    positioning: 'Enterprise nearshore tech consulting',                    tier: 'Mid',     diff: 'Institucional, enterprise, tech-heavy. Foco en recruitment + AI capabilities.' },
+  //   { name: 'Softtek',              url: 'https://www.softtek.com',                 linkedin_url: 'https://www.linkedin.com/company/softtek',         instagram_url: 'https://instagram.com/softtek',                                                        youtube_url: 'https://youtube.com/@softtek',                 positioning: 'Nearshore LATAM tech consulting',                         tier: 'Mid',     diff: 'Institucional, LATAM-oriented. Posts de cultura + casos enterprise.' },
+  //   { name: 'Darwin AI',            url: 'https://www.darwin-ai.com',               linkedin_url: 'https://www.linkedin.com/company/darwin-ai',       instagram_url: 'https://instagram.com/darwin.ai.latam', tiktok_url: 'https://tiktok.com/@darwinai',                                                                positioning: 'AI Agents startup LATAM · dinámico',                     tier: 'Mid',     diff: 'Competidor directo regional. Tono startup. Foco LATAM, escalando rápido.' },
+  //   { name: 'Artisan (AI)',         url: 'https://www.artisan.co',                  linkedin_url: 'https://www.linkedin.com/company/artisan-ai',                                                              tiktok_url: 'https://tiktok.com/@artisan_ai',                                                               positioning: 'AI SDR Platform · viral product-led',                     tier: 'Mid',     diff: 'Competidor directo USA en AI agents para sales. Viral en TikTok. Posts product-led benefit-focused.' },
+  //   { name: 'Salesforce Agentforce',url: 'https://www.salesforce.com/agentforce',   linkedin_url: 'https://www.linkedin.com/company/salesforce',      instagram_url: 'https://instagram.com/salesforce',      tiktok_url: 'https://tiktok.com/@salesforce',  youtube_url: 'https://youtube.com/@salesforce',             positioning: 'Enterprise AI Agents Platform',                          tier: 'Premium', diff: 'Plataforma de agentes AI integrada al CRM. Tono enterprise futuro-del-trabajo. Presencia omnicanal masiva.' },
+  // ],
   channels: [
     { name: 'LinkedIn',           icon: 'linkedin',       color: '#0A66C2', handle: '@arqy',           audience: 'Constructoras + inversores institucionales · canal #1 B2B (Build · Capital · PM)' },
     { name: 'Instagram',          icon: 'instagram',      color: '#E4405F', handle: '@arqy.app',       audience: 'Compradores en pozo + residentes · canal visual (State · Home)' },
@@ -415,6 +416,26 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  if (data.competitors?.length) {
+    const incoming = data.competitors
+      .filter(c => c?.name && !/^new competitor$/i.test(c.name))
+      .map(c => ({
+        name:          c.name,
+        url:           c.url || c.websiteUrl || '',
+        positioning:   c.positioning || '',
+        tier:          c.tier || 'Mid',
+        diff:          c.diff || '',
+        linkedin_url:  c.linkedin_url || c.linkedin || '',
+        instagram_url: c.instagram_url || c.instagram || '',
+        tiktok_url:    c.tiktok_url || c.tiktok || '',
+        youtube_url:   c.youtube_url || c.youtube || '',
+        x_url:         c.x_url || c.x || '',
+        source:        'ai',
+      }));
+    // Keep only explicitly manual entries (source:'manual'); discard defaults + previous AI results
+    const manual = brandKitData.competitors.filter(c => c.source === 'manual');
+    brandKitData.competitors = [...manual, ...incoming];
+  }
   brandKitData.brandId = crypto.randomUUID();
   switchView(state.currentView);
 }
@@ -7128,8 +7149,10 @@ function generateViewHTML(view) {
 
         ${(() => {
           const warn = [];
-          if (!brandKitData.competitors.length) warn.push({ icon: 'swords', msg: 'Competitors — none added yet. Add at least one with a URL.' });
-          else { const noUrl = brandKitData.competitors.filter(c => !c.url).length; if (noUrl) warn.push({ icon: 'swords', msg: `Competitors — ${noUrl} entr${noUrl===1?'y':'ies'} missing website URL.` }); }
+          const validCompetitors = brandKitData.competitors.filter(c => c?.name && !/^new competitor$/i.test(c.name));
+          if (!validCompetitors.length) warn.push({ icon: 'swords', msg: 'Competitors — ninguno agregado. Hacé Scan Website o agregá al menos uno manualmente.' });
+          else if (validCompetitors.length < 5) warn.push({ icon: 'swords', msg: `Competitors — solo ${validCompetitors.length} de 5 mínimos. Hacé Scan Website para auto-detectar más.` });
+          else { const noUrl = validCompetitors.filter(c => !c.url).length; if (noUrl) warn.push({ icon: 'swords', msg: `Competitors — ${noUrl} entr${noUrl===1?'y':'ies'} missing website URL.` }); }
           if (!brandKitData.marketingPrompt) warn.push({ icon: 'sparkles', msg: 'Marketing Prompt — add your custom AI content instructions.' });
           if (!warn.length) return '';
           return `<div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; padding:12px 16px; margin-top:12px;">
@@ -7329,11 +7352,17 @@ function generateViewHTML(view) {
         <div class="card" style="margin-top:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="swords"></i> 6. Competitors Tracked</h3>
-            <span class="lm-tag" style="background:#FEF3C7;color:#92400E">⚠ Manual entry</span>
+            ${(() => {
+              const aiCount = brandKitData.competitors.filter(c => c.source === 'ai').length;
+              const total   = brandKitData.competitors.filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
+              if (aiCount >= 5)  return `<span class="lm-tag" style="background:#D1FAE5;color:#065F46">🤖 ${aiCount} auto-detected · ${total} total</span>`;
+              if (aiCount > 0)   return `<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">🤖 ${aiCount} auto-detected · ${total} total</span>`;
+              return `<span class="lm-tag" style="background:#FEF3C7;color:#92400E">⚠ Sin scan — manual</span>`;
+            })()}
           </div>
-          <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#92400E; display:flex; gap:8px; align-items:flex-start;">
-            <i data-lucide="alert-triangle" style="width:13px; flex-shrink:0; margin-top:1px; color:#F59E0B;"></i>
-            <span>AI cannot auto-detect competitors. Cargá cada competidor a mano con su <strong>website URL</strong> + las <strong>URLs de redes sociales</strong> (LinkedIn, IG, TikTok, YouTube, X). Eso es lo que CompetitorsViews va a scrapear cuando corras <strong>Sync Accounts</strong>.</span>
+          <div style="background:#EEF2FF; border:1px solid #C7D2FE; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#3730A3; display:flex; gap:8px; align-items:flex-start;">
+            <i data-lucide="info" style="width:13px; flex-shrink:0; margin-top:1px; color:#6366F1;"></i>
+            <span>Hacé clic en <strong>Scan Website</strong> (arriba) para que el AI detecte 5+ competidores de tu industria automáticamente. Después podés eliminar los que no correspondan o agregar más con el botón de abajo. Completá las <strong>URLs de redes sociales</strong> para que <strong>Sync Accounts</strong> pueda scrapear cada canal.</span>
           </div>
           <table class="lm-table">
             <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:90px;">Socials</th><th style="width:40px;"></th></tr></thead>
@@ -7341,9 +7370,12 @@ function generateViewHTML(view) {
               ${brandKitData.competitors.map((c, i) => {
                 const socialCount = ['linkedin_url','instagram_url','tiktok_url','youtube_url','x_url'].filter(k => c[k]).length;
                 const isOpen = !!c._socialsOpen;
+                const aiBadge = c.source === 'ai'
+                  ? `<span title="Auto-detected by AI" style="display:inline-block;margin-left:5px;font-size:9px;font-weight:700;background:#EEF2FF;color:#4338CA;border-radius:4px;padding:1px 4px;vertical-align:middle;">AI</span>`
+                  : '';
                 return `
                 <tr>
-                  <td><input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('competitors', ${i}, 'name', this.value)" style="padding:6px 8px; font-size:13px;"></td>
+                  <td><div style="display:flex;align-items:center;gap:4px;"><input class="bk-input" type="text" value="${c.name}" oninput="updateBrandListItem('competitors', ${i}, 'name', this.value)" style="padding:6px 8px; font-size:13px; flex:1;">${aiBadge}</div></td>
                   <td><input class="bk-input" type="text" value="${c.url||''}" oninput="updateBrandListItem('competitors', ${i}, 'url', this.value)" placeholder="https://…" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
                   <td><input class="bk-input" type="text" value="${c.positioning}" oninput="updateBrandListItem('competitors', ${i}, 'positioning', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400;"></td>
                   <td>
@@ -7398,7 +7430,7 @@ function generateViewHTML(view) {
               `;}).join('')}
             </tbody>
           </table>
-          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'' })" style="margin-top:12px;">+ Add competitor</button>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'', source:'manual' })" style="margin-top:12px;">+ Add competitor manually</button>
         </div>
 
         <!-- 7. Logos -->
