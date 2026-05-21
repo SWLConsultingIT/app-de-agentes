@@ -292,6 +292,7 @@ function buildBrandProfilePayloadFromKit() {
     typography:       brandKitData.typography,
     values:           brandKitData.values,
     personas:         brandKitData.personas,
+    verticals:        brandKitData.verticals || [],
     competitors,
     channels:         brandKitData.channels,
     tone_by_channel:  brandKitData.toneByChannel,
@@ -386,6 +387,9 @@ async function scanBrandingBio() {
 }
 
 function applyScrapedBrandData(data) {
+  // Debug: surface what WF00 actually returned so we can tell whether the new
+  // verticals prompt is live on the n8n side.
+  console.log('[WF00] response received. verticals field:', data?.verticals, '· keys:', data ? Object.keys(data) : '(null)');
   if (data.name)            brandKitData.name = data.name;
   if (data.websiteUrl)      brandKitData.websiteUrl = data.websiteUrl;
   if (data.industry)        brandKitData.industry = data.industry;
@@ -416,6 +420,12 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  if (data.verticals?.length) brandKitData.verticals = data.verticals.map(v => ({
+    name:   v.name || v.title || 'Vertical',
+    desc:   v.desc || v.description || '',
+    source: 'scraper',
+    channels: defaultVerticalChannels(),
+  }));
   if (data.competitors?.length) {
     const incoming = data.competitors
       .filter(c => c?.name && !/^new competitor$/i.test(c.name))
@@ -586,9 +596,18 @@ async function scanSocialMediaBios() {
     if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Channels scanned — voice rules updated below.</span>';
     showToast('SocialMediaBios scan complete.');
   } catch (e) {
-    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Loading demo data so you can preview the view.</span>`;
     console.error('[WF_SOCIAL_BIOS] scan error:', e);
-    applySocialBiosData(loadMockSocialBios(), { isMock: true });
+    // If we already have real data on screen, NEVER overwrite it with mock — that would
+    // erase what the user already paid Apify credits to scan. Only fall back to mock when
+    // there's nothing else to show.
+    const hasRealData = !socialBiosData.isMock && Array.isArray(socialBiosData.channels) && socialBiosData.channels.length > 0;
+    if (hasRealData) {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Tus datos guardados siguen a la vista — no se gastaron créditos.</span>`;
+      showToast('Scan failed — pero los datos reales del último scan se mantuvieron.', 'error');
+    } else {
+      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Loading demo data so you can preview the view.</span>`;
+      applySocialBiosData(loadMockSocialBios(), { isMock: true });
+    }
   } finally {
     if (btn) { btn.textContent = 'Scan Channels'; btn.disabled = false; }
   }
@@ -601,6 +620,17 @@ function applySocialBiosData(data, opts = {}) {
   if (data.scoringWeights) socialBiosData.scoringWeights = data.scoringWeights;
   socialBiosData.channels = data.channels;
   hydrateSocialBiosView();
+  // SMB just landed real channel context — recompute the ContentBuilder visual specs
+  // so the Auto-specs chips reflect the actual top format (e.g. "Sidecar" → carousel 1:1)
+  // without needing the user to switch tabs.
+  if (typeof contentBuilderActiveTab !== 'undefined' && !opts.isMock) {
+    Object.keys(contentBuilderCampaign).forEach(ch => {
+      contentBuilderCampaign[ch].visualSpecs = null; // force re-derive on next read
+    });
+    if (document.getElementById('cb-visual-specs')) {
+      resetVisualSpecsToDefault(contentBuilderActiveTab);
+    }
+  }
 }
 
 async function fetchSocialBios(brandId) {
@@ -2799,20 +2829,135 @@ async function hydrateHookMinerView() {
 // Each channel has its own verticals list and visual prompt — populated lazily
 // from CB_CHANNEL_PROFILES the first time the tab is rendered.
 const contentBuilderCampaign = {
-  Instagram: { verticals: null, visualPrompt: '' },
-  TikTok:    { verticals: null, visualPrompt: '' },
-  LinkedIn:  { verticals: null, visualPrompt: '' },
+  Instagram: { verticals: null, visualPrompt: '', agentPrompt: '', visualConcept: '', visualSpecs: null, slideCount: 3 },
+  TikTok:    { verticals: null, visualPrompt: '', agentPrompt: '', visualConcept: '', visualSpecs: null, slideCount: 3 },
+  LinkedIn:  { verticals: null, visualPrompt: '', agentPrompt: '', visualConcept: '', visualSpecs: null, slideCount: 3 },
 };
 
 function getCbCampaign(channel) {
   const ch = channel || contentBuilderActiveTab || 'Instagram';
   const slot = contentBuilderCampaign[ch];
-  if (!slot) return { verticals: [], visualPrompt: '' };
+  if (!slot) return { verticals: [], visualPrompt: '', agentPrompt: '', visualConcept: '', visualSpecs: null, slideCount: 3 };
   // Lazy-init verticals from the channel profile defaults
   if (slot.verticals == null) {
     slot.verticals = [...(CB_CHANNEL_PROFILES[ch]?.defaultVerticals || [])];
   }
   return slot;
+}
+
+// ── Visual prompt builder ────────────────────────────────────────────────────
+// Tech specs (aspect ratio, format, style, etc.) auto-derive from channel + top
+// posting format detected in SocialMediaBios. The user can override any spec via
+// the dropdowns in the UI. The "concept" (free-text creative idea) is generated
+// by the WF09B agent (or written by hand) and concatenated with the specs to
+// produce the final prompt sent to WF09 for image generation.
+
+// Static catalog of editable values for each spec — drives the UI dropdowns.
+const VISUAL_SPEC_OPTIONS = {
+  aspectRatio: ['9:16 (vertical)', '1:1 (square)', '4:5 (portrait)', '1.91:1 (landscape)', '16:9 (wide)'],
+  format:      ['Reel cover', 'Carousel slide', 'Single image', 'Story', 'Video thumbnail'],
+  style:       ['Photography', 'Illustration', '3D render', 'Mixed media', 'Flat design'],
+  quality:     ['8K resolution', '4K resolution', 'HD'],
+  lens:        ['35mm f/1.8', '35mm f/1.4', '50mm f/1.4', '85mm f/2.0', '24mm wide', 'macro 100mm'],
+  lighting:    ['Soft warm rim lighting', 'Golden hour natural light', 'Studio strobe', 'Hard cinematic', 'Diffused daylight', 'Neon accent'],
+  palette:     ['SWL Consulting brand: obsidian black, charcoal grey, gold/amber accents', 'Brand palette from Branding Bio', 'Monochrome', 'High-contrast B&W', 'Pastel soft'],
+};
+
+// Per-channel sensible defaults — used when SMB has nothing or when the user
+// hasn't tweaked specs yet. Keys must match VISUAL_SPEC_OPTIONS.
+// Fallback defaults used ONLY when SocialMediaBios has no data for the channel
+// (first-time brand, scan not yet run). Once a real scan exists, deriveVisualSpecs()
+// overrides them with whatever top_format the brand's actual feed shows — could be
+// carousel, video, single image, reel — depends entirely on the brand.
+// These are intentionally neutral; the brand-specific style comes from SMB and Branding Bio.
+const CB_CHANNEL_DEFAULT_SPECS = {
+  Instagram: { aspectRatio: '1:1 (square)',        format: 'Single image',   style: 'Photography', quality: '8K resolution', lens: '35mm f/1.8', lighting: 'Natural light',             palette: 'Brand palette from Branding Bio' },
+  TikTok:    { aspectRatio: '9:16 (vertical)',     format: 'Video thumbnail', style: 'Photography', quality: '8K resolution', lens: '35mm f/1.4', lighting: 'Natural light',            palette: 'Brand palette from Branding Bio' },
+  LinkedIn:  { aspectRatio: '1:1 (square)',        format: 'Single image',   style: 'Photography', quality: '8K resolution', lens: '35mm f/1.8', lighting: 'Diffused daylight',         palette: 'Brand palette from Branding Bio' },
+};
+
+// Map SMB / Apify "top format" strings → our format dropdown value.
+// Apify uses "Sidecar" for Instagram carousels, "Image" for single photos, etc.
+const SMB_FORMAT_MAP = {
+  reel:        'Reel cover',
+  reels:       'Reel cover',
+  reel_cover:  'Reel cover',
+  video:       'Video thumbnail',
+  carousel:    'Carousel slide',
+  sidecar:     'Carousel slide',   // Apify Instagram → carousel
+  image:       'Single image',
+  photo:       'Single image',
+  story:       'Story',
+  post:        'Single image',     // LinkedIn / generic
+  article:     'Single image',
+};
+
+// Which formats imply which aspect ratios.
+const FORMAT_ASPECT_HINT = {
+  'Reel cover':     '9:16 (vertical)',
+  'Story':          '9:16 (vertical)',
+  'Video thumbnail':'9:16 (vertical)',
+  'Carousel slide': '1:1 (square)',
+  'Single image':   '1:1 (square)',
+};
+
+// Derive specs for a channel using SocialMediaBios context (if available)
+// layered on top of the channel defaults.
+function deriveVisualSpecs(channel) {
+  // Start from neutral channel-level fallback (used only if SMB has nothing yet).
+  const base = { ...(CB_CHANNEL_DEFAULT_SPECS[channel] || CB_CHANNEL_DEFAULT_SPECS.Instagram) };
+  try {
+    const smbChannel = (socialBiosData?.channels || []).find(c => c.name === channel);
+    if (smbChannel) {
+      // Use the SMB top-format histogram to pick what the brand ACTUALLY posts most.
+      // Build a count of formats across topPosts and pick the most frequent — this
+      // is more accurate than the single `primaryFormat` field, especially on LinkedIn
+      // where Apify labels everything as "post" but `images.length > 1` means carousel.
+      const FMT_ALIAS = { sidecar: 'carousel', photo: 'image', reels: 'reel' };
+      const norm = (raw) => {
+        const k = String(raw || '').toLowerCase().trim();
+        return FMT_ALIAS[k] || k;
+      };
+      const topPosts = Array.isArray(smbChannel.topPosts) ? smbChannel.topPosts : [];
+      const counts = {};
+      for (const p of topPosts) {
+        // Derive a "real" format: if a "post" has 2+ images, treat as carousel.
+        let fmt = norm(p.format);
+        const imgsLen = Array.isArray(p.images) ? p.images.length : 0;
+        if ((fmt === 'post' || fmt === 'image') && imgsLen > 1) fmt = 'carousel';
+        if (fmt) counts[fmt] = (counts[fmt] || 0) + 1;
+      }
+      let topFmt = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      // Fall back to the channel-level field if topPosts is empty.
+      if (!topFmt) {
+        topFmt = norm(smbChannel.topFormat || smbChannel.top_format || smbChannel.primaryFormat || smbChannel.format);
+      }
+      const mappedFormat = SMB_FORMAT_MAP[topFmt];
+      if (mappedFormat) {
+        base.format = mappedFormat;
+        if (FORMAT_ASPECT_HINT[mappedFormat]) base.aspectRatio = FORMAT_ASPECT_HINT[mappedFormat];
+      }
+    }
+    // Brand palette — if Branding Bio has one, prefer "Brand palette from Branding Bio" so n8n can substitute.
+    if (Array.isArray(brandKitData?.palette) && brandKitData.palette.length) {
+      base.palette = 'Brand palette from Branding Bio';
+    }
+  } catch (_) { /* SMB might not be hydrated yet — silently use defaults */ }
+  return base;
+}
+
+// Compose the final prompt string sent to WF09 by concatenating the creative
+// concept with the editable specs. Empty values are dropped.
+function composeVisualPrompt(concept, specs) {
+  const c = (concept || '').trim();
+  const s = specs || {};
+  const technical = [
+    s.aspectRatio, s.format, s.style, s.quality, s.lens, s.lighting, s.palette,
+  ].filter(Boolean).join(' · ');
+  if (!c && !technical) return '';
+  if (!c) return technical;
+  if (!technical) return c;
+  return `${c}\n\n[Technical specs] ${technical}`;
 }
 
 function renderContentBuilderVerticals() {
@@ -2851,6 +2996,370 @@ function removeContentBuilderVertical(idx) {
   renderContentBuilderVerticals();
 }
 
+// ── ContentBuilder · Brand-wide verticales (productos / unidades de negocio) ─
+// Single source of truth = brandKitData.verticals, hydrated by WF00 scraper and
+// persisted into brand_profiles.data_json.verticals so WF07 can read them.
+// Each vertical carries a `channels` map (Instagram/TikTok/LinkedIn) with
+// {enabled, postsPerMonth} so ContentBuilder can build a per-channel × per-vertical
+// editorial plan.
+
+// Channel metadata for the per-vertical matrix. Single source of truth for the
+// 3 channels ContentBuilder currently supports.
+const CB_VERTICAL_CHANNELS = [
+  { key: 'Instagram', emoji: '📷', color: '#E1306C', gradient: 'linear-gradient(135deg,#833AB4,#FD1D1D 60%,#FCB045)' },
+  { key: 'TikTok',    emoji: '🎵', color: '#0F172A', gradient: 'linear-gradient(135deg,#25F4EE,#FE2C55)' },
+  { key: 'LinkedIn',  emoji: '💼', color: '#0A66C2', gradient: 'linear-gradient(135deg,#0A66C2,#004182)' },
+];
+
+function defaultVerticalChannels() {
+  // Sensible default: all channels enabled at 4 posts/mo. User can tweak per-vertical.
+  return CB_VERTICAL_CHANNELS.reduce((acc, c) => {
+    acc[c.key] = { enabled: true, postsPerMonth: 4 };
+    return acc;
+  }, {});
+}
+
+function ensureVerticalChannels(v) {
+  // Back-fill for older entries (or scraper output) that don't yet carry a channels map.
+  if (!v.channels || typeof v.channels !== 'object') v.channels = defaultVerticalChannels();
+  for (const c of CB_VERTICAL_CHANNELS) {
+    if (!v.channels[c.key]) v.channels[c.key] = { enabled: false, postsPerMonth: 0 };
+  }
+  return v;
+}
+
+// Which vertical (index) is currently expanded — i.e. has the pipeline DOM moved
+// underneath it. `null` means the pipeline sits in its default anchor at the bottom.
+let cbExpandedVerticalIdx = null;
+
+function renderBrandVerticals() {
+  const list = document.getElementById('cb-brand-vertical-list');
+  if (!list) return;
+  const verticals = (brandKitData.verticals || []).map(ensureVerticalChannels);
+
+  // Detach the pipeline card from wherever it lives so the upcoming innerHTML
+  // reset doesn't destroy it. Park it in a hidden limbo div on <body>.
+  const pipeline = document.getElementById('cb-pipeline-card');
+  if (pipeline) {
+    let limbo = document.getElementById('cb-pipeline-limbo');
+    if (!limbo) {
+      limbo = document.createElement('div');
+      limbo.id = 'cb-pipeline-limbo';
+      limbo.style.display = 'none';
+      document.body.appendChild(limbo);
+    }
+    limbo.appendChild(pipeline);
+  }
+
+  if (!verticals.length) {
+    list.innerHTML = '<span style="font-size:11px; color:var(--text-muted); font-style:italic;">El scraper aún no detectó verticales — escribí los productos/unidades de negocio del cliente abajo y dale Enter.</span>';
+    cbExpandedVerticalIdx = null;
+    reattachPipelineToActiveSlot();
+    return;
+  }
+  list.innerHTML = verticals.map((v, i) => {
+    const badgeColor = v.source === 'scraper' ? '#7C3AED' : (v.source === 'manual' ? '#0EA5E9' : '#64748B');
+    const badgeBg    = v.source === 'scraper' ? '#F3E8FF' : (v.source === 'manual' ? '#E0F2FE' : '#F1F5F9');
+    const badgeText  = v.source === 'scraper' ? 'Detectado' : (v.source === 'manual' ? 'Manual' : 'Default');
+    const desc = v.desc ? `<span style="color:var(--text-muted)"> — ${escapeHtml(v.desc)}</span>` : '';
+
+    // Channel matrix: one pill per channel with toggle + posts/month number input
+    const totalPosts = CB_VERTICAL_CHANNELS.reduce((s, c) => s + (v.channels[c.key].enabled ? Number(v.channels[c.key].postsPerMonth) || 0 : 0), 0);
+    const channelChips = CB_VERTICAL_CHANNELS.map(c => {
+      const slot = v.channels[c.key];
+      const on = !!slot.enabled;
+      const bg = on ? c.gradient : 'white';
+      const fg = on ? 'white' : '#64748B';
+      const border = on ? 'transparent' : 'var(--border)';
+      return `
+        <div class="cb-vchan" data-vidx="${i}" data-ch="${c.key}" style="display:inline-flex; align-items:center; gap:6px; padding:5px 4px 5px 10px; background:${bg}; color:${fg}; border:1px solid ${border}; border-radius:999px; font-size:11.5px; font-weight:600;">
+          <span onclick="toggleVerticalChannel(${i}, '${c.key}')" style="display:inline-flex; align-items:center; gap:5px; cursor:pointer; user-select:none;">
+            <span style="font-size:13px; line-height:1;">${c.emoji}</span>
+            <span>${c.key}</span>
+            <span style="opacity:${on ? 1 : 0.6}; font-size:10px; padding:1px 6px; border-radius:99px; background:${on ? 'rgba(255,255,255,0.18)' : '#F1F5F9'};">${on ? 'ON' : 'OFF'}</span>
+          </span>
+          <input type="number" min="0" max="60" value="${slot.postsPerMonth || 0}"
+                 onchange="setVerticalChannelPosts(${i}, '${c.key}', this.value)"
+                 ${on ? '' : 'disabled'}
+                 title="Posts por mes"
+                 style="width:38px; padding:2px 4px; border:1px solid ${on ? 'rgba(255,255,255,0.35)' : 'var(--border)'}; border-radius:5px; font-size:11px; font-weight:700; text-align:center; background:${on ? 'rgba(255,255,255,0.18)' : '#F8FAFC'}; color:${on ? 'white' : '#64748B'}; outline:none;" />
+          <span style="font-size:10px; opacity:0.85; padding-right:6px;">/mes</span>
+        </div>
+      `;
+    }).join('');
+
+    const isExpanded = cbExpandedVerticalIdx === i;
+    const expandBg   = isExpanded ? '#7C3AED' : 'white';
+    const expandFg   = isExpanded ? 'white'   : '#7C3AED';
+    const expandIcon = isExpanded ? '▲' : '▼';
+    const expandText = isExpanded ? 'Cerrar pipeline'
+                                  : `Generar contenido para ${escapeHtml(v.name)}`;
+
+    return `
+      <div class="cb-brand-vertical-row" style="padding:10px 12px; background:white; border:1px solid ${isExpanded ? '#7C3AED' : '#E9D5FF'}; border-radius:10px;${isExpanded ? ' box-shadow:0 4px 18px rgba(124,58,237,0.18);' : ''}">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="font-size:9.5px; font-weight:700; color:${badgeColor}; background:${badgeBg}; padding:2px 6px; border-radius:99px; letter-spacing:0.3px; text-transform:uppercase;">${badgeText}</span>
+          <strong style="color:#4C1D95; font-size:13px;">${escapeHtml(v.name)}</strong>
+          ${desc}
+          <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
+            <span style="font-size:10.5px; color:var(--text-muted); background:#FAF5FF; border:1px solid #E9D5FF; padding:2px 8px; border-radius:99px;"><strong style="color:#4C1D95">${totalPosts}</strong> posts/mes</span>
+            <button onclick="editBrandVerticalDesc(${i})" title="Editar descripción" style="background:none;border:1px solid var(--border);color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">edit</button>
+            <button onclick="removeBrandVertical(${i})" title="Eliminar" style="background:none;border:1px solid var(--border);color:#991B1B;cursor:pointer;padding:3px 8px;font-size:13px;line-height:1;border-radius:5px;">×</button>
+          </span>
+        </div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+          ${channelChips}
+        </div>
+        <div style="margin-top:10px; display:flex; justify-content:center;">
+          <button onclick="toggleVerticalExpansion(${i})" style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; background:${expandBg}; color:${expandFg}; border:1px solid #7C3AED; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer;">
+            <span>${expandIcon}</span>
+            <span>${expandText}</span>
+          </button>
+        </div>
+        ${isExpanded ? `<div id="cb-vertical-pipeline-slot-${i}" style="margin-top:12px;"></div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  // After re-rendering the verticals list, put the pipeline back where it
+  // belongs — inside the expanded vertical's slot, or back at the anchor.
+  reattachPipelineToActiveSlot();
+}
+
+function reattachPipelineToActiveSlot() {
+  const pipeline = document.getElementById('cb-pipeline-card');
+  if (!pipeline) return;
+  if (cbExpandedVerticalIdx !== null) {
+    const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
+    if (slot) { slot.appendChild(pipeline); return; }
+  }
+  const anchor = document.getElementById('cb-pipeline-anchor');
+  if (anchor) anchor.appendChild(pipeline);
+}
+
+function toggleVerticalExpansion(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  if (cbExpandedVerticalIdx === idx) {
+    // Collapse — go back to "mix all" mode
+    cbExpandedVerticalIdx = null;
+    cbActiveVertical = null;
+  } else {
+    // Expand this vertical — also set it as the active vertical so n8n payloads
+    // and the channel tab auto-switch reflect the user's intent.
+    cbExpandedVerticalIdx = idx;
+    cbActiveVertical = v.name;
+
+    // Auto-switch the channel tab to the first channel enabled for this vertical
+    // (skip the matrix if everything is disabled).
+    ensureVerticalChannels(v);
+    const firstEnabled = CB_VERTICAL_CHANNELS.find(c => v.channels[c.key]?.enabled);
+    if (firstEnabled && typeof setContentBuilderTab === 'function') {
+      setContentBuilderTab(firstEnabled.key);
+    }
+  }
+  renderBrandVerticals();
+  renderActiveVerticalSelect();
+  // Scroll the expanded row into view so the pipeline is visible without manual scrolling.
+  if (cbExpandedVerticalIdx !== null) {
+    setTimeout(() => {
+      const slot = document.getElementById('cb-vertical-pipeline-slot-' + cbExpandedVerticalIdx);
+      if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+}
+
+function toggleVerticalChannel(idx, channelKey) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  ensureVerticalChannels(v);
+  const slot = v.channels[channelKey];
+  slot.enabled = !slot.enabled;
+  if (slot.enabled && (!slot.postsPerMonth || slot.postsPerMonth <= 0)) slot.postsPerMonth = 4;
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function setVerticalChannelPosts(idx, channelKey, value) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  ensureVerticalChannels(v);
+  const n = Math.max(0, Math.min(60, parseInt(value, 10) || 0));
+  v.channels[channelKey].postsPerMonth = n;
+  if (n === 0) v.channels[channelKey].enabled = false;
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function addBrandVertical() {
+  const nameInput = document.getElementById('cb-brand-vertical-name');
+  const descInput = document.getElementById('cb-brand-vertical-desc');
+  if (!nameInput) return;
+  const name = (nameInput.value || '').trim();
+  if (!name) return;
+  const desc = (descInput?.value || '').trim();
+  brandKitData.verticals = brandKitData.verticals || [];
+  if (brandKitData.verticals.some(v => v.name.toLowerCase() === name.toLowerCase())) {
+    showToast(`"${name}" ya existe en las verticales.`);
+    return;
+  }
+  brandKitData.verticals.push({ name, desc, source: 'manual', channels: defaultVerticalChannels() });
+  nameInput.value = '';
+  if (descInput) descInput.value = '';
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function removeBrandVertical(idx) {
+  if (!brandKitData.verticals?.[idx]) return;
+  brandKitData.verticals.splice(idx, 1);
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+function editBrandVerticalDesc(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v) return;
+  const newDesc = prompt(`Descripción para "${v.name}" (audiencia + valor en 1 oración):`, v.desc || '');
+  if (newDesc === null) return;
+  v.desc = newDesc.trim();
+  v.source = v.source === 'scraper' ? 'edited' : (v.source || 'manual');
+  renderBrandVerticals();
+  persistBrandVerticals();
+}
+
+// Merge-and-upsert: read current brand_profiles.data_json, replace only the
+// `verticals` field, write back. Falls back to no-op if there's no brandId yet
+// (e.g. demo state before Branding Bio has been saved).
+async function persistBrandVerticals() {
+  if (!brandKitData.brandId) return; // nothing to persist against yet
+  try {
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const current = rows?.[0]?.data_json || {};
+    current.verticals = brandKitData.verticals || [];
+    await supabaseUpsert('brand_profiles', {
+      brand_id:   brandKitData.brandId,
+      data_json:  current,
+      updated_at: new Date().toISOString(),
+    }, 'brand_id');
+  } catch (e) {
+    console.warn('[verticals] persist failed:', e);
+  }
+}
+
+// Active vertical = which product/business unit the next Generate Brief / Build Draft call targets.
+// `null` means "all" (sends the full verticals list to n8n; default behaviour).
+let cbActiveVertical = null;
+
+function setActiveVertical(name) {
+  cbActiveVertical = name && name !== '__all__' ? name : null;
+}
+
+function renderActiveVerticalSelect() {
+  const sel = document.getElementById('cb-active-vertical');
+  if (!sel) return;
+  const verticals = brandKitData.verticals || [];
+  const current = cbActiveVertical;
+  const options = ['<option value="__all__">Todas las verticales (mix)</option>']
+    .concat(verticals.map(v => `<option value="${escapeHtml(v.name)}"${v.name === current ? ' selected' : ''}>${escapeHtml(v.name)}</option>`));
+  sel.innerHTML = options.join('');
+  sel.onchange = (e) => setActiveVertical(e.target.value);
+}
+
+// Pull verticals from brand_profiles into brandKitData if the local copy is empty
+// (e.g. when the user lands on ContentBuilder before scanning the website).
+async function hydrateBrandVerticalsFromSupabase() {
+  if (!brandKitData.brandId) return;
+  if ((brandKitData.verticals || []).length) return; // local copy wins
+  try {
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const remote = rows?.[0]?.data_json?.verticals;
+    if (Array.isArray(remote) && remote.length) {
+      brandKitData.verticals = remote;
+      renderBrandVerticals();
+    }
+  } catch (e) {
+    console.warn('[verticals] hydrate failed:', e);
+  }
+}
+
+// Force a re-pull from brand_profiles — overrides local copy with whatever's
+// in Supabase right now. Triggered by the "Sync Branding Bio" button so the user
+// can pick up changes made in Branding Bio without reloading the page.
+async function syncFromBrandingBio() {
+  const btn = document.getElementById('cb-sync-brand');
+  if (!brandKitData.brandId) {
+    showToast('Branding Bio aún no fue guardado. Andá a Branding Bio → Save & Sync primero.');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Sincronizando…';
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+  }
+  try {
+    console.log('[sync] brand_id =', brandKitData.brandId, '· local verticales =', (brandKitData.verticals || []).map(v => v.name));
+    const rows = await supabaseGet(`brand_profiles?brand_id=eq.${brandKitData.brandId}&select=data_json`);
+    const remote = rows?.[0]?.data_json;
+    console.log('[sync] remote profile fetched:', remote ? `verticales=${(remote.verticals || []).map(v => v.name).join(', ') || '(empty)'}` : '(no row)');
+    if (!remote) {
+      showToast('No hay brand profile guardado para este brand_id. Guardá desde Branding Bio.');
+      return;
+    }
+    // Verticals — MERGE remote into local (union by lowercased name). NEVER wipe local
+    // entries on sync: if Branding Bio hasn't been re-saved yet, remote could be empty
+    // or stale and we'd lose verticales the user just detected/added.
+    const remoteVerticals = Array.isArray(remote.verticals) ? remote.verticals : [];
+    const localVerticals  = brandKitData.verticals || [];
+    const seen = new Set();
+    const merged = [];
+    for (const v of localVerticals) {
+      const key = (v.name || '').toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push(v);
+    }
+    let added = 0;
+    for (const r of remoteVerticals) {
+      const name = r.name || r.title;
+      const key  = (name || '').toLowerCase().trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      merged.push({
+        name,
+        desc:     r.desc || r.description || '',
+        source:   r.source || 'scraper',
+        channels: r.channels,
+      });
+      added++;
+    }
+    brandKitData.verticals = merged.map(ensureVerticalChannels);
+
+    // Identity fields — keep ContentBuilder's header / tag chips in sync too
+    if (remote.identity?.company_name) brandKitData.name     = remote.identity.company_name;
+    if (remote.identity?.industry)     brandKitData.industry = remote.identity.industry;
+    if (remote.identity?.tagline)      brandKitData.tagline  = remote.identity.tagline;
+    if (Array.isArray(remote.personas) && remote.personas.length) brandKitData.personas = remote.personas;
+
+    renderBrandVerticals();
+    renderActiveVerticalSelect();
+    if (remoteVerticals.length === 0) {
+      showToast(`Branding Bio remoto no tiene verticales guardadas. Conservé tus ${localVerticals.length} vertical${localVerticals.length === 1 ? '' : 'es'} locales — guardá desde Branding Bio para sincronizar.`);
+    } else {
+      showToast(`Sincronizado: ${remoteVerticals.length} remota(s) · ${added} agregada(s) · total ${brandKitData.verticals.length}.`);
+    }
+  } catch (e) {
+    console.error('[sync] failed:', e);
+    showToast('Error al sincronizar: ' + (e.message || e));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio';
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+    }
+  }
+}
+
 function useSampleVisualPrompt() {
   const ta = document.getElementById('cb-visual-prompt');
   if (!ta) return;
@@ -2860,9 +3369,209 @@ function useSampleVisualPrompt() {
   getCbCampaign().visualPrompt = sample;
 }
 
+function useSampleAgentPrompt() {
+  const ta = document.getElementById('cb-agent-prompt');
+  if (!ta) return;
+  const profile = CB_CHANNEL_PROFILES[contentBuilderActiveTab];
+  const sample = profile?.agentPromptPlaceholder || '';
+  ta.value = sample;
+  getCbCampaign().agentPrompt = sample;
+}
+
+// ── WF09B — Visual Concept Suggester (per-vertical creative idea) ────────────
+const WF09B_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf09b-visual-concept-suggester';
+
+// Returns just the creative concept string (the "what's in the image") so the
+// user can edit it. Tech specs stay in the UI dropdowns; they're concatenated
+// client-side via composeVisualPrompt() before WF09 fires.
+async function suggestVisualConcept() {
+  const btn = document.getElementById('btn-suggest-visual');
+  const ta  = document.getElementById('cb-visual-concept');
+  if (!btn || !ta) return;
+  const originalLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Pensando…';
+  if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+
+  try {
+    const channel = contentBuilderActiveTab || 'Instagram';
+    const slot    = getCbCampaign(channel);
+    const specs   = slot.visualSpecs || deriveVisualSpecs(channel);
+    const vertical = cbActiveVertical
+      ? (brandKitData.verticals || []).find(v => v.name === cbActiveVertical) || null
+      : null;
+    // Pull the best-performing recent posts for this channel so the model can
+    // STUDY what's already working AND see the actual feed images.
+    const smbChannel  = (socialBiosData?.channels || []).find(c => c.name === channel) || null;
+    const topPosts    = smbChannel?.topPosts || smbChannel?.posts || [];
+    const topPost     = smbChannel?.bestPost || topPosts[0] || null;
+    // Extract direct image URLs from top posts so WF09B can fetch them as
+    // multimodal reference for the OpenAI suggester.
+    const topPostUrls = topPosts
+      .map(p => p.imageUrl || p.displayUrl || p.media_url || p.mediaUrl || (Array.isArray(p.images) ? p.images[0] : null))
+      .filter(u => typeof u === 'string' && u.startsWith('http'))
+      .slice(0, 3);
+    const payload = {
+      brand_id:        brandKitData.brandId,
+      channel,
+      vertical:        vertical ? { name: vertical.name, desc: vertical.desc || '' } : null,
+      specs,
+      top_post_urls:   topPostUrls,
+      smb_context: smbChannel ? {
+        handle:           smbChannel.handle || null,
+        top_format:       smbChannel.topFormat || smbChannel.top_format || null,
+        engagement_rate:  smbChannel.avgEngagementRate ?? null,
+        tone_summary:     smbChannel.toneSummary || null,
+        best_post:        topPost ? {
+          snippet:    topPost.snippet || '',
+          why:        topPost.whyItWorked || '',
+          imageUrl:   topPost.imageUrl || topPost.displayUrl || null,
+        } : null,
+        top_post_urls:    topPostUrls,
+      } : null,
+    };
+    console.log('[WF09B] sending payload:', payload);
+    const res = await fetch(WF09B_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const bodyText = await res.text();
+    let body;
+    try { body = JSON.parse(bodyText); } catch { body = { concept: bodyText }; }
+    if (Array.isArray(body)) body = body[0];
+    if (body?.json) body = body.json;
+
+    const concept = (body?.concept || body?.visual_concept || body?.text || '').trim();
+    if (!concept) {
+      showToast('WF09B no devolvió un concepto. Revisá el workflow.', 'error');
+      console.warn('[WF09B] empty/unexpected response:', body);
+      return;
+    }
+    ta.value = concept;
+    slot.visualConcept = concept;
+    refreshVisualPromptPreview();
+    showToast('Concepto visual sugerido por IA — editalo si querés.');
+  } catch (e) {
+    console.error('[WF09B] error:', e);
+    showToast('Error sugiriendo concepto: ' + (e.message || e), 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalLabel;
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+  }
+}
+
+// Recompose the read-only preview every time concept or any spec changes.
+function refreshVisualPromptPreview() {
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const slot    = getCbCampaign(channel);
+  const preview = document.getElementById('cb-visual-preview');
+  if (preview) {
+    const text = composeVisualPrompt(slot.visualConcept, slot.visualSpecs);
+    const isCarousel = (slot.visualSpecs?.format || '') === 'Carousel slide';
+    const slideTag = isCarousel ? `[${slot.slideCount || 3} slides] ` : '';
+    preview.textContent = text ? `${slideTag}${text}` : '(sin contenido — completá el concepto o pedile sugerencia a la IA)';
+  }
+}
+
+// Re-derive specs from channel + SMB and update both state and the UI dropdowns.
+function resetVisualSpecsToDefault(channel) {
+  const ch   = channel || contentBuilderActiveTab || 'Instagram';
+  const slot = getCbCampaign(ch);
+  slot.visualSpecs = deriveVisualSpecs(ch);
+  renderVisualSpecsControls(ch);
+  refreshVisualPromptPreview();
+}
+
+function renderVisualSpecsControls(channel) {
+  const ch   = channel || contentBuilderActiveTab || 'Instagram';
+  const slot = getCbCampaign(ch);
+  if (!slot.visualSpecs) slot.visualSpecs = deriveVisualSpecs(ch);
+  const container = document.getElementById('cb-visual-specs');
+  if (!container) return;
+  const keys = ['aspectRatio', 'format', 'style', 'quality', 'lens', 'lighting', 'palette'];
+  const labels = {
+    aspectRatio: 'Aspect ratio', format: 'Formato', style: 'Estilo',
+    quality: 'Calidad', lens: 'Lente', lighting: 'Iluminación', palette: 'Paleta',
+  };
+  const chips = keys.map(k => {
+    const current = slot.visualSpecs[k] || (VISUAL_SPEC_OPTIONS[k]?.[0] ?? '');
+    // Include current value as an option even if it's not in the catalog (so user-typed values survive).
+    const opts = Array.from(new Set([current, ...(VISUAL_SPEC_OPTIONS[k] || [])])).filter(Boolean);
+    return `
+      <label class="cb-spec-chip" style="display:inline-flex;flex-direction:column;gap:2px;padding:6px 10px;background:white;border:1px solid var(--border);border-radius:8px;font-size:11px;">
+        <span style="text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);font-weight:700;font-size:9.5px;">${labels[k]}</span>
+        <select data-spec-key="${k}" onchange="updateVisualSpec('${k}', this.value)" style="border:none;background:none;font-size:12px;font-weight:600;color:var(--text-main);outline:none;padding:0;cursor:pointer;max-width:240px;">
+          ${opts.map(o => `<option value="${escapeHtml(o)}"${o === current ? ' selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+        </select>
+      </label>
+    `;
+  });
+
+  // Slide count chip — only shown when the chosen format is Carousel slide.
+  // The visual-gen workflow will read this and generate N images instead of 1.
+  const isCarousel = (slot.visualSpecs.format || '') === 'Carousel slide';
+  if (isCarousel) {
+    const current = slot.slideCount || 3;
+    chips.push(`
+      <label class="cb-spec-chip" style="display:inline-flex;flex-direction:column;gap:2px;padding:6px 10px;background:#FDF4FF;border:1px solid #E9D5FF;border-radius:8px;font-size:11px;">
+        <span style="text-transform:uppercase;letter-spacing:0.4px;color:#6B21A8;font-weight:700;font-size:9.5px;">Slides</span>
+        <select onchange="updateSlideCount(this.value)" style="border:none;background:none;font-size:12px;font-weight:700;color:#5B21B6;outline:none;padding:0;cursor:pointer;">
+          ${[3, 5, 7].map(n => `<option value="${n}"${n === Number(current) ? ' selected' : ''}>${n} slides</option>`).join('')}
+        </select>
+      </label>
+    `);
+  }
+
+  container.innerHTML = chips.join('');
+}
+
+function updateVisualSpec(key, value) {
+  const ch   = contentBuilderActiveTab || 'Instagram';
+  const slot = getCbCampaign(ch);
+  if (!slot.visualSpecs) slot.visualSpecs = deriveVisualSpecs(ch);
+  slot.visualSpecs[key] = value;
+  // Format changed → re-render so the Slides dropdown appears/disappears.
+  if (key === 'format') renderVisualSpecsControls(ch);
+  refreshVisualPromptPreview();
+}
+
+function updateSlideCount(value) {
+  const ch   = contentBuilderActiveTab || 'Instagram';
+  const slot = getCbCampaign(ch);
+  slot.slideCount = Math.max(1, parseInt(value, 10) || 3);
+  refreshVisualPromptPreview();
+}
+
 function hydrateContentBuilderCampaign() {
   // Activate the current tab so verticales, persona, format and visual prompt all reflect it
   if (typeof setContentBuilderTab === 'function') setContentBuilderTab(contentBuilderActiveTab || 'Instagram');
+  // Brand-wide verticales — render local copy first, then try to pull from Supabase
+  renderBrandVerticals();
+  renderActiveVerticalSelect();
+  hydrateBrandVerticalsFromSupabase().then(renderActiveVerticalSelect);
+
+  // If SocialMediaBios is still showing mock data (e.g. user landed on ContentBuilder
+  // directly without visiting SMB first), try to pull the real analysis from Supabase
+  // so the context pills and Auto-specs reflect actual brand data, not seed defaults.
+  if (socialBiosData.isMock !== false) {
+    fetchSocialBios(brandKitData.brandId).then(stored => {
+      if (stored && Array.isArray(stored.channels) && stored.channels.length) {
+        socialBiosData.lastScannedAt = stored.scanned_at;
+        socialBiosData.channels      = stored.channels;
+        socialBiosData.isMock        = false;
+        // Re-render the parts of ContentBuilder that depend on SMB context.
+        if (typeof hydrateContentBuilderContext === 'function') hydrateContentBuilderContext();
+        Object.keys(contentBuilderCampaign).forEach(ch => {
+          contentBuilderCampaign[ch].visualSpecs = null;
+        });
+        if (document.getElementById('cb-visual-specs')) {
+          resetVisualSpecsToDefault(contentBuilderActiveTab);
+        }
+      }
+    }).catch(err => console.warn('[ContentBuilder] could not hydrate SMB from Supabase:', err));
+  }
 }
 
 // ── ContentBuilder · channel profiles (Instagram / TikTok / LinkedIn) ─
@@ -2878,6 +3587,7 @@ const CB_CHANNEL_PROFILES = {
     formatHint: 'Reels verticales con hook en primer frame, carruseles educativos multi-slide, on-brand grid.',
     briefHint: 'Hook visual en 1.5s + valor concreto + caption corto + CTA "guardalo" o "comentá".',
     visualPromptPlaceholder: 'Vertical 9:16 photography for an Instagram Reel cover targeting LATAM founders. Close-up over-the-shoulder shot of a young entrepreneur in a softly lit home-office at golden hour, watching an AI agent build itself on a curved 4K monitor — visible n8n nodes and chat-style logs flowing on screen. Floating UI elements (golden glow particles, holographic data streams) drift out of the screen into the room, suggesting "the agent is alive". Color palette: warm obsidian black background, deep charcoal grey furniture, and bold gold/amber accents (SWL Consulting brand). Subject framed using rule-of-thirds in the lower half to leave clean negative space at the top for caption overlay. Shallow depth of field, cinematic film-grain texture, 8k resolution, shot on 35mm lens at f/1.8, soft warm rim lighting, scroll-stopping Instagram aesthetic, mobile-native composition.',
+    agentPromptPlaceholder: 'Sos un copywriter especializado en Instagram para founders LATAM. Generá un caption que abra con un hook visual de 1.5s, entregue un valor concreto en ≤120 palabras y cierre con un CTA de "guardalo" o "comentá". Usá voseo, tono cálido y aspiracional, sin corporate blah. Alineá el caption con la vertical seleccionada y con la escena descrita en el prompt visual — el texto y la imagen tienen que contar la misma historia. Estructura sugerida: línea 1 = hook + emoji sutil · líneas 2-4 = insight/valor · línea final = CTA + 3-5 hashtags relevantes.',
     defaultVerticals: ['Casos de éxito', 'Behind-the-scenes builds', 'Tutoriales agentes IA'],
     apifyEnabled: true,
   },
@@ -2892,6 +3602,7 @@ const CB_CHANNEL_PROFILES = {
     formatHint: 'Hook agresivo en el primer frame, screen recordings sobre voz, captions on-screen, duración 30-60s.',
     briefHint: 'Pattern interrupt en frame 1 + claim concreto con número + receipts/screen + CTA "comentá X".',
     visualPromptPlaceholder: 'Vertical 9:16 photography for a TikTok video cover targeting indie builders. Extreme close-up over-the-shoulder of a young creator pointing at a glowing MacBook screen showing an n8n workflow canvas mid-execution, with chat-style logs scrolling fast. Bold golden particles erupt from the screen into the dark room. Color palette: obsidian black background, deep charcoal grey desk, electric gold accents (SWL Consulting brand). Subject pushed to the bottom third, top half reserved for huge text overlay. Hard rim light from the laptop, slight motion blur on the particles, scroll-stopping pattern-interrupt aesthetic, 8k resolution, shot on 35mm lens at f/1.4, hyperreal mobile-native composition.',
+    agentPromptPlaceholder: 'Sos un guionista de TikTok para builders indie. Escribí un guion de 30-60s con pattern-interrupt en el primer frame (claim concreto con número), payoff en 5s y receipts/screen recording en el medio. Cerrá con CTA tipo "comentá X para el stack completo". Voseo, ultra directo, cero jerga corporate. El guion tiene que coincidir con la vertical elegida y con la escena del prompt visual — si el visual muestra n8n en pantalla, el guion habla de n8n. Devolveme: (1) hook frame 1, (2) cuerpo con beats numerados, (3) caption corto + 3 hashtags.',
     defaultVerticals: ['Comparativas de tools', 'Tips n8n en 30s', 'Reactions a tendencias IA'],
     apifyEnabled: true,
   },
@@ -2906,6 +3617,7 @@ const CB_CHANNEL_PROFILES = {
     formatHint: 'Posts largos con storytelling B2B, screenshots de tools, casos de éxito reales con métricas.',
     briefHint: 'Hook contrarian + insight + 3 lecciones numeradas + CTA hacia comentario o DM.',
     visualPromptPlaceholder: 'Professional high-end photography for a LinkedIn corporate post. A modern, minimalist office workspace where digital AI data flows (golden and white particles) are integrated into the architecture. In the background, a subtle, blurred silhouette of a professional looking at a clean holographic dashboard. Color palette: Deep charcoal grey, obsidian black, and gold accents (matching SWL Consulting style). Cinematic lighting, 8k resolution, shot on 35mm lens, sharp focus, corporate tech aesthetic.',
+    agentPromptPlaceholder: 'Sos un thought-leader B2B escribiendo para LinkedIn (VPs / CTOs / Heads of Sales en LATAM). Abrí con un hook contrarian de 1 línea, seguí con un insight personal/observación de campo y entregá 3 lecciones numeradas con métricas reales. Cerrá con un CTA hacia comentario o DM. Voseo, tono competente y directo, prohibido jargon ("leverage", "seamless", "transform"). El post tiene que estar anclado en la vertical seleccionada y referenciar el setting de la imagen del prompt visual cuando aporte. Longitud objetivo: 180-260 palabras, párrafos cortos (1-2 líneas), una sola idea por párrafo.',
     defaultVerticals: ['Casos B2B con métricas', 'Lecciones de implementación', 'RevOps con IA'],
     apifyEnabled: true,
   },
@@ -2970,6 +3682,21 @@ function setContentBuilderTab(channel) {
     ta.oninput = () => { getCbCampaign(channel).visualPrompt = ta.value; };
   }
 
+  // Per-channel visual concept (creative idea) + visual specs (auto-derived from
+  // channel + SMB top format). Concept is free-text editable; specs are chips.
+  if (slot.visualSpecs == null) slot.visualSpecs = deriveVisualSpecs(channel);
+  const vcta = document.getElementById('cb-visual-concept');
+  if (vcta) {
+    vcta.placeholder = profile.visualPromptPlaceholder || '';
+    vcta.value = slot.visualConcept || '';
+    vcta.oninput = () => {
+      getCbCampaign(channel).visualConcept = vcta.value;
+      refreshVisualPromptPreview();
+    };
+  }
+  renderVisualSpecsControls(channel);
+  refreshVisualPromptPreview();
+
   // Per-channel verticales — re-render chips for this tab
   renderContentBuilderVerticals();
 
@@ -3029,12 +3756,24 @@ function hydrateContentBuilderContext() {
   const channelData = channels.find(c => (c.name || '').toLowerCase() === sel.toLowerCase()) || channels[0];
   const profile = CB_CHANNEL_PROFILES[sel];
 
-  // Compute most-used format from topPosts (if SocialMediaBios has data for this channel)
+  // Compute most-used format from topPosts (if SocialMediaBios has data for this channel).
+  // Normalize Apify naming: "Sidecar" → "carousel", "Image" → "image", etc., so all
+  // downstream lookups (icons, copy, Auto-specs) speak the same vocabulary.
+  const FMT_ALIAS = { sidecar: 'carousel', photo: 'image', reels: 'reel' };
+  const normalizeFmt = (raw) => {
+    const k = String(raw || '').toLowerCase().trim();
+    return FMT_ALIAS[k] || k;
+  };
   let topFmt = '—';
   if (channelData) {
     const fmtCounts = {};
-    (channelData.topPosts || []).forEach(p => { if (p.format) fmtCounts[p.format] = (fmtCounts[p.format] || 0) + 1; });
-    topFmt = Object.entries(fmtCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || channelData.primaryFormat || '—';
+    (channelData.topPosts || []).forEach(p => {
+      const n = normalizeFmt(p.format);
+      if (n) fmtCounts[n] = (fmtCounts[n] || 0) + 1;
+    });
+    topFmt = Object.entries(fmtCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+          || normalizeFmt(channelData.primaryFormat || channelData.topFormat)
+          || '—';
   }
 
   const fmtIcon = { carousel: 'gallery-horizontal', reel: 'film', video: 'video', image: 'image', story: 'rectangle-vertical' }[topFmt] || 'sparkles';
@@ -3656,7 +4395,20 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
     return { __error: 'brand_id_missing', message: 'Branding Bio aún no fue guardada. Andá a Branding Bio → Save & Sync antes de generar contenido.' };
   }
   try {
-    const payload = { brand_id: brandKitData.brandId, channel, persona };
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
+    const payload = {
+      brand_id: brandKitData.brandId,
+      channel,
+      persona,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical:  selectedVertical,
+    };
     console.log('[WF06] sending payload:', payload);
     const res = await fetch(WF06_URL, {
       method: 'POST',
@@ -3756,10 +4508,23 @@ async function generateDraft() {
     const channel = contentBuilderActiveTab || document.getElementById('cb-channel')?.value || 'LinkedIn';
     const slot = getCbCampaign(channel);
     const verticals = [...(slot.verticals || [])];
+
+    // Brand-wide verticals (productos / unidades de negocio) — single source of truth in brandKitData,
+    // hydrated by WF00 scraper and editable in the Verticales del cliente card.
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
+
     const payload = {
       brand_id: brandKitData.brandId,
       channel,
       verticals: verticals.length ? verticals : null,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical: selectedVertical,
     };
     console.log('[WF07] sending payload:', payload);
     const res = await fetch(WF07_URL, {
@@ -3930,15 +4695,48 @@ async function generateVisualBrief(draftId, extra = {}) {
     // Read from the ACTIVE tab's per-channel slot (verticals + visual prompt now live inside each tab)
     const channel = contentBuilderActiveTab || document.getElementById('cb-channel')?.value || 'Instagram';
     const slot = getCbCampaign(channel);
-    const visualPrompt = (document.getElementById('cb-visual-prompt')?.value || slot.visualPrompt || '').trim();
+    // Compose final prompt from concept + specs (new), with backward fallback to the legacy single textarea.
+    const conceptInput = (document.getElementById('cb-visual-concept')?.value || slot.visualConcept || '').trim();
+    const legacyPrompt = (document.getElementById('cb-visual-prompt')?.value  || slot.visualPrompt  || '').trim();
+    const specs        = slot.visualSpecs || deriveVisualSpecs(channel);
+    const composed     = conceptInput
+      ? composeVisualPrompt(conceptInput, specs)
+      : legacyPrompt;
     const verticals = [...(slot.verticals || [])];
+    const brandVerticals = (brandKitData.verticals || []).map(v => {
+      ensureVerticalChannels(v);
+      return { name: v.name, desc: v.desc || '', channels: v.channels };
+    });
+    const selectedVertical = cbActiveVertical
+      ? brandVerticals.find(v => v.name === cbActiveVertical) || null
+      : null;
+
+    // Carousel awareness — when the format is "Carousel slide", WF09 should generate N images
+    // and use the brand's top-performing IG posts as visual references for style consistency.
+    const isCarousel = (specs?.format || '') === 'Carousel slide';
+    const slideCount = isCarousel ? Math.max(1, Number(slot.slideCount) || 3) : 1;
+
+    // Reference images from SocialMediaBios: pull the URLs of the top-performing posts on this
+    // channel so n8n can pass them to the image model as style references. Image URLs may live
+    // under different keys depending on what Apify wrote (imageUrl / displayUrl / mediaUrl / url).
+    const smbChannel  = (socialBiosData?.channels || []).find(c => c.name === channel) || null;
+    const refImages   = (smbChannel?.topPosts || [])
+      .map(p => p.imageUrl || p.displayUrl || p.media_url || p.mediaUrl || p.url)
+      .filter(Boolean)
+      .slice(0, 3);
 
     const payload = {
-      brand_id: brandKitData.brandId,
-      draft_id: draftId,
-      visual_prompt: visualPrompt || null,
-      channel:       channel || null,
-      verticals:     verticals.length ? verticals : null,
+      brand_id:        brandKitData.brandId,
+      draft_id:        draftId,
+      visual_prompt:   composed || null,
+      visual_concept:  conceptInput || null,
+      visual_specs:    specs || null,
+      slide_count:     slideCount,
+      reference_images: refImages.length ? refImages : null,
+      channel:         channel || null,
+      verticals:       verticals.length ? verticals : null,
+      business_verticals: brandVerticals.length ? brandVerticals : null,
+      selected_vertical:  selectedVertical,
       ...extra,
     };
     console.log('[WF09] sending payload:', payload);
@@ -3964,38 +4762,101 @@ async function handleGenerateVisual() {
     return;
   }
 
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const slot    = getCbCampaign(channel);
+  const specs   = slot.visualSpecs || deriveVisualSpecs(channel);
+  const isCarousel = (specs?.format || '') === 'Carousel slide';
+  const totalSlides = isCarousel ? Math.max(1, Number(slot.slideCount) || 3) : 1;
+
   btn.disabled = true;
   const original = btn.innerHTML;
-  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Rendering brief...';
   lucide.createIcons();
 
-  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Generating image...';
-  lucide.createIcons();
+  // Carousel architecture: SWL's IG carousels are 60%+ designed-text slides, not photos.
+  //   - Slide 1: AI photo (hero) via WF09 → Gemini.
+  //   - Slides 2..N: template-rendered designed slides (tag + headline + cards/stats/CTA)
+  //     using WF09C for content + client-side html2canvas for typography-perfect rendering.
+  const slides = [];
 
-  let result = await generateVisualBrief(lastBuiltDraftId);
-  console.log('[WF09] raw response:', result);
-  if (Array.isArray(result)) result = result[0];
-  if (result && result.json) result = result.json;
+  // Pre-fetch slide content specs for slides 2..N from WF09C (one call, returns full array).
+  let slideSpecs = [];
+  if (isCarousel && totalSlides > 1) {
+    btn.innerHTML = `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Breaking down draft…`;
+    lucide.createIcons();
+    slideSpecs = await fetchCarouselSlideSpecs(totalSlides);
+    console.log('[WF09C] slide specs:', slideSpecs);
+  }
 
-  if (result && result.ok && result.asset_id) {
-    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Image ready';
-    btn.style.background = '#10B981';
-    btn.style.color = 'white';
+  for (let i = 1; i <= totalSlides; i++) {
+    btn.innerHTML = totalSlides > 1
+      ? `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Slide ${i}/${totalSlides}…`
+      : `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Generating image…`;
+    lucide.createIcons();
 
-    let asset = result.asset;
-    if (typeof asset === 'string') {
-      try { asset = JSON.parse(asset); } catch (e) { asset = null; }
+    if (i === 1 || !isCarousel) {
+      // Hero photo via Gemini.
+      let result = await generateVisualBrief(lastBuiltDraftId, {
+        slide_index: i,
+        slide_total: totalSlides,
+      });
+      if (Array.isArray(result)) result = result[0];
+      if (result && result.json) result = result.json;
+      console.log(`[WF09] slide ${i}/${totalSlides} response:`, result);
+
+      if (result && result.ok && (result.asset_id || result.image_url)) {
+        let asset = result.asset;
+        if (typeof asset === 'string') { try { asset = JSON.parse(asset); } catch { asset = null; } }
+        slides.push({
+          index: i,
+          kind: 'photo',
+          asset_id: result.asset_id || null,
+          image_url: result.image_url || null,
+          asset,
+        });
+      } else {
+        console.warn(`[WF09] slide ${i} failed:`, result);
+      }
+    } else {
+      // Template-rendered designed slide (text-heavy).
+      const spec = slideSpecs.find(s => Number(s.slide_index) === i)
+                || slideSpecs[i - 2]   // positional fallback
+                || null;
+      if (!spec) {
+        console.warn(`[WF09C] no spec for slide ${i}; skipping`);
+        continue;
+      }
+      const dataUrl = await renderSwlTextSlide(spec, i, totalSlides);
+      if (dataUrl) {
+        slides.push({
+          index: i,
+          kind: 'template',
+          asset_id: null,
+          image_url: dataUrl,
+          spec,
+        });
+      }
     }
-    const imageUrl = result.image_url || null;
-    if (asset || imageUrl) renderVisualBriefIntoView(asset, imageUrl);
-    showToast(`Image generated (asset ${result.asset_id.slice(0, 8)}). See card below.`);
-    setTimeout(() => hydrateCreativeBrainView(), 500);
-  } else {
+  }
+
+  if (slides.length === 0) {
     btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error';
     btn.style.background = '#EF4444';
     btn.style.color = 'white';
-    showToast('Visual brief failed. See console.', 'error');
-    console.warn('[WF09] response:', result);
+    showToast('No slide could be generated. See console.', 'error');
+  } else {
+    btn.innerHTML = totalSlides > 1
+      ? `<i data-lucide="check" style="width:12px"></i> ${slides.length}/${totalSlides} slides ready`
+      : `<i data-lucide="check" style="width:12px"></i> Image ready`;
+    btn.style.background = '#10B981';
+    btn.style.color = 'white';
+    if (slides.length === 1) {
+      // Backward compatible: single image goes through the existing renderer.
+      renderVisualBriefIntoView(slides[0].asset, slides[0].image_url);
+    } else {
+      renderCarouselIntoView(slides);
+    }
+    showToast(`Generated ${slides.length}/${totalSlides} slide(s).`);
+    setTimeout(() => hydrateCreativeBrainView(), 500);
   }
   lucide.createIcons();
 
@@ -4051,6 +4912,239 @@ function renderVisualBriefIntoView(asset, imageUrl) {
 
   body.innerHTML = imageBlock + briefBlock;
   lucide.createIcons();
+}
+
+// ── Carousel viewer ──────────────────────────────────────────────────────────
+// Renders N generated slides as a main image + thumbnail strip + prev/next
+// navigation. Used when format === Carousel slide and we generated multiple.
+let _cbCarouselState = { slides: [], active: 0 };
+
+function renderCarouselIntoView(slides) {
+  const body = document.getElementById('visual-brief-body');
+  if (!body) return;
+  markCbStep(3, 'done');
+  _cbCarouselState = { slides: slides || [], active: 0 };
+
+  body.innerHTML = `
+    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+      <div>
+        <strong style="font-size:14px;color:#0369A1;">Carousel · ${slides.length} slide${slides.length === 1 ? '' : 's'}</strong>
+        <span style="font-size:11.5px;color:var(--text-muted);margin-left:8px;">Cohesive style aplicado a todas las slides</span>
+      </div>
+      <span id="cb-carousel-counter" style="font-size:11.5px;color:var(--text-muted);font-weight:600;">1 / ${slides.length}</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <button onclick="cbCarouselNav(-1)" style="background:white;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i data-lucide="chevron-left" style="width:16px;"></i>
+      </button>
+      <div style="flex:1;border-radius:10px;overflow:hidden;border:1px solid #BAE6FD;background:#F0F9FF;">
+        <img id="cb-carousel-main" src="${slides[0]?.image_url || ''}" alt="Slide 1"
+          style="width:100%;display:block;max-height:480px;object-fit:cover;"
+          onerror="this.parentElement.innerHTML='<div style=padding:20px;text-align:center;color:#64748B;font-size:13px>Image URL expired — regenerate to get a new one.</div>'">
+      </div>
+      <button onclick="cbCarouselNav(1)" style="background:white;border:1px solid var(--border);border-radius:50%;width:32px;height:32px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <i data-lucide="chevron-right" style="width:16px;"></i>
+      </button>
+    </div>
+
+    <div id="cb-carousel-thumbs" style="display:flex;gap:6px;overflow-x:auto;padding:4px 0 10px 0;">
+      ${slides.map((s, i) => `
+        <button onclick="cbCarouselGo(${i})" data-slide-idx="${i}"
+          style="flex:0 0 84px;height:84px;border-radius:6px;overflow:hidden;cursor:pointer;border:2px solid ${i === 0 ? '#0369A1' : 'transparent'};padding:0;background:none;position:relative;">
+          <img src="${s.image_url || ''}" alt="Slide ${i + 1}" style="width:100%;height:100%;object-fit:cover;display:block;">
+          <span style="position:absolute;bottom:2px;right:4px;background:rgba(0,0,0,0.65);color:white;font-size:10px;font-weight:700;padding:1px 5px;border-radius:3px;">${i + 1}</span>
+        </button>
+      `).join('')}
+    </div>
+
+    <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
+      <i data-lucide="info" style="width:11px;vertical-align:middle;margin-right:3px"></i>
+      Cada slide se generó con un brief específico (slide ${slides.length > 1 ? '1 = hook, intermedias = desarrollo, última = CTA' : 'única'}) compartiendo paleta y estilo del IG de la marca.
+    </div>
+  `;
+  lucide.createIcons();
+}
+
+function cbCarouselGo(idx) {
+  const { slides } = _cbCarouselState;
+  if (!slides.length) return;
+  const i = Math.max(0, Math.min(slides.length - 1, idx));
+  _cbCarouselState.active = i;
+  const main = document.getElementById('cb-carousel-main');
+  if (main) {
+    main.src = slides[i]?.image_url || '';
+    main.alt = `Slide ${i + 1}`;
+  }
+  const counter = document.getElementById('cb-carousel-counter');
+  if (counter) counter.textContent = `${i + 1} / ${slides.length}`;
+  // Update thumbnail highlight.
+  document.querySelectorAll('#cb-carousel-thumbs button[data-slide-idx]').forEach(btn => {
+    btn.style.borderColor = Number(btn.dataset.slideIdx) === i ? '#0369A1' : 'transparent';
+  });
+}
+
+function cbCarouselNav(delta) {
+  const { slides, active } = _cbCarouselState;
+  if (!slides.length) return;
+  const next = (active + delta + slides.length) % slides.length;
+  cbCarouselGo(next);
+}
+
+// ── WF09C — Carousel slide specs (breaks the draft into N-1 text slides) ───
+const WF09C_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf09c-carousel-slides';
+
+async function fetchCarouselSlideSpecs(slideCount) {
+  // Gather what WF09C needs to write coherent slides. Best-effort: missing fields
+  // fall back to brandKit / draft text.
+  const draftEl = document.getElementById('cb-post-body');
+  const draftText = (draftEl?.textContent || '').trim();
+  const channel  = contentBuilderActiveTab || 'Instagram';
+  const slot     = getCbCampaign(channel);
+  const vertical = cbActiveVertical
+    ? (brandKitData.verticals || []).find(v => v.name === cbActiveVertical) || null
+    : null;
+  const smbChannel = (socialBiosData?.channels || []).find(c => c.name === channel) || null;
+
+  try {
+    const res = await fetch(WF09C_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slide_count:    slideCount,
+        brand_name:     brandKitData.name || '',
+        brand_tagline:  brandKitData.tagline || '',
+        brand_handle:   smbChannel?.handle || '',
+        vertical_name:  vertical?.name || '',
+        vertical_desc:  vertical?.desc || '',
+        channel,
+        draft_text:     draftText,
+        agent_prompt:   slot.agentPrompt || '',
+      }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    let body = await res.json();
+    if (Array.isArray(body)) body = body[0];
+    if (body?.json) body = body.json;
+    return Array.isArray(body?.slides) ? body.slides : [];
+  } catch (e) {
+    console.error('[WF09C] failed:', e);
+    return [];
+  }
+}
+
+// ── Carousel text-slide template renderer ──────────────────────────────────
+// SWL's actual IG carousels are 60%+ designed text slides (tag pill + headline +
+// cards/stats) — image-gen models can't render typography reliably, so we build
+// these slides client-side as HTML elements and rasterize them with html2canvas.
+// Each slide is rendered off-screen at 1080×1080 and exported as a data URL.
+
+const SWL_PALETTE = {
+  bg:        '#0A0A0A',
+  bgCard:    '#161616',
+  cardBorder:'#D4A857',
+  text:      '#FFFFFF',
+  textMuted: '#B8B8B8',
+  accent:    '#D4A857',
+  accentBg:  '#3A2E12',
+  tagBg:     '#D4A857',
+  tagText:   '#1A1A1A',
+};
+
+// `spec` shape: { tag, headline, sub, items: [{emoji, title, desc}] | [{value, label, sub}], variant: 'cards' | 'stats' | 'cta', highlight? }
+async function renderSwlTextSlide(spec, slideIndex, slideTotal) {
+  if (typeof html2canvas === 'undefined') {
+    console.warn('[renderSwlTextSlide] html2canvas not loaded');
+    return null;
+  }
+  const variant = spec.variant || 'cards';
+  const items = Array.isArray(spec.items) ? spec.items : [];
+
+  // Build the inner HTML based on variant
+  let itemsHtml = '';
+  if (variant === 'stats') {
+    itemsHtml = items.map(it => `
+      <div style="text-align:center;padding:18px 12px;">
+        <div style="font-size:88px;font-weight:800;color:${SWL_PALETTE.text};line-height:1;margin-bottom:8px;font-family:'Inter','Helvetica Neue',sans-serif;">${escapeHtml(it.value || '—')}</div>
+        <div style="font-size:22px;font-weight:700;color:${SWL_PALETTE.text};margin-bottom:6px;">${escapeHtml(it.label || '')}</div>
+        <div style="font-size:15px;color:${SWL_PALETTE.textMuted};line-height:1.4;max-width:480px;margin:0 auto;">${escapeHtml(it.desc || '')}</div>
+      </div>
+    `).join('');
+  } else if (variant === 'cta') {
+    itemsHtml = `
+      <div style="margin-top:48px;padding:32px 36px;background:${SWL_PALETTE.accentBg};border:2px solid ${SWL_PALETTE.accent};border-radius:14px;">
+        <div style="font-size:18px;color:${SWL_PALETTE.accent};font-weight:700;letter-spacing:0.5px;margin-bottom:10px;text-transform:uppercase;">${escapeHtml(spec.cta_tag || 'Next step')}</div>
+        <div style="font-size:32px;font-weight:800;color:${SWL_PALETTE.text};line-height:1.2;">${escapeHtml(spec.cta_text || '')}</div>
+      </div>
+    `;
+  } else {
+    // cards variant (default)
+    itemsHtml = items.map(it => `
+      <div style="padding:20px 22px;background:transparent;border:2px solid ${SWL_PALETTE.cardBorder};border-radius:12px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          ${it.emoji ? `<span style="font-size:24px;">${escapeHtml(it.emoji)}</span>` : ''}
+          <span style="font-size:22px;font-weight:700;color:${SWL_PALETTE.text};">${escapeHtml(it.title || '')}</span>
+        </div>
+        <div style="font-size:15px;color:${SWL_PALETTE.textMuted};line-height:1.45;">${escapeHtml(it.desc || '')}</div>
+      </div>
+    `).join('');
+  }
+
+  const highlightHtml = spec.highlight ? `
+    <div style="margin-top:28px;padding:18px 22px;background:${SWL_PALETTE.accentBg};border-left:4px solid ${SWL_PALETTE.accent};border-radius:8px;">
+      <span style="color:${SWL_PALETTE.accent};font-weight:600;font-size:15px;line-height:1.5;">${escapeHtml(spec.highlight)}</span>
+    </div>` : '';
+
+  // Off-screen render container — 1080×1080 (IG square) with internal padding
+  const root = document.createElement('div');
+  root.style.cssText = `
+    position:fixed;left:-9999px;top:0;width:1080px;height:1080px;
+    background:${SWL_PALETTE.bg};color:${SWL_PALETTE.text};
+    font-family:'Inter','Helvetica Neue',-apple-system,sans-serif;
+    padding:72px 64px;box-sizing:border-box;
+    display:flex;flex-direction:column;gap:24px;
+  `;
+  root.innerHTML = `
+    <!-- Top row: tag pill + slide counter -->
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      ${spec.tag ? `<span style="display:inline-block;padding:6px 14px;background:${SWL_PALETTE.tagBg};color:${SWL_PALETTE.tagText};font-size:14px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;background:rgba(255,255,255,0.08);color:${SWL_PALETTE.text};font-size:16px;font-weight:700;border-radius:99px;">${slideIndex}/${slideTotal}</span>
+    </div>
+
+    <!-- Headline -->
+    <h1 style="font-size:52px;font-weight:800;color:${SWL_PALETTE.text};line-height:1.12;margin:0;letter-spacing:-0.5px;max-width:920px;">${escapeHtml(spec.headline || '')}</h1>
+
+    ${spec.sub ? `<p style="font-size:20px;color:${SWL_PALETTE.textMuted};line-height:1.4;margin:0;max-width:880px;">${escapeHtml(spec.sub)}</p>` : ''}
+
+    <!-- Items grid (cards/stats/cta) -->
+    <div style="flex:1;display:${variant === 'stats' ? 'flex' : 'grid'};${variant === 'stats' ? 'flex-direction:column;justify-content:center;gap:32px;' : 'grid-template-columns:1fr 1fr;gap:18px;align-content:start;'}margin-top:18px;">
+      ${itemsHtml}
+    </div>
+
+    ${highlightHtml}
+
+    <!-- Footer brand mark -->
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;color:${SWL_PALETTE.textMuted};font-size:14px;font-weight:600;letter-spacing:0.4px;">
+      <span>${escapeHtml(spec.brand_handle || 'swl.consulting')}</span>
+    </div>
+  `;
+  document.body.appendChild(root);
+
+  try {
+    const canvas = await html2canvas(root, {
+      backgroundColor: SWL_PALETTE.bg,
+      scale: 1,
+      width: 1080,
+      height: 1080,
+      logging: false,
+    });
+    return canvas.toDataURL('image/png');
+  } catch (e) {
+    console.error('[renderSwlTextSlide] failed:', e);
+    return null;
+  } finally {
+    root.remove();
+  }
 }
 
 // ── WF10 Auto Publisher (simulation) ───────────────────
@@ -7979,6 +9073,37 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">86 hrs</div><div class="agent-stat-lbl">Team Hours Saved (30d)</div></div>
         </div>
 
+        <!-- ─── Verticales del cliente (productos / unidades de negocio) ─── -->
+        <div class="card" style="margin-top:24px; border:1px solid #E9D5FF; background:linear-gradient(180deg,#FAF5FF 0%, white 70%);">
+          <div style="display:flex; justify-content:space-between; align-items:start; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+            <div>
+              <h3 class="card-title" style="margin:0;"><i data-lucide="layers"></i> Verticales del cliente</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0; max-width:680px;">
+                Productos, unidades de negocio o campañas que el cliente quiere comunicar. El <strong>WebScrapper</strong> los detecta del website y los guarda en <code style="font-size:11px;background:#F1F5F9;padding:1px 6px;border-radius:4px;">brand_profiles.data_json.verticals</code>. Editalos abajo — ContentBuilder genera 1 post × <em>vertical × canal</em>.
+              </p>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button id="cb-sync-brand" onclick="syncFromBrandingBio()" title="Pull desde brand_profiles — sobreescribe la copia local con lo último guardado en Branding Bio" style="display:inline-flex; align-items:center; padding:6px 12px; background:#6366F1; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio</button>
+              <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vertical activa</label>
+              <select id="cb-active-vertical" style="font-size:12px; padding:6px 10px; border:1px solid #E9D5FF; border-radius:6px; background:white; color:#4C1D95; font-weight:600;">
+                <option value="__all__">Todas las verticales (mix)</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="cb-brand-vertical-list" style="display:flex; flex-direction:column; gap:8px; min-height:32px; margin-bottom:14px;"></div>
+
+          <div style="display:grid; grid-template-columns: 1fr 2fr auto; gap:8px; align-items:center;">
+            <input id="cb-brand-vertical-name" type="text" placeholder="Nombre de la vertical (ej. Hamburguesas)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
+            <input id="cb-brand-vertical-desc" type="text" placeholder="Descripción corta — audiencia + valor (opcional)" style="padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addBrandVertical();event.preventDefault()}" />
+            <button onclick="addBrandVertical()" style="padding:8px 14px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:6px;"><i data-lucide="plus" style="width:12px"></i> Add vertical</button>
+          </div>
+          <p style="margin:10px 0 0 0; font-size:10.5px; color:var(--text-muted);">
+            <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>
+            Las verticales viajan en el payload a <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf07-content-builder</code> y <code style="font-size:10px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">wf09-creative-brain</code> para que el copy y el visual sean específicos del producto seleccionado.
+          </p>
+        </div>
+
         <!-- Competitor Insights from Social Media App -->
         <div class="card" style="margin-top:24px; border:1px solid rgba(249,115,22,0.25); background:linear-gradient(180deg,white,#FFF7ED);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
@@ -7992,8 +9117,12 @@ function generateViewHTML(view) {
 
         <!-- ─────────────────────────────────────────── -->
         <!-- Generation Pipeline — 3 sequential n8n steps -->
+        <!-- The pipeline card lives in this HIDDEN anchor until the user expands
+             a vertical above. On expand, JS moves the DOM into that vertical's
+             slot. On collapse, it comes back here (still hidden). -->
         <!-- ─────────────────────────────────────────── -->
-        <div class="card" style="margin-top:24px; border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
+        <div id="cb-pipeline-anchor" style="display:none;">
+        <div id="cb-pipeline-card" class="card" style="border:1px solid rgba(34,197,94,0.25); background:linear-gradient(180deg,#FAFFF7 0%,#FFFFFF 80%);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; gap:10px; flex-wrap:wrap;">
             <h3 class="card-title" style="margin:0;"><i data-lucide="git-branch"></i> Pipeline de generación — <span id="cb-pipeline-channel" style="color:#0A66C2">💼 LinkedIn</span></h3>
             <select id="cb-persona" style="font-size:12px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
@@ -8035,30 +9164,40 @@ function generateViewHTML(view) {
             3 pasos secuenciales conectados a n8n. Cada paso es un webhook independiente. El brief, el copy y el visual cambian según el canal — el agente lee el análisis de <strong>SocialMediaBios</strong> almacenado en Supabase para producir contenido que matchea el perfil real.
           </p>
 
-          <!-- Per-channel inputs: verticales + prompt visual (live INSIDE each tab) -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:18px;">
-            <div style="padding:14px; border:1px solid var(--border); border-radius:10px; background:#FAFBFC;">
-              <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:block;">
-                <i data-lucide="layers" style="width:11px;vertical-align:middle;margin-right:4px"></i>Verticales / productos / campañas <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— para este canal</span>
+          <!-- Per-channel inputs: verticales (full-width) -->
+          <div style="padding:14px; border:1px solid var(--border); border-radius:10px; background:#FAFBFC; margin-bottom:14px;">
+            <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:block;">
+              <i data-lucide="layers" style="width:11px;vertical-align:middle;margin-right:4px"></i>Verticales / productos / campañas <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— para este canal</span>
+            </label>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <input id="cb-vertical-input" type="text" placeholder="ej. Casos de éxito, Tutoriales, Behind-the-scenes" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addContentBuilderVertical();event.preventDefault()}" />
+              <button onclick="addContentBuilderVertical()" style="padding:8px 12px; background:#22C55E; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="plus" style="width:11px;vertical-align:middle;margin-right:3px"></i>Add</button>
+            </div>
+            <div id="cb-vertical-list" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:28px;"></div>
+          </div>
+
+          <!-- Visual prompt builder — concept (free text + AI suggest) + tech specs (chips) + preview -->
+          <div style="padding:14px; border:1px solid #C7D2FE; border-radius:10px; background:linear-gradient(180deg,#F5F3FF 0%, white 60%); margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
+              <label style="font-size:11px; color:#5B21B6; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">
+                <i data-lucide="image" style="width:11px;vertical-align:middle;margin-right:4px"></i>Prompt visual <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— concepto + specs técnicos para este canal</span>
               </label>
-              <div style="display:flex; gap:6px; align-items:center;">
-                <input id="cb-vertical-input" type="text" placeholder="ej. Casos de éxito, Tutoriales, Behind-the-scenes" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addContentBuilderVertical();event.preventDefault()}" />
-                <button onclick="addContentBuilderVertical()" style="padding:8px 12px; background:#22C55E; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="plus" style="width:11px;vertical-align:middle;margin-right:3px"></i>Add</button>
+              <div style="display:flex; gap:6px;">
+                <button id="btn-suggest-visual" onclick="suggestVisualConcept()" style="display:inline-flex; align-items:center; padding:5px 11px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sugerir con IA</button>
+                <button onclick="resetVisualSpecsToDefault()" title="Recalcular specs desde canal + top format de SocialMediaBios" style="background:none; border:1px solid var(--border); border-radius:5px; padding:5px 9px; font-size:10.5px; color:var(--text-muted); cursor:pointer;"><i data-lucide="refresh-cw" style="width:10px;vertical-align:middle;margin-right:3px"></i>Auto-specs</button>
               </div>
-              <div id="cb-vertical-list" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:28px;"></div>
             </div>
 
-            <div style="padding:14px; border:1px solid var(--border); border-radius:10px; background:#FAFBFC;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
-                  <i data-lucide="image" style="width:11px;vertical-align:middle;margin-right:4px"></i>Prompt visual <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— específico de este canal</span>
-                </label>
-                <button onclick="useSampleVisualPrompt()" style="background:none; border:1px solid var(--border); border-radius:5px; padding:3px 8px; font-size:10.5px; color:var(--text-muted); cursor:pointer;">Reset al ejemplo</button>
-              </div>
-              <textarea id="cb-visual-prompt" rows="4" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
-              <div style="margin-top:6px; font-size:10.5px; color:var(--text-muted);">
-                <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>Lo recibe WF09 junto al análisis de SocialMediaBios para generar el visual.
-              </div>
+            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin-bottom:4px;">Concepto creativo <span style="text-transform:none; font-weight:400;">— qué muestra la imagen (la IA lo llena, vos lo editás)</span></label>
+            <textarea id="cb-visual-concept" rows="4" placeholder="Ej: Carrusel mostrando 3 obras reales con métricas de ROI por obra…" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
+
+            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin:12px 0 6px 0;">Specs técnicos <span style="text-transform:none; font-weight:400;">— auto-derivados del canal + top format de SocialMediaBios, editables</span></label>
+            <div id="cb-visual-specs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+
+            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin:12px 0 4px 0;">Prompt final <span style="text-transform:none; font-weight:400;">— concepto + specs (lo que recibe WF09)</span></label>
+            <div id="cb-visual-preview" style="padding:10px 12px; background:#FAFBFC; border:1px dashed var(--border); border-radius:6px; font-size:11.5px; font-family:var(--font-mono, ui-monospace, monospace); line-height:1.55; color:var(--text-main); white-space:pre-wrap; min-height:48px; max-height:200px; overflow-y:auto;">(sin contenido — completá el concepto o pedile sugerencia a la IA)</div>
+            <div style="margin-top:6px; font-size:10.5px; color:var(--text-muted);">
+              <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>WF09 recibe <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_prompt</code> (compuesto) + <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_concept</code> + <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_specs</code> por separado.
             </div>
           </div>
 
@@ -8148,6 +9287,7 @@ function generateViewHTML(view) {
             <button class="btn-sm" id="btn-discard-draft" onclick="handleDiscardDraft()" style="border:1px solid var(--border); margin-left:auto; color:#991B1B;"><i data-lucide="trash-2" style="width:12px"></i> Discard</button>
           </div>
         </div>
+        </div><!-- /#cb-pipeline-anchor -->
 
         <!-- Content queue + channel split -->
         <div class="kpi-grid" style="grid-template-columns: 2fr 1fr; margin-top:24px;">
