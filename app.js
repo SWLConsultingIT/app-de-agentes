@@ -3928,6 +3928,9 @@ function setContentBuilderTab(channel) {
 
   // Refresh context strip + format recommendation for the new channel
   hydrateContentBuilderContext();
+
+  // Refresh the "Inspired by" line so the user sees current hook/post counts for this channel
+  updateContentBuilderInspirationIndicator(channel);
 }
 
 // Builds context pills + format recommendation from SocialMediaBios analysis
@@ -4583,6 +4586,96 @@ async function initSwipeFile() {
 // ── WF06 Brief Generator (ContentBuilder) ──────────────
 const WF06_URL = `https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator${_CB_SFX}`;
 
+// ── Inspiration helpers shared by WF06 (brief) and WF07 (draft) ───────────
+// These pull top hooks (from WF11 / hook_library) and top competitor posts
+// (from WF03 / competitor_content) so the brief generator and draft builder
+// can use them as INSPIRATION. The payload always carries `anti_plagiarism: true`
+// so the prompt template downstream knows to rewrite in the brand's own voice
+// instead of paraphrasing the source.
+async function fetchTopHooksForBrief(brandId, channel, limit = 5) {
+  if (!brandId) return [];
+  try {
+    const params = new URLSearchParams({
+      brand_id: `eq.${brandId}`,
+      order: 'score.desc',
+      limit: String(limit),
+      select: 'hook_text,framework,channel,score,evidence_json',
+    });
+    if (channel) params.set('channel', `eq.${channel}`);
+    return await supabaseGet(`hook_library?${params}`);
+  } catch (e) {
+    console.warn('[ContentBuilder] fetchTopHooksForBrief failed:', e);
+    return [];
+  }
+}
+
+async function fetchTopCompetitorPostsForBrief(brandId, channel, limit = 5) {
+  if (!brandId) return [];
+  try {
+    const params = new URLSearchParams({
+      brand_id: `eq.${brandId}`,
+      order: 'scraped_at.desc',
+      limit: String(limit),
+      select: 'title,competitor_name,channel,url,metrics_json,analysis_json',
+    });
+    if (channel) params.set('channel', `eq.${channel}`);
+    return await supabaseGet(`competitor_content?${params}`);
+  } catch (e) {
+    console.warn('[ContentBuilder] fetchTopCompetitorPostsForBrief failed:', e);
+    return [];
+  }
+}
+
+// Build the inspiration block that gets attached to WF06/WF07 payloads.
+// Returns an object the caller spreads into its payload.
+async function buildInspirationPayload(brandId, channel) {
+  const [topHooks, compPosts] = await Promise.all([
+    fetchTopHooksForBrief(brandId, channel, 5),
+    fetchTopCompetitorPostsForBrief(brandId, channel, 5),
+  ]);
+  const competitor_inspiration = compPosts.map(p => ({
+    competitor_name: p.competitor_name,
+    channel:         p.channel,
+    title:           p.title,
+    url:             p.url,
+    metrics:         p.metrics_json,
+    analysis:        p.analysis_json,
+  }));
+  // Note: this is intentionally a flat structure so the n8n prompt template can read
+  // each field by name. The `anti_plagiarism` flag tells the brief/draft node to
+  // INSTRUCT the LLM to rewrite in the brand voice, never paraphrase verbatim.
+  return {
+    top_hooks:              topHooks.length ? topHooks : null,
+    competitor_inspiration: competitor_inspiration.length ? competitor_inspiration : null,
+    anti_plagiarism:        true,
+    inspiration_disclaimer: 'Use top_hooks and competitor_inspiration as STRUCTURAL inspiration only (frameworks, pacing, angle). Preserve the brand voice, mission and value-prop from business_verticals/brand_profile. Never paraphrase a competitor post verbatim.',
+  };
+}
+
+// Update the "Inspirado en:" indicator next to step 1 so the user sees what's
+// feeding the brief. Safe to call before the inputs/buttons exist (no-ops).
+function updateContentBuilderInspirationIndicator(channel) {
+  const el = document.getElementById('cb-inspiration-line');
+  if (!el) return;
+  // Cheap read from already-cached Supabase responses isn't possible here, so
+  // we trigger a quick fetch and update the indicator when it lands. Errors
+  // are silent — the indicator just stays at "—" then.
+  const brandId = brandKitData.brandId;
+  if (!brandId) {
+    el.textContent = 'Sin brand_id — guardá Branding Bio para activar la inspiración.';
+    return;
+  }
+  el.textContent = `Inspirado en: top hooks + top posts de competidores para ${channel} (cargando…)`;
+  Promise.all([
+    fetchTopHooksForBrief(brandId, channel, 5),
+    fetchTopCompetitorPostsForBrief(brandId, channel, 5),
+  ]).then(([hooks, posts]) => {
+    el.textContent = `Inspirado en: ${hooks.length} hook${hooks.length===1?'':'s'} · ${posts.length} post${posts.length===1?'':'s'} de competidores (canal ${channel}) — la marca propia se respeta, sin plagio`;
+  }).catch(() => {
+    el.textContent = 'Inspiración no disponible (sin datos en hook_library/competitor_content todavía).';
+  });
+}
+
 async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineering') {
   if (!brandKitData.brandId) {
     return { __error: 'brand_id_missing', message: 'Branding Bio aún no fue guardada. Andá a Branding Bio → Save & Sync antes de generar contenido.' };
@@ -4595,12 +4688,16 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
       : null;
+    const userBriefExtra = (document.getElementById('cb-user-brief')?.value || '').trim();
+    const inspiration = await buildInspirationPayload(brandKitData.brandId, channel);
     const payload = {
       brand_id: brandKitData.brandId,
       channel,
       persona,
       business_verticals: brandVerticals.length ? brandVerticals : null,
       selected_vertical:  selectedVertical,
+      user_brief_extra:   userBriefExtra || null,
+      ...inspiration,
     };
     console.log('[WF06] sending payload:', payload);
     const res = await fetch(WF06_URL, {
@@ -4719,6 +4816,12 @@ async function generateDraft() {
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
       : null;
 
+    // Forward the same inspiration block to WF07 so the draft builder has hooks +
+    // competitor posts directly — independent of whether WF06's brief carried them
+    // (it stopped populating hook_id at some point per project memory).
+    const userBriefExtra = (document.getElementById('cb-user-brief')?.value || '').trim();
+    const inspiration = await buildInspirationPayload(brandKitData.brandId, channel);
+
     const payload = {
       brand_id: brandKitData.brandId,
       brief_id: lastGeneratedBriefId,
@@ -4726,6 +4829,8 @@ async function generateDraft() {
       verticals: verticals.length ? verticals : null,
       business_verticals: brandVerticals.length ? brandVerticals : null,
       selected_vertical: selectedVertical,
+      user_brief_extra:  userBriefExtra || null,
+      ...inspiration,
     };
     console.log('[WF07] sending payload:', payload);
     const res = await fetch(WF07_URL, {
@@ -9431,13 +9536,24 @@ function generateViewHTML(view) {
             </div>
           </div>
 
+          <!-- Briefing extra del usuario (formato, ángulo, restricciones) — entra al payload de WF06 y WF07 -->
+          <div style="padding:14px; border:1px solid #FED7AA; border-radius:10px; background:linear-gradient(180deg,#FFF7ED 0%,white 80%); margin-bottom:14px;">
+            <label style="font-size:11px; color:#9A3412; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:6px;">
+              <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing adicional <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— formato, ángulo, lo que quieras pedirle al agente</span>
+            </label>
+            <textarea id="cb-user-brief" rows="2" placeholder="Ej: carrusel de 5 slides con datos duros sobre ROI. Tono más directo. No mencionar precios." style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
+            <div style="margin-top:8px; font-size:10.5px; color:var(--text-muted);" id="cb-inspiration-line">
+              <i data-lucide="sparkles" style="width:10px;vertical-align:middle;margin-right:3px"></i>Inspirado en: hooks de HookMiner + posts top de competidores (cargando…) — se respeta la voz de la marca, no se copia.
+            </div>
+          </div>
+
           <!-- STEP 1 — Brief Generator (WF06) -->
           <div class="cb-step" id="cb-step-1">
             <div class="cb-step-head">
               <span class="cb-step-num">1</span>
               <div class="cb-step-title">
                 <strong>Brief — el agente arma el prompt</strong>
-                <span class="cb-step-sub">webhook <code>wf06-brief-generator</code> · usa tono de SocialMediaBios + hooks de HookMiner</span>
+                <span class="cb-step-sub">webhook <code>wf06-brief-generator</code> · usa tono de SocialMediaBios + hooks de HookMiner + posts top de competidores (como inspiración, no plagio)</span>
                 <span class="cb-step-sub" style="margin-top:4px; color:#7C3AED;"><i data-lucide="wand-2" style="width:10px;vertical-align:middle;margin-right:3px"></i>Estilo: <span id="cb-brief-style-hint">Hook contrarian + insight + 3 lecciones numeradas + CTA hacia comentario o DM.</span></span>
               </div>
               <button id="btn-regenerate" class="cb-step-btn s1" onclick="handleRegenerate()">
