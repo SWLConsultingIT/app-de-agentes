@@ -270,6 +270,13 @@ function getSocialLogo(iconName, color) {
   return logos[iconName] || logos['globe'];
 }
 
+// ── DEV TOGGLE — route ContentBuilder workflows to [DEV-fran] copies ──
+// In browser console:  localStorage.setItem('cb_dev','1'); location.reload();
+// Affects WF04, WF05, WF06, WF07 only. WF00/WF01/WF08/WF09 untouched.
+const CB_DEV = (typeof localStorage !== 'undefined' && localStorage.getItem('cb_dev') === '1');
+const _CB_SFX = CB_DEV ? '-dev' : '';
+if (CB_DEV) console.log('[ContentBuilder] DEV MODE — routing to [DEV-fran] workflow copies');
+
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
 const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
@@ -390,6 +397,10 @@ function applyScrapedBrandData(data) {
   // Debug: surface what WF00 actually returned so we can tell whether the new
   // verticals prompt is live on the n8n side.
   console.log('[WF00] response received. verticals field:', data?.verticals, '· keys:', data ? Object.keys(data) : '(null)');
+  // Snapshot the previous identity BEFORE we mutate it, so we can decide
+  // whether to keep the existing brandId or roll a new one for a new client.
+  const _prevBrandId = brandKitData.brandId;
+  const _prevWebsite = brandKitData.websiteUrl;
   if (data.name)            brandKitData.name = data.name;
   if (data.websiteUrl)      brandKitData.websiteUrl = data.websiteUrl;
   if (data.industry)        brandKitData.industry = data.industry;
@@ -446,7 +457,16 @@ function applyScrapedBrandData(data) {
     const manual = brandKitData.competitors.filter(c => c.source === 'manual');
     brandKitData.competitors = [...manual, ...incoming];
   }
-  brandKitData.brandId = crypto.randomUUID();
+  // Only roll a fresh brandId if there wasn't one OR the website actually changed
+  // (i.e. we're scanning a different client). Re-scanning the same site must
+  // keep the existing brand_id, otherwise every Scan/Save creates a duplicate.
+  const _websiteChanged = data.websiteUrl && _prevWebsite && data.websiteUrl !== _prevWebsite;
+  if (!_prevBrandId || _websiteChanged) {
+    brandKitData.brandId = crypto.randomUUID();
+    console.log('[brand_id] rolled new UUID:', brandKitData.brandId, '(prev=', _prevBrandId, ', websiteChanged=', _websiteChanged, ')');
+  } else {
+    console.log('[brand_id] keeping existing:', _prevBrandId);
+  }
   switchView(state.currentView);
 }
 
@@ -1037,6 +1057,9 @@ async function syncResearchSources() {
     }
 
     // 2. Build one research_sources row per (competitor × social channel with explicit URL)
+    //    Competitor social handles are loaded MANUALLY in Branding Bio — this module
+    //    never auto-discovers them. If a competitor has no IG/TikTok/etc URL filled in,
+    //    it simply doesn't get a row for that channel.
     const channelKeyMap = [
       { channel: 'LinkedIn',  field: 'linkedin_url'  },
       { channel: 'Instagram', field: 'instagram_url' },
@@ -1044,6 +1067,7 @@ async function syncResearchSources() {
       { channel: 'YouTube',   field: 'youtube_url'   },
       { channel: 'X/Twitter', field: 'x_url'         },
     ];
+
     const sources = [];
     for (const c of (brandKitData.competitors || [])) {
       if (!c?.name || /^new competitor$/i.test(c.name)) continue;
@@ -1166,7 +1190,9 @@ async function fetchContentDrafts(brandId, limit = 12) {
     brand_id: `eq.${brandId}`,
     order: 'created_at.desc',
     limit: String(limit),
-    select: 'id,title,status,qa_json,created_at,brief:content_briefs(channel,goal)'
+    // channel comes directly from content_drafts now (WF07 persists it).
+    // Keep brief join as fallback for historical rows where channel is null.
+    select: 'id,title,channel,status,qa_json,created_at,brief:content_briefs(channel,goal)'
   });
   return supabaseGet(`content_drafts?${params}`);
 }
@@ -1217,7 +1243,7 @@ async function refreshContentQueue() {
       const score = qa.final_score != null ? qa.final_score : '—';
       const scoreColor = (typeof score === 'number' && score >= 85) ? '#10B981' :
                         (typeof score === 'number' && score >= 70) ? '#F59E0B' : '#9CA3AF';
-      const channel = r.brief?.channel || '—';
+      const channel = r.channel || r.brief?.channel || '—';
       const titleShort = (r.title || '(no title)').slice(0, 60) + ((r.title || '').length > 60 ? '…' : '');
       return `<tr>
         <td><strong>${escapeHtml(titleShort)}</strong></td>
@@ -1588,6 +1614,19 @@ async function hydrateCompetitorsView() {
       }
     }
 
+    // Pull the brand's own social analyses so the channel comparison has a "You" row
+    // even when the user jumps here without visiting SocialMediaBios first.
+    if (!socialBiosData.channels || !socialBiosData.channels.length || socialBiosData.isMock) {
+      try {
+        const stored = await fetchSocialBios(brandKitData.brandId);
+        if (stored && stored.channels?.length) {
+          socialBiosData.lastScannedAt = stored.scanned_at;
+          socialBiosData.channels = stored.channels;
+          socialBiosData.isMock = false;
+        }
+      } catch (_) { /* leave whatever socialBiosData had before */ }
+    }
+
     const data = normalizeProfileData(profileRow?.data_json);
     const derived = deriveCompetitorsViewFromProfile(data, profileRow?.updated_at);
     // Prefer real scraped/analyzed data when Supabase has rows; fall back to synthetic.
@@ -1642,9 +1681,13 @@ async function hydrateCompetitorsView() {
                    || '—';
           const whyShort = String(why).slice(0, 120) + (String(why).length > 120 ? '…' : '');
           const channel = p.channel || '—';
+          const title = p.title || '(untitled)';
+          const titleCell = p.url
+            ? `<a href="${escapeHtml(p.url)}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">${escapeHtml(title)}<i data-lucide="external-link" style="width:11px; flex-shrink:0; color:#06B6D4;"></i></a>`
+            : escapeHtml(title);
           return `<tr>
             <td><strong>${escapeHtml(p.competitor_name || '—')}</strong></td>
-            <td style="max-width:380px; font-size:12px;">${escapeHtml(p.title || '(untitled)')}</td>
+            <td style="max-width:380px; font-size:12px;">${titleCell}</td>
             <td><span class="lm-tag" style="${channelTagStyle(channel)}">${escapeHtml(channel)}</span></td>
             <td><strong style="color:#10B981">${fmtCompactNumber(eng)}</strong></td>
             <td style="font-size:12px; color:var(--text-muted)">${escapeHtml(whyShort)}</td>
@@ -1809,9 +1852,159 @@ async function hydrateCompetitorsView() {
         });
       }
     }
+
+    // Channel-by-channel comparison: brand (from social_media_analyses) vs each competitor (from competitor_content)
+    renderCompetitorsChannelComparison(topPieces);
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (err) {
     console.error('[CompetitorsView hydrate] error:', err);
   }
+}
+
+// Selected channel for the comparison card. Persists across hydrates within a session.
+let cvSelectedChannel = null;
+
+function selectCvChannel(name) {
+  cvSelectedChannel = name;
+  // Re-render only the comparison section — no need to re-fetch everything.
+  // We can't easily reach `topPieces` here, so we re-hydrate the view.
+  hydrateCompetitorsView();
+}
+
+function renderCompetitorsChannelComparison(topPieces) {
+  const tabsEl = document.getElementById('cv-channel-tabs');
+  const bodyEl = document.getElementById('cv-channel-comparison');
+  if (!tabsEl || !bodyEl) return;
+
+  // Brand's own channels come from social_media_analyses (loaded by SocialMediaBios) —
+  // we read the in-memory snapshot so this view doesn't double-fetch.
+  const brandChannels = (typeof socialBiosData !== 'undefined' && socialBiosData?.channels) || [];
+  const brandByChannel = {};
+  for (const ch of brandChannels) brandByChannel[ch.name] = ch;
+
+  // Group competitor posts by channel.
+  const compByChannel = {};
+  for (const p of (topPieces || [])) {
+    const ch = p.channel;
+    if (!ch || ch === 'Website') continue;
+    (compByChannel[ch] = compByChannel[ch] || []).push(p);
+  }
+
+  // Union of channels with data on either side.
+  const allChannels = new Set([...Object.keys(brandByChannel), ...Object.keys(compByChannel)]);
+  const order = ['LinkedIn', 'Instagram', 'TikTok', 'YouTube', 'X/Twitter'];
+  const channels = [...allChannels].sort((a, b) => {
+    const ai = order.indexOf(a); const bi = order.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+
+  if (!channels.length) {
+    tabsEl.innerHTML = '';
+    bodyEl.innerHTML = `<div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+      No channel data yet — scan your own socials in <strong>SocialMediaBios</strong> and add competitor handles in <strong>Branding Bio</strong>, then click <strong>Sync Web + Socials</strong>.
+    </div>`;
+    return;
+  }
+
+  if (!cvSelectedChannel || !channels.includes(cvSelectedChannel)) {
+    cvSelectedChannel = channels[0];
+  }
+
+  // Tabs
+  tabsEl.innerHTML = channels.map(ch => {
+    const isActive = ch === cvSelectedChannel;
+    const style = isActive
+      ? 'background:#06B6D4; color:white; border:1px solid #06B6D4;'
+      : 'background:white; color:var(--text-muted); border:1px solid var(--border);';
+    return `<button onclick="selectCvChannel('${ch.replace(/'/g, "\\'")}')" style="${style} padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">${escapeHtml(ch)}</button>`;
+  }).join('');
+
+  // Body: one row per account (You + each competitor) on the selected channel.
+  const ch = cvSelectedChannel;
+  const brand = brandByChannel[ch];
+  const compPosts = (compByChannel[ch] || []).slice().sort((a, b) =>
+    totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json));
+
+  // Best post per competitor for this channel.
+  const bestByCompetitor = {};
+  for (const p of compPosts) {
+    const key = p.competitor_name || '—';
+    if (!bestByCompetitor[key]) bestByCompetitor[key] = p;
+  }
+
+  const brandRow = brand ? {
+    isYou: true,
+    name: brandKitData.name || 'You',
+    handle: brand.handle || '',
+    profileUrl: brand.profileUrl || '',
+    score: brand.avgEngagementRate != null ? `ER ${brand.avgEngagementRate}%` : '—',
+    topPost: (brand.topPosts || [])[0] || null,
+  } : null;
+
+  const competitorRows = Object.entries(bestByCompetitor).map(([name, post]) => ({
+    isYou: false,
+    name,
+    handle: '',
+    profileUrl: '',
+    score: fmtCompactNumber(totalEngagement(post.metrics_json)) + ' eng.',
+    topPost: post,
+  }));
+
+  // Sort competitors by raw engagement of their best post, biggest first.
+  competitorRows.sort((a, b) =>
+    totalEngagement(b.topPost?.metrics_json) - totalEngagement(a.topPost?.metrics_json));
+
+  const rows = brandRow ? [brandRow, ...competitorRows] : competitorRows;
+
+  if (!rows.length) {
+    bodyEl.innerHTML = `<div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
+      No data for ${escapeHtml(ch)} yet.
+    </div>`;
+    return;
+  }
+
+  bodyEl.innerHTML = `
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+      ${rows.map(r => {
+        const border = r.isYou ? '#10B981' : '#06B6D4';
+        const tag = r.isYou
+          ? `<span class="lm-tag" style="background:#ECFDF5; color:#065F46;">You</span>`
+          : `<span class="lm-tag" style="background:#EFF6FF; color:#0369A1;">Competitor</span>`;
+        const post = r.topPost;
+        const postUrl = post?.url || '';
+        const snippet = post?.snippet || post?.title || '(no top post yet)';
+        const snippetShort = String(snippet).slice(0, 140) + (String(snippet).length > 140 ? '…' : '');
+        const why = post?.whyItWorked
+          || (post?.analysis_json && (typeof post.analysis_json === 'string'
+                ? (() => { try { return JSON.parse(post.analysis_json).probable_performance_reason; } catch { return ''; } })()
+                : post.analysis_json.probable_performance_reason))
+          || '';
+        const whyShort = why ? String(why).slice(0, 110) + (String(why).length > 110 ? '…' : '') : '';
+        const linkHtml = postUrl
+          ? `<a href="${escapeHtml(postUrl)}" target="_blank" rel="noopener" style="color:${border}; font-size:11px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:3px; margin-top:6px;">Ver post<i data-lucide="external-link" style="width:11px;"></i></a>`
+          : '';
+        return `
+          <div style="padding:14px; border:1px solid var(--border); border-top:3px solid ${border}; border-radius:8px; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
+              <strong style="font-size:14px;">${escapeHtml(r.name)}</strong>
+              ${tag}
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px; min-height:14px;">
+              ${r.handle ? escapeHtml(r.handle) : ''}
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.5px; text-transform:uppercase; font-weight:600;">Top post</div>
+            <div style="font-size:13px; color:var(--text-main); line-height:1.4;">${escapeHtml(snippetShort)}</div>
+            ${whyShort ? `<div style="font-size:11px; color:#9333EA; margin-top:6px;">↳ ${escapeHtml(whyShort)}</div>` : ''}
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:8px; border-top:1px solid #F3F4F6;">
+              <span style="font-size:12px; font-weight:700; color:${border};">${escapeHtml(r.score)}</span>
+              ${linkHtml}
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 // ── HookMiner hydration ────────────────────────────────
@@ -4388,7 +4581,7 @@ async function initSwipeFile() {
 }
 
 // ── WF06 Brief Generator (ContentBuilder) ──────────────
-const WF06_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator';
+const WF06_URL = `https://n8n.srv949269.hstgr.cloud/webhook/wf06-brief-generator${_CB_SFX}`;
 
 async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineering') {
   if (!brandKitData.brandId) {
@@ -4475,6 +4668,9 @@ async function handleRegenerate() {
     const idShort = result.brief_id ? result.brief_id.slice(0, 8) : 'ok';
     showToast(`New brief generated — ID: ${idShort}...`);
 
+    // Remember the brief_id so WF07 can expand the right brief
+    if (result.brief_id) lastGeneratedBriefId = result.brief_id;
+
     // Render brief into the DOM if backend returned it
     let brief = result.brief;
     if (typeof brief === 'string') {
@@ -4496,12 +4692,16 @@ async function handleRegenerate() {
 }
 
 // ── WF07 Content Builder + QA ──────────────────────────
-const WF07_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder';
+const WF07_URL = `https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder${_CB_SFX}`;
 // Reuses brandKitData.brandId
 
 // Tracks the most recent draft built by WF07 so the Approve/Discard buttons
 // know which entity_id to send to WF08.
 let lastBuiltDraftId = null;
+
+// brief_id of the last brief generated by WF06 — WF07 expects it to know
+// which brief to expand. Cleared when channel changes (see setContentBuilderTab).
+let lastGeneratedBriefId = null;
 
 async function generateDraft() {
   try {
@@ -4521,6 +4721,7 @@ async function generateDraft() {
 
     const payload = {
       brand_id: brandKitData.brandId,
+      brief_id: lastGeneratedBriefId,
       channel,
       verticals: verticals.length ? verticals : null,
       business_verticals: brandVerticals.length ? brandVerticals : null,
@@ -4543,6 +4744,11 @@ async function generateDraft() {
 async function handleBuildDraft() {
   const btn = document.getElementById('btn-build-draft');
   if (!btn) return;
+
+  if (!lastGeneratedBriefId) {
+    showToast('Generá el brief primero (paso 1) antes de construir el draft.', 'error');
+    return;
+  }
 
   btn.disabled = true;
   btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Building draft...';
@@ -8829,6 +9035,14 @@ function generateViewHTML(view) {
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-top:14px;" id="cv-snapshot-container">
             <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
           </div>
+        </div>
+
+        <!-- Channel-by-channel comparison: your brand vs each competitor -->
+        <div class="card" style="margin-top:24px;">
+          <h3 class="card-title"><i data-lucide="bar-chart-2"></i> Comparison by Channel — your brand vs competitors</h3>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Picks the top post per account on each channel so you can see what's working — click the title to open the actual publication.</p>
+          <div id="cv-channel-tabs" style="display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 12px;"></div>
+          <div id="cv-channel-comparison"></div>
         </div>
 
         <!-- Competitor landscape -->
