@@ -4210,6 +4210,10 @@ async function syncCompetitorCreators() {
       body: JSON.stringify({
         config_name: configName,
         creators_category: category,
+        // brand_id is what links every sm_videos row back to this brand. WF11
+        // reads it from sm_configs before falling back to the request body, so
+        // missing it here is why HookMiner showed 0 after a successful WF11 run.
+        brand_id: brandKitData.brandId || null,
         analysis_instruction: STANDARD_ANALYSIS_INSTRUCTION,
         new_concepts_instruction: buildNewConceptsInstruction(brandKitData),
       }),
@@ -4278,15 +4282,42 @@ async function runCompetitorPipeline() {
   const statusEl = document.getElementById('hm-pipeline-status');
 
   if (!configName) { showToast('Seleccioná un config o cargá un brand en BrandingBio.', 'error'); return; }
+  if (!brandKitData?.brandId) {
+    showToast('Falta brand_id — guardá Branding Bio antes de correr el pipeline (sino los videos quedan huérfanos y no se ven en HookMiner).', 'error');
+    return;
+  }
+
+  // Make sure sm_configs for this config has brand_id set, in case it was created
+  // by an older code path that didn't store it. WF11 reads brand_id from sm_configs
+  // before falling back to the request body, so this prevents future regressions.
+  try {
+    await supabaseUpsert('sm_configs', {
+      config_name: configName,
+      brand_id: brandKitData.brandId,
+    }, 'config_name');
+  } catch (e) {
+    console.warn('[sm-pipeline] could not backfill sm_configs.brand_id:', e);
+  }
+
   if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
   if (statusEl) statusEl.textContent = 'Pipeline iniciado — scrapeando y analizando videos…';
 
   try {
-    // Fire-and-forget to n8n — pipeline runs async (Apify + Gemini + Claude)
+    // Fire-and-forget to n8n — pipeline runs async (Apify + Gemini + Claude).
+    // brand_id MUST be in the body: WF11's `SET Input Params` reads body.brand_id
+    // and `CODE Build Record` writes it into every sm_videos row. Without it,
+    // rows end up with brand_id='' and the front-end filter (brand_id=eq.<uuid>)
+    // returns 0 even after a successful run.
     fetch(SM_PIPELINE_WEBHOOK, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ config_name: configName, max_videos: 30, top_k: 5, n_days: 60 }),
+      body: JSON.stringify({
+        brand_id: brandKitData.brandId,
+        config_name: configName,
+        max_videos: 30,
+        top_k: 5,
+        n_days: 60,
+      }),
     }).catch(e => console.error('[sm-pipeline] webhook error:', e));
 
     showToast(`Pipeline lanzado para "${configName}" — puede tardar varios minutos.`);
