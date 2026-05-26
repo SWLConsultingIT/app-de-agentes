@@ -5006,13 +5006,15 @@ async function generateVisualBrief(draftId, extra = {}) {
     // Read from the ACTIVE tab's per-channel slot (verticals + visual prompt now live inside each tab)
     const channel = contentBuilderActiveTab || document.getElementById('cb-channel')?.value || 'Instagram';
     const slot = getCbCampaign(channel);
-    // Compose final prompt from concept + specs (new), with backward fallback to the legacy single textarea.
-    const conceptInput = (document.getElementById('cb-visual-concept')?.value || slot.visualConcept || '').trim();
-    const legacyPrompt = (document.getElementById('cb-visual-prompt')?.value  || slot.visualPrompt  || '').trim();
+    // Single source of truth: the user's briefing textarea drives EVERYTHING — brief (WF06),
+    // draft (WF07) and visual (WF09). Falls back to per-channel stored values for backward
+    // compatibility, then to the channel default placeholder.
+    const userBrief    = (document.getElementById('cb-user-brief')?.value || '').trim();
+    const conceptInput = userBrief
+                      || (slot.visualConcept || '').trim()
+                      || (slot.visualPrompt  || '').trim();
     const specs        = slot.visualSpecs || deriveVisualSpecs(channel);
-    const composed     = conceptInput
-      ? composeVisualPrompt(conceptInput, specs)
-      : legacyPrompt;
+    const composed     = conceptInput ? composeVisualPrompt(conceptInput, specs) : '';
     const verticals = [...(slot.verticals || [])];
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
@@ -9495,31 +9497,6 @@ function generateViewHTML(view) {
             <div id="cb-vertical-list" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:28px;"></div>
           </div>
 
-          <!-- Visual prompt builder — concept (free text + AI suggest) + tech specs (chips) + preview -->
-          <div style="padding:14px; border:1px solid #C7D2FE; border-radius:10px; background:linear-gradient(180deg,#F5F3FF 0%, white 60%); margin-bottom:18px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px; flex-wrap:wrap;">
-              <label style="font-size:11px; color:#5B21B6; text-transform:uppercase; letter-spacing:0.5px; font-weight:700;">
-                <i data-lucide="image" style="width:11px;vertical-align:middle;margin-right:4px"></i>Prompt visual <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— concepto + specs técnicos para este canal</span>
-              </label>
-              <div style="display:flex; gap:6px;">
-                <button id="btn-suggest-visual" onclick="suggestVisualConcept()" style="display:inline-flex; align-items:center; padding:5px 11px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sugerir con IA</button>
-                <button onclick="resetVisualSpecsToDefault()" title="Recalcular specs desde canal + top format de SocialMediaBios" style="background:none; border:1px solid var(--border); border-radius:5px; padding:5px 9px; font-size:10.5px; color:var(--text-muted); cursor:pointer;"><i data-lucide="refresh-cw" style="width:10px;vertical-align:middle;margin-right:3px"></i>Auto-specs</button>
-              </div>
-            </div>
-
-            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin-bottom:4px;">Concepto creativo <span style="text-transform:none; font-weight:400;">— qué muestra la imagen (la IA lo llena, vos lo editás)</span></label>
-            <textarea id="cb-visual-concept" rows="4" placeholder="Ej: Carrusel mostrando 3 obras reales con métricas de ROI por obra…" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
-
-            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin:12px 0 6px 0;">Specs técnicos <span style="text-transform:none; font-weight:400;">— auto-derivados del canal + top format de SocialMediaBios, editables</span></label>
-            <div id="cb-visual-specs" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
-
-            <label style="font-size:10.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.4px; font-weight:700; display:block; margin:12px 0 4px 0;">Prompt final <span style="text-transform:none; font-weight:400;">— concepto + specs (lo que recibe WF09)</span></label>
-            <div id="cb-visual-preview" style="padding:10px 12px; background:#FAFBFC; border:1px dashed var(--border); border-radius:6px; font-size:11.5px; font-family:var(--font-mono, ui-monospace, monospace); line-height:1.55; color:var(--text-main); white-space:pre-wrap; min-height:48px; max-height:200px; overflow-y:auto;">(sin contenido — completá el concepto o pedile sugerencia a la IA)</div>
-            <div style="margin-top:6px; font-size:10.5px; color:var(--text-muted);">
-              <i data-lucide="info" style="width:10px;vertical-align:middle;margin-right:3px"></i>WF09 recibe <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_prompt</code> (compuesto) + <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_concept</code> + <code style="font-size:10.5px;background:#F1F5F9;padding:1px 5px;border-radius:3px;">visual_specs</code> por separado.
-            </div>
-          </div>
-
           <!-- Brand context strip (auto-pulled from SocialMediaBios) -->
           <div style="padding:12px 14px; background:linear-gradient(135deg, #FDF4FF 0%, #F0F9FF 100%); border:1px solid #F3E8FF; border-radius:10px; margin-bottom:18px;">
             <div style="font-size:11px; color:#6B21A8; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
@@ -9536,12 +9513,12 @@ function generateViewHTML(view) {
             </div>
           </div>
 
-          <!-- Briefing extra del usuario (formato, ángulo, restricciones) — entra al payload de WF06 y WF07 -->
-          <div style="padding:14px; border:1px solid #FED7AA; border-radius:10px; background:linear-gradient(180deg,#FFF7ED 0%,white 80%); margin-bottom:14px;">
+          <!-- Briefing del usuario — único input de texto. Alimenta WF06 (brief), WF07 (draft) y WF09 (visual). -->
+          <div style="padding:16px; border:1px solid #FED7AA; border-radius:10px; background:linear-gradient(180deg,#FFF7ED 0%,white 80%); margin-bottom:14px;">
             <label style="font-size:11px; color:#9A3412; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:6px;">
-              <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing adicional <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— formato, ángulo, lo que quieras pedirle al agente</span>
+              <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— qué querés que cree el agente (texto + visual se derivan de acá)</span>
             </label>
-            <textarea id="cb-user-brief" rows="2" placeholder="Ej: carrusel de 5 slides con datos duros sobre ROI. Tono más directo. No mencionar precios." style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
+            <textarea id="cb-user-brief" rows="3" placeholder="Ej: carrusel de 5 slides con datos duros sobre ROI. Tono más directo. No mencionar precios." style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
             <div style="margin-top:8px; font-size:10.5px; color:var(--text-muted);" id="cb-inspiration-line">
               <i data-lucide="sparkles" style="width:10px;vertical-align:middle;margin-right:3px"></i>Inspirado en: hooks de HookMiner + posts top de competidores (cargando…) — se respeta la voz de la marca, no se copia.
             </div>
