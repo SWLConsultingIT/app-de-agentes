@@ -277,14 +277,17 @@ const CB_DEV = (typeof localStorage !== 'undefined' && localStorage.getItem('cb_
 const _CB_SFX = CB_DEV ? '-dev' : '';
 if (CB_DEV) console.log('[ContentBuilder] DEV MODE — routing to [DEV-fran] workflow copies');
 
-// ── DEV TOGGLE — route HookMiner pipeline (WF11) to the dev copy ──
-// In browser console:  localStorage.setItem('hm_dev','1'); location.reload();
-// Routes to /webhook/sm-pipeline-dev so the dev workflow can be tested side-by-side
-// with the production one. Use this while iterating on WF11 fixes (e.g. the
-// activePlatforms-from-competitors fix); flip off to go back to the original.
-const HM_DEV = (typeof localStorage !== 'undefined' && localStorage.getItem('hm_dev') === '1');
-const _HM_SFX = HM_DEV ? '-dev' : '';
-if (HM_DEV) console.log('[HookMiner] DEV MODE — routing to /webhook/sm-pipeline-dev');
+// WF11 dev/prod were unified on 2026-05-26 — the dev variant became prod (it has
+// the activePlatforms / Normalize TikTok / Build Record fixes), and the previous
+// prod was archived as `[ARCHIVED 2026-05-26]`. There is no longer a dev webhook.
+// If anyone still has `hm_dev=1` in localStorage from the toggle's lifetime, clear
+// it on load so we don't post to the now-404 /webhook/sm-pipeline-dev.
+try {
+  if (typeof localStorage !== 'undefined' && localStorage.getItem('hm_dev') === '1') {
+    localStorage.removeItem('hm_dev');
+    console.log('[HookMiner] cleared stale hm_dev flag — WF11 dev was promoted to prod');
+  }
+} catch (_) { /* localStorage unavailable */ }
 
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
 const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
@@ -4282,7 +4285,7 @@ async function loadSocialMediaConfigs() {
   }
 }
 
-const SM_PIPELINE_WEBHOOK = `https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline${_HM_SFX}`;
+const SM_PIPELINE_WEBHOOK = 'https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline';
 
 // Count sm_videos rows for a brand. Uses PostgREST's `count=exact` HEAD response
 // header so we don't have to pull the whole table to know the cardinality.
