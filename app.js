@@ -277,6 +277,15 @@ const CB_DEV = (typeof localStorage !== 'undefined' && localStorage.getItem('cb_
 const _CB_SFX = CB_DEV ? '-dev' : '';
 if (CB_DEV) console.log('[ContentBuilder] DEV MODE — routing to [DEV-fran] workflow copies');
 
+// ── DEV TOGGLE — route HookMiner pipeline (WF11) to the dev copy ──
+// In browser console:  localStorage.setItem('hm_dev','1'); location.reload();
+// Routes to /webhook/sm-pipeline-dev so the dev workflow can be tested side-by-side
+// with the production one. Use this while iterating on WF11 fixes (e.g. the
+// activePlatforms-from-competitors fix); flip off to go back to the original.
+const HM_DEV = (typeof localStorage !== 'undefined' && localStorage.getItem('hm_dev') === '1');
+const _HM_SFX = HM_DEV ? '-dev' : '';
+if (HM_DEV) console.log('[HookMiner] DEV MODE — routing to /webhook/sm-pipeline-dev');
+
 // ── SAVE BRAND PROFILE → WF01 ──────────────────────────
 const WF00_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/website-scrapper';
 const WF01_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/brand-profile-updated';
@@ -4273,7 +4282,7 @@ async function loadSocialMediaConfigs() {
   }
 }
 
-const SM_PIPELINE_WEBHOOK = 'https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline';
+const SM_PIPELINE_WEBHOOK = `https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline${_HM_SFX}`;
 
 async function runCompetitorPipeline() {
   const sel = document.getElementById('hm-config-select');
