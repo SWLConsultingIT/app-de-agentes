@@ -4284,6 +4284,26 @@ async function loadSocialMediaConfigs() {
 
 const SM_PIPELINE_WEBHOOK = `https://n8n.srv949269.hstgr.cloud/webhook/sm-pipeline${_HM_SFX}`;
 
+// Count sm_videos rows for a brand. Uses PostgREST's `count=exact` HEAD response
+// header so we don't have to pull the whole table to know the cardinality.
+async function countBrandVideos(brandId) {
+  if (!brandId) return 0;
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/sm_videos?brand_id=eq.${encodeURIComponent(brandId)}&select=id`, {
+    method: 'HEAD',
+    headers: {
+      apikey: SUPABASE_ANON,
+      Authorization: `Bearer ${SUPABASE_ANON}`,
+      Prefer: 'count=exact',
+      'Range-Unit': 'items',
+      Range: '0-0',
+    },
+  });
+  // PostgREST returns Content-Range: "*/<total>"
+  const cr = res.headers.get('content-range') || res.headers.get('Content-Range') || '';
+  const m = cr.match(/\/(\d+)$/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 async function runCompetitorPipeline() {
   const sel = document.getElementById('hm-config-select');
   const configName = sel?.value || (brandKitData?.name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20);
@@ -4333,12 +4353,64 @@ async function runCompetitorPipeline() {
     if (statusEl) statusEl.textContent = '⏳ Pipeline corriendo (Apify → Gemini → Claude → Supabase)…';
     if (btn) { btn.innerHTML = '<i data-lucide="clock" style="width:12px;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
 
-    // Refresh swipe file after 3 min
-    setTimeout(async () => {
-      await initSwipeFile();
-      if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
-      if (statusEl) statusEl.textContent = '✅ Videos actualizados.';
-    }, 180000);
+    // Poll sm_videos for new rows instead of guessing with a fixed timeout. The
+    // pipeline takes ~6-8 min on a typical run; the old setTimeout(180_000) marked
+    // "Videos actualizados" while WF11 was still mid-flight, so the user saw 0
+    // TikTok videos and assumed the workflow had failed.
+    const startedAt = Date.now();
+    const baselineCount = await countBrandVideos(brandKitData.brandId);
+    const POLL_MS = 20_000;     // check Supabase every 20s
+    const TIMEOUT_MS = 10 * 60_000;  // give up after 10 min
+    const QUIET_MS = 90_000;    // declare "done" after this much silence at the same count
+
+    let lastCount = baselineCount;
+    let lastChangedAt = Date.now();
+
+    const tick = async () => {
+      const elapsed = Date.now() - startedAt;
+      let count;
+      try { count = await countBrandVideos(brandKitData.brandId); }
+      catch (e) { count = lastCount; /* keep retrying */ }
+      const newVideos = count - baselineCount;
+
+      if (count !== lastCount) {
+        lastCount = count;
+        lastChangedAt = Date.now();
+        // Refresh UI as new rows land so the user sees them appear progressively.
+        try { await initSwipeFile(); } catch (_) {}
+        try { await hydrateHookMinerView(); } catch (_) {}
+      }
+
+      const minutes = Math.floor(elapsed / 60_000);
+      const seconds = Math.floor((elapsed % 60_000) / 1000).toString().padStart(2, '0');
+      const quietFor = Date.now() - lastChangedAt;
+
+      const reachedQuiet = newVideos > 0 && quietFor >= QUIET_MS;
+      const reachedTimeout = elapsed >= TIMEOUT_MS;
+      const done = reachedQuiet || reachedTimeout;
+
+      if (statusEl) {
+        if (done) {
+          statusEl.textContent = newVideos > 0
+            ? `✅ ${newVideos} video${newVideos === 1 ? '' : 's'} nuevo${newVideos === 1 ? '' : 's'} en ${minutes}m${seconds}s`
+            : '⚠️ Pipeline terminó sin videos nuevos. Revisá la ejecución en n8n.';
+        } else {
+          statusEl.textContent = `⏳ ${minutes}m${seconds}s · ${newVideos > 0 ? newVideos + ' nuevo' + (newVideos === 1 ? '' : 's') + ' hasta ahora · ' : ''}polling cada ${POLL_MS/1000}s…`;
+        }
+      }
+
+      if (done) {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline';
+          lucide.createIcons({ nodes: [btn] });
+        }
+        return;
+      }
+      setTimeout(tick, POLL_MS);
+    };
+    // First poll after one interval — gives WF11 a moment to start writing.
+    setTimeout(tick, POLL_MS);
   } catch (err) {
     if (btn) { btn.disabled = false; btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline'; lucide.createIcons({ nodes: [btn] }); }
     if (statusEl) statusEl.textContent = '❌ Error — revisá el workflow n8n.';
