@@ -147,6 +147,10 @@ const brandKitData = {
   industry: 'AI Agents · Automation Consulting · B2B Services',
   tagline: 'Boutique AI agents for revenue operations.',
   mission: 'Diseñamos y operamos agentes de IA hechos a medida para equipos de revenue, automatizando outbound, prospecting, lead intelligence y CRM hygiene con stack propio sobre n8n + Supabase + OpenAI/Claude. Resolvemos en semanas lo que las big consulting cobran en trimestres.',
+  // Language all 3 agents (brief / caption / visual) MUST output in. Hard
+  // overrides anything detected from top posts — useful when scraped posts
+  // are in English but the brand wants to publish in Spanish (or any other).
+  language: 'es',
   palette: [
     { hex: '#20316D', name: 'Blue Lebane',        role: 'Primary' },
     { hex: '#111827', name: 'Graphite',           role: 'Text / Dark' },
@@ -235,6 +239,27 @@ function applyBrandPreset(idx) {
   switchView(state.currentView);
 }
 
+// Remove one color from the brand palette and re-render. The change is held
+// in memory only — the user must hit "Save Brand Profile" to persist.
+function removePaletteColor(idx) {
+  if (!brandKitData.palette[idx]) return;
+  if (brandKitData.palette.length <= 1) {
+    showToast('La paleta no puede quedar vacía. Agregá un color nuevo antes de borrar el último.', 'error');
+    return;
+  }
+  brandKitData.palette.splice(idx, 1);
+  switchView(state.currentView);
+}
+
+// Append a new color to the brand palette. Uses the next role label from
+// `paletteRoles` when available, falls back to 'Custom'.
+function addPaletteColor() {
+  const hex = '#6366F1';
+  const role = paletteRoles[brandKitData.palette.length] || 'Custom';
+  brandKitData.palette.push({ hex, name: hex.toUpperCase(), role });
+  switchView(state.currentView);
+}
+
 // Update a single palette color (from native color picker)
 function updatePaletteColor(idx, hex) {
   if (brandKitData.palette[idx]) {
@@ -306,6 +331,7 @@ function buildBrandProfilePayloadFromKit() {
       industry:     brandKitData.industry,
       tagline:      brandKitData.tagline,
       mission:      brandKitData.mission,
+      language:     brandKitData.language || 'es',
     },
     palette:          brandKitData.palette.map(c => ({ role: c.role, hex: c.hex })),
     typography:       brandKitData.typography,
@@ -418,6 +444,7 @@ function applyScrapedBrandData(data) {
   if (data.industry)        brandKitData.industry = data.industry;
   if (data.tagline)         brandKitData.tagline = data.tagline;
   if (data.mission)         brandKitData.mission = data.mission;
+  if (data.language)        brandKitData.language = data.language;
   if (data.values?.length)  brandKitData.values = data.values.map((v, i) => ({
     title: v.title || v.name || 'Value',
     desc:  v.desc || v.description || '',
@@ -1362,6 +1389,7 @@ function applyProfileDataToBrandKit(profileData) {
   brandKitData.industry = data.identity.industry || brandKitData.industry;
   brandKitData.tagline = data.identity.tagline || brandKitData.tagline;
   brandKitData.mission = data.identity.mission || brandKitData.mission;
+  brandKitData.language = data.identity.language || brandKitData.language || 'es';
   brandKitData.palette = Array.isArray(data.palette)
     ? data.palette.map((c, i) => ({
         hex: c.hex || brandKitData.palette[i]?.hex || '#6366F1',
@@ -3830,9 +3858,52 @@ const CB_CHANNEL_PROFILES = {
 
 let contentBuilderActiveTab = 'Instagram';
 
+// Get the configured language for a channel — checks per-channel
+// brandKitData.toneByChannel[i].language first, falls back to the brand-wide
+// brandKitData.language, then to 'es'.
+function getChannelLanguage(channel) {
+  const tbc = (brandKitData.toneByChannel || []).find(t => t.channel === channel);
+  return (tbc && tbc.language) || brandKitData.language || 'es';
+}
+
+// Set the publish-language for one specific channel. Creates a toneByChannel
+// entry if the channel didn't have one yet. Invalidates the current agent
+// state (brief / caption / visual) so the next generation uses the new lang.
+function setChannelLanguage(channel, lang) {
+  if (!channel || !lang) return;
+  brandKitData.toneByChannel = brandKitData.toneByChannel || [];
+  let tbc = brandKitData.toneByChannel.find(t => t.channel === channel);
+  if (!tbc) {
+    tbc = { channel, tone: '', formality: '', formalityColor: '', pattern: '', language: lang };
+    brandKitData.toneByChannel.push(tbc);
+  } else {
+    tbc.language = lang;
+  }
+  if (typeof resetCbAgentState === 'function') {
+    resetCbAgentState();
+    setTimeout(() => updateAgentButtonsEnabled(), 0);
+  }
+  showToast(`Idioma de ${channel} actualizado a ${lang.toUpperCase()}. Guardá Branding Bio para persistir.`);
+}
+
+// Refresh the per-channel language <select> to show the value configured for
+// the active channel. Called after tab change or initial render.
+function syncChannelLanguageSelector() {
+  const sel = document.getElementById('cb-channel-language');
+  const lbl = document.getElementById('cb-lang-channel-name');
+  if (!sel || !contentBuilderActiveTab) return;
+  sel.value = getChannelLanguage(contentBuilderActiveTab);
+  if (lbl) lbl.textContent = contentBuilderActiveTab;
+}
+
 function setContentBuilderTab(channel) {
   if (!CB_CHANNEL_PROFILES[channel]) return;
+  if (typeof resetCbAgentState === 'function' && channel !== contentBuilderActiveTab) {
+    resetCbAgentState();
+    setTimeout(() => updateAgentButtonsEnabled(), 0);
+  }
   contentBuilderActiveTab = channel;
+  setTimeout(() => syncChannelLanguageSelector(), 0);
   const profile = CB_CHANNEL_PROFILES[channel];
 
   // Visual state of the tabs
@@ -3943,6 +4014,11 @@ function setContentBuilderTab(channel) {
 
   // Refresh the "Inspired by" line so the user sees current hook/post counts for this channel
   updateContentBuilderInspirationIndicator(channel);
+
+  // Pull the saved briefing for this channel into the textarea so the user sees
+  // the locked spec WF06/WF07 will use. Switching tabs swaps briefings — each
+  // channel has its own row in user_briefings.
+  hydrateUserBriefingForChannel(channel);
 }
 
 // Builds context pills + format recommendation from SocialMediaBios analysis
@@ -4727,14 +4803,22 @@ async function fetchTopHooksForBrief(brandId, channel, limit = 5) {
 async function fetchTopCompetitorPostsForBrief(brandId, channel, limit = 5) {
   if (!brandId) return [];
   try {
+    // Pull a wider pool (up to 30 rows) and re-rank client-side by total engagement,
+    // because PostgREST can't order by a computed sum across JSON metrics. Newest-first
+    // would surface random recent scrapes; the user wants the highest-performing posts
+    // as inspiration. `opening_hook` and `content_text` are the actual phrasing the
+    // LLM needs to mimic structurally (without paraphrasing verbatim).
     const params = new URLSearchParams({
       brand_id: `eq.${brandId}`,
       order: 'scraped_at.desc',
-      limit: String(limit),
-      select: 'title,competitor_name,channel,url,metrics_json,analysis_json',
+      limit: '30',
+      select: 'title,competitor_name,channel,url,opening_hook,content_text,metrics_json,analysis_json',
     });
     if (channel) params.set('channel', `eq.${channel}`);
-    return await supabaseGet(`competitor_content?${params}`);
+    const rows = await supabaseGet(`competitor_content?${params}`);
+    return rows
+      .sort((a, b) => totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json))
+      .slice(0, limit);
   } catch (e) {
     console.warn('[ContentBuilder] fetchTopCompetitorPostsForBrief failed:', e);
     return [];
@@ -4753,18 +4837,119 @@ async function buildInspirationPayload(brandId, channel) {
     channel:         p.channel,
     title:           p.title,
     url:             p.url,
+    opening_hook:    p.opening_hook || null,
+    content_excerpt: (p.content_text || '').slice(0, 600) || null,
     metrics:         p.metrics_json,
+    engagement:      totalEngagement(p.metrics_json),
     analysis:        p.analysis_json,
   }));
   // Note: this is intentionally a flat structure so the n8n prompt template can read
   // each field by name. The `anti_plagiarism` flag tells the brief/draft node to
   // INSTRUCT the LLM to rewrite in the brand voice, never paraphrase verbatim.
+  // `exclude_visual_hooks` is a hint for downstream prompts: video generation is not
+  // wired yet, so favor written/spoken hook frameworks over visual-only mechanics.
   return {
     top_hooks:              topHooks.length ? topHooks : null,
     competitor_inspiration: competitor_inspiration.length ? competitor_inspiration : null,
     anti_plagiarism:        true,
-    inspiration_disclaimer: 'Use top_hooks and competitor_inspiration as STRUCTURAL inspiration only (frameworks, pacing, angle). Preserve the brand voice, mission and value-prop from business_verticals/brand_profile. Never paraphrase a competitor post verbatim.',
+    exclude_visual_hooks:   true,
+    inspiration_disclaimer: 'Use top_hooks and competitor_inspiration as STRUCTURAL inspiration only (frameworks, pacing, angle, opening phrasing patterns). Preserve the brand voice, mission and value-prop from business_verticals/brand_profile. Never paraphrase a competitor post verbatim. Video is not generated yet — prefer written/spoken hook frameworks; do not rely on visual-only mechanics.',
   };
+}
+
+// ── User Briefing persistence (Supabase: user_briefings) ─────────────────
+// One row per (brand_id, channel) — the user's authoritative briefing for that
+// channel. WF06/WF07 can read it from Supabase directly, or the app forwards it
+// in the payload as `saved_briefing` so the agent treats it as locked spec
+// instead of an optional hint.
+async function loadUserBriefing(brandId, channel) {
+  if (!brandId || !channel) return null;
+  try {
+    const params = new URLSearchParams({
+      brand_id: `eq.${brandId}`,
+      channel:  `eq.${channel}`,
+      select:   'briefing_text,updated_at',
+      limit:    '1',
+    });
+    const rows = await supabaseGet(`user_briefings?${params}`);
+    return rows[0] || null;
+  } catch (e) {
+    console.warn('[ContentBuilder] loadUserBriefing failed:', e);
+    return null;
+  }
+}
+
+async function saveUserBriefing(brandId, channel, briefingText) {
+  if (!brandId || !channel) throw new Error('brand_id_and_channel_required');
+  return supabaseUpsert('user_briefings', {
+    brand_id:      brandId,
+    channel,
+    briefing_text: briefingText || '',
+    updated_at:    new Date().toISOString(),
+  }, 'brand_id,channel');
+}
+
+// Wire the Save button on the ContentBuilder UI. Persists the textarea content
+// for the active channel and updates the saved-at indicator.
+async function handleSaveUserBriefing() {
+  const btn = document.getElementById('btn-save-briefing');
+  const txt = document.getElementById('cb-user-brief');
+  if (!txt) return;
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  if (!brandId) {
+    showToast('Guardá Branding Bio antes — falta brand_id.', 'error');
+    return;
+  }
+  const original = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite"></i> Guardando...'; lucide.createIcons(); }
+  try {
+    await saveUserBriefing(brandId, channel, txt.value.trim());
+    showToast(`Briefing guardado para ${channel}. El agente lo va a usar como base.`);
+    updateBriefingSavedIndicator(new Date().toISOString());
+    if (btn) { btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Guardado'; btn.style.background = '#10B981'; btn.style.color = 'white'; }
+    setTimeout(() => {
+      if (btn) { btn.disabled = false; btn.innerHTML = original; btn.style.background = ''; btn.style.color = ''; lucide.createIcons(); }
+    }, 1800);
+  } catch (e) {
+    console.error('[ContentBuilder] save briefing failed:', e);
+    showToast(`No se pudo guardar: ${e.message || e}`, 'error');
+    if (btn) { btn.disabled = false; btn.innerHTML = original; lucide.createIcons(); }
+  }
+}
+
+// Pull the saved briefing for the active channel into the textarea so the user
+// sees what's locked in for n8n. Also paints the "Guardado hace …" indicator.
+async function hydrateUserBriefingForChannel(channel) {
+  const txt = document.getElementById('cb-user-brief');
+  if (!txt) return;
+  const ch = channel || contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  if (!brandId) {
+    updateBriefingSavedIndicator(null);
+    return;
+  }
+  const row = await loadUserBriefing(brandId, ch);
+  if (row && row.briefing_text != null) {
+    txt.value = row.briefing_text;
+    updateBriefingSavedIndicator(row.updated_at);
+  } else {
+    // No saved briefing for this channel — clear so we don't leak text from another channel
+    txt.value = '';
+    updateBriefingSavedIndicator(null);
+  }
+}
+
+function updateBriefingSavedIndicator(updatedAt) {
+  const el = document.getElementById('cb-briefing-saved');
+  if (!el) return;
+  if (!updatedAt) {
+    el.textContent = 'Sin guardar — el agente solo va a leer lo que esté escrito al momento de generar.';
+    el.style.color = '#9A3412';
+    return;
+  }
+  el.textContent = `Guardado · ${typeof fmtRelativeTime === 'function' ? fmtRelativeTime(updatedAt) : updatedAt}. El agente lo va a usar como base del prompt.`;
+  el.style.color = '#15803D';
 }
 
 // Update the "Inspirado en:" indicator next to step 1 so the user sees what's
@@ -4805,6 +4990,11 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
       : null;
     const userBriefExtra = (document.getElementById('cb-user-brief')?.value || '').trim();
     const inspiration = await buildInspirationPayload(brandKitData.brandId, channel);
+    // Saved briefing has higher authority than the live textarea — if the user
+    // hit "Guardar briefing" for this channel, we send it as `saved_briefing`
+    // with `briefing_locked: true` so the n8n prompt treats it as the spec to
+    // follow, not just an optional hint.
+    const savedBrief = await loadUserBriefing(brandKitData.brandId, channel);
     const payload = {
       brand_id: brandKitData.brandId,
       channel,
@@ -4812,6 +5002,11 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
       business_verticals: brandVerticals.length ? brandVerticals : null,
       selected_vertical:  selectedVertical,
       user_brief_extra:   userBriefExtra || null,
+      saved_briefing:     savedBrief && savedBrief.briefing_text ? {
+        text:       savedBrief.briefing_text,
+        updated_at: savedBrief.updated_at,
+      } : null,
+      briefing_locked:    !!(savedBrief && savedBrief.briefing_text),
       ...inspiration,
     };
     console.log('[WF06] sending payload:', payload);
@@ -4903,7 +5098,652 @@ async function handleRegenerate() {
   }
 }
 
-// ── WF07 Content Builder + QA ──────────────────────────
+// ── WF12 — 3 agentes secuenciales (brief → caption → visual) ───────────
+// Mismo webhook que antes, ahora con un parámetro `mode` que routea al
+// branch correcto del CODE Compose Prompt en n8n.
+//   mode='brief'   → devuelve { brief: {...} } (sin DB write)
+//   mode='caption' → devuelve { caption, headline, hashtags, draft_id }
+//   mode='visual'  → devuelve { format, slide_count, slide_prompts, visual_prompt }
+// Cada paso pasa el output del anterior como contexto al siguiente para que
+// el LLM esté anclado al brief aprobado.
+const WF12_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf12-agente-unico';
+
+// State per ContentBuilder session — survives between agent calls but resets
+// on tab change / view re-entry / new brief.
+let lastBriefResult   = null;  // output of mode='brief'
+let lastCaptionResult = null;  // output of mode='caption'
+let lastVisualResult  = null;  // output of mode='visual'
+// Backward-compat — handleApproveQueue / WF13 image gen still read this.
+let lastUnifiedResult = null;
+
+function resetCbAgentState() {
+  lastBriefResult = null;
+  lastCaptionResult = null;
+  lastVisualResult = null;
+  lastUnifiedResult = null;
+}
+
+async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draftId }) {
+  const payload = {
+    brand_id: brandId,
+    channel,
+    mode,
+    user_briefing: userBriefing && userBriefing.text ? {
+      text:   userBriefing.text,
+      locked: !!userBriefing.locked,
+    } : null,
+    prior_brief: priorBrief || null,
+    draft_id:    draftId    || null,
+  };
+  console.log(`[WF12 mode=${mode}] sending payload:`, payload);
+  const res = await fetch(WF12_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let body; try { body = JSON.parse(text); } catch (_) { body = text; }
+  if (!res.ok) {
+    throw new Error(`WF12 HTTP ${res.status}: ${typeof body === 'string' ? body.slice(0,200) : (body?.message || JSON.stringify(body).slice(0,200))}`);
+  }
+  if (Array.isArray(body)) body = body[0];
+  if (body && body.json && typeof body.ok === 'undefined') body = body.json;
+  return body;
+}
+
+// ── Agent 1 · Brief ────────────────────────────────────────────────────────
+async function handleGenerateBrief() {
+  const btn = document.getElementById('btn-brief-generate');
+  if (!btn) return;
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  if (!brandId) {
+    showToast('Guardá Branding Bio antes — falta brand_id.', 'error');
+    return;
+  }
+
+  const savedBrief = await loadUserBriefing(brandId, channel);
+  const txtValue = (document.getElementById('cb-user-brief')?.value || '').trim();
+  const userBriefing = savedBrief && savedBrief.briefing_text
+    ? { text: savedBrief.briefing_text, locked: true }
+    : (txtValue ? { text: txtValue, locked: false } : null);
+
+  // New brief invalidates downstream caption + visual.
+  lastBriefResult = null;
+  lastCaptionResult = null;
+  lastVisualResult = null;
+  lastUnifiedResult = null;
+  updateAgentButtonsEnabled();
+
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Armando brief…';
+  lucide.createIcons();
+
+  try {
+    const result = await callWf12({ brandId, channel, mode: 'brief', userBriefing });
+    if (!result || result.ok !== true || !result.brief) {
+      throw new Error(`Respuesta inesperada: ${JSON.stringify(result).slice(0, 200)}`);
+    }
+    lastBriefResult = result;
+    renderBrief(result);
+    updateAgentButtonsEnabled();
+    showToast('Brief listo — ahora generá el texto o el visual.');
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
+    btn.style.background = '#10B981';
+  } catch (err) {
+    console.error('[WF12 brief] error:', err);
+    showToast(`No se pudo armar el brief: ${err.message || err}`, 'error');
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — reintentar';
+    btn.style.background = '#EF4444';
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles" style="width:12px"></i> Armar brief';
+      btn.style.background = '#7C3AED';
+      lucide.createIcons();
+    }, 2200);
+  }
+}
+
+function renderBrief(r) {
+  const b = r.brief || {};
+  const body = document.getElementById('cb-brief-body');
+  if (!body) return;
+  const list = (arr) => Array.isArray(arr) && arr.length
+    ? `<ul style="margin:4px 0 0 18px; padding:0;">${arr.map(x => `<li style="margin-bottom:2px;">${escapeHtml(String(x))}</li>`).join('')}</ul>`
+    : '<span style="color:var(--text-muted); font-style:italic;">—</span>';
+  const composition = Array.isArray(b.slide_composition) ? b.slide_composition : [];
+  const compositionHtml = composition.length ? `
+    <div style="grid-column: 1 / -1; padding:12px; background:white; border:1px solid #E9D5FF; border-radius:8px;">
+      <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Composición del carrusel <span style="color:var(--text-muted); font-weight:500; text-transform:none; letter-spacing:0;">— aprendida de los top posts de la marca</span></div>
+      <div style="display:grid; grid-template-columns:repeat(${Math.min(composition.length, 6)}, 1fr); gap:6px;">
+        ${composition.map(s => {
+          const isPhoto = s.kind === 'photo';
+          return `<div style="padding:8px 10px; border:1px solid ${isPhoto ? '#BAE6FD' : '#D8B4FE'}; background:${isPhoto ? '#F0F9FF' : '#FAF5FF'}; border-radius:6px;">
+            <div style="font-size:10px; font-weight:700; color:${isPhoto ? '#0369A1' : '#6B21A8'}; margin-bottom:3px;">${s.index} · ${isPhoto ? '📷 photo' : '🎨 designed'}</div>
+            <div style="font-size:11px; color:var(--text-main); line-height:1.3;">${escapeHtml((s.purpose || '').slice(0, 90))}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  ` : '';
+  body.innerHTML = `
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div style="padding:12px; background:white; border:1px solid #E9D5FF; border-radius:8px;">
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:8px;">
+          ${b.language ? `<span style="font-size:10px; padding:2px 8px; background:#FEF3C7; color:#92400E; border-radius:99px; font-weight:700; text-transform:uppercase;">Lang: ${escapeHtml(b.language)}</span>` : ''}
+          <span style="font-size:10px; padding:2px 8px; background:#EEF2FF; color:#4338CA; border-radius:99px; font-weight:700; text-transform:uppercase;">${escapeHtml(b.format_reco || '—')}${b.slide_count_reco ? ' · ' + b.slide_count_reco + ' slides' : ''}</span>
+        </div>
+        <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Objetivo</div>
+        <div style="font-size:13px; line-height:1.5;">${escapeHtml(b.objective || '—')}</div>
+        <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 4px;">Ángulo</div>
+        <div style="font-size:13px; line-height:1.5;">${escapeHtml(b.angle || '—')}</div>
+      </div>
+      <div style="padding:12px; background:white; border:1px solid #E9D5FF; border-radius:8px;">
+        <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Tono</div>
+        <div style="font-size:12px; line-height:1.5;">${escapeHtml(b.tone_notes || '—')}</div>
+        <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 4px;">Paleta</div>
+        <div style="font-size:12px; line-height:1.5;">${escapeHtml(b.palette_notes || '—')}</div>
+        <div style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 4px;">Tipografía</div>
+        <div style="font-size:12px; line-height:1.5;">${escapeHtml(b.typography_notes || '—')}</div>
+      </div>
+      ${compositionHtml}
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:12px;">
+      <div style="padding:10px 12px; background:#FEF3C7; border:1px solid #FDE68A; border-radius:8px;">
+        <div style="font-size:10px; font-weight:700; color:#92400E; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Hooks a usar</div>
+        <div style="font-size:12px; color:#78350F;">${list(b.hooks_to_use)}</div>
+      </div>
+      <div style="padding:10px 12px; background:#DBEAFE; border:1px solid #BFDBFE; border-radius:8px;">
+        <div style="font-size:10px; font-weight:700; color:#1E40AF; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Estructuras a tomar prestadas</div>
+        <div style="font-size:12px; color:#1E3A8A;">${list(b.structures_to_borrow)}</div>
+      </div>
+      <div style="padding:10px 12px; background:#FEE2E2; border:1px solid #FECACA; border-radius:8px;">
+        <div style="font-size:10px; font-weight:700; color:#991B1B; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Evitar</div>
+        <div style="font-size:12px; color:#7F1D1D;">${list(b.must_avoid)}</div>
+      </div>
+    </div>
+  `;
+  // Update the composed-prompt viewer so the user can see exactly what the LLM read.
+  const cp = document.getElementById('cb-composed-prompt');
+  if (cp) cp.textContent = r.composed_prompt || '(sin prompt compuesto)';
+  const counts = r.counts || {};
+  const cpCounts = document.getElementById('cb-composed-prompt-counts');
+  if (cpCounts) cpCounts.textContent = `brand_profile: ${counts.brand_profile || 0} · smb: ${counts.smb_analyses || 0} · hooks: ${counts.hooks || 0} · comp_posts: ${counts.competitor_content || 0}`;
+  lucide.createIcons();
+}
+
+// ── Agent 2 · Caption ──────────────────────────────────────────────────────
+async function handleGenerateCaption() {
+  const btn = document.getElementById('btn-caption-generate');
+  if (!btn) return;
+  if (!lastBriefResult || !lastBriefResult.brief) {
+    showToast('Armá el brief primero.', 'error');
+    return;
+  }
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  const savedBrief = await loadUserBriefing(brandId, channel);
+  const txtValue = (document.getElementById('cb-user-brief')?.value || '').trim();
+  const userBriefing = savedBrief && savedBrief.briefing_text
+    ? { text: savedBrief.briefing_text, locked: true }
+    : (txtValue ? { text: txtValue, locked: false } : null);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Escribiendo…';
+  lucide.createIcons();
+
+  try {
+    const result = await callWf12({
+      brandId, channel, mode: 'caption', userBriefing,
+      priorBrief: lastBriefResult.brief,
+    });
+    if (!result || result.ok !== true) throw new Error(`Respuesta inesperada: ${JSON.stringify(result).slice(0, 200)}`);
+    lastCaptionResult = result;
+    lastBuiltDraftId  = result.draft_id || lastBuiltDraftId;
+    // Keep lastUnifiedResult populated so downstream WF13/approval/publish keep working.
+    lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
+    renderCaption(result);
+    updateAgentButtonsEnabled();
+    showToast('Caption listo.');
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
+    btn.style.background = '#10B981';
+  } catch (err) {
+    console.error('[WF12 caption] error:', err);
+    showToast(`No se pudo escribir el caption: ${err.message || err}`, 'error');
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — reintentar';
+    btn.style.background = '#EF4444';
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="type" style="width:12px"></i> Generar texto del post';
+      btn.style.background = '#10B981';
+      lucide.createIcons();
+    }, 2200);
+  }
+}
+
+function renderCaption(r) {
+  const setText = (id, text) => { const e = document.getElementById(id); if (e) e.textContent = text || '—'; };
+  setText('cb-post-body', r.caption || '(sin caption)');
+  const hashtagsEl = document.getElementById('cb-post-hashtags');
+  if (hashtagsEl) {
+    const tags = Array.isArray(r.hashtags) ? r.hashtags : [];
+    hashtagsEl.innerHTML = tags.length
+      ? tags.map(t => `<span style="display:inline-block; background:#ECFDF5; color:#065F46; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; margin-right:4px;">${escapeHtml(String(t).startsWith('#') ? t : '#' + t)}</span>`).join('')
+      : '';
+  }
+  lucide.createIcons();
+}
+
+// ── Agent 3 · Visual ───────────────────────────────────────────────────────
+async function handleGenerateVisual() {
+  const btn = document.getElementById('btn-visual-generate');
+  if (!btn) return;
+  if (!lastBriefResult || !lastBriefResult.brief) {
+    showToast('Armá el brief primero.', 'error');
+    return;
+  }
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  const savedBrief = await loadUserBriefing(brandId, channel);
+  const txtValue = (document.getElementById('cb-user-brief')?.value || '').trim();
+  const userBriefing = savedBrief && savedBrief.briefing_text
+    ? { text: savedBrief.briefing_text, locked: true }
+    : (txtValue ? { text: txtValue, locked: false } : null);
+
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Componiendo visual…';
+  lucide.createIcons();
+
+  try {
+    const result = await callWf12({
+      brandId, channel, mode: 'visual', userBriefing,
+      priorBrief: lastBriefResult.brief,
+    });
+    if (!result || result.ok !== true) throw new Error(`Respuesta inesperada: ${JSON.stringify(result).slice(0, 200)}`);
+    lastVisualResult = result;
+    lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
+    renderVisual(result);
+    enableWf09ImageButton(lastUnifiedResult);
+    updateAgentButtonsEnabled();
+    showToast(`Visual prompt listo${result.slide_count > 1 ? ` — ${result.slide_count} slides` : ''}.`);
+    btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
+    btn.style.background = '#10B981';
+  } catch (err) {
+    console.error('[WF12 visual] error:', err);
+    showToast(`No se pudo armar el visual: ${err.message || err}`, 'error');
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — reintentar';
+    btn.style.background = '#EF4444';
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="image" style="width:12px"></i> Generar prompt visual';
+      btn.style.background = '#0EA5E9';
+      lucide.createIcons();
+    }, 2200);
+  }
+}
+
+function renderVisual(r) {
+  const vpOut = document.getElementById('cb-visual-prompt-output');
+  // New shape: r.slides[] with per-slide kind ('photo' or 'designed_text').
+  // Legacy shape: r.slide_prompts[] (strings).
+  const slides = Array.isArray(r.slides) && r.slides.length ? r.slides : null;
+  const legacyPrompts = Array.isArray(r.slide_prompts) ? r.slide_prompts.filter(Boolean) : [];
+
+  if (vpOut) {
+    if (slides) {
+      vpOut.innerHTML = slides.map(s => {
+        if (s.kind === 'photo') {
+          return `
+            <div style="margin-bottom:10px; padding:12px 14px; border:1px solid #E0F2FE; border-radius:6px; background:#F0F9FF;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:10px; font-weight:700; color:#0369A1; text-transform:uppercase; letter-spacing:0.5px;">Slide ${s.index} · 📷 Photo (Gemini)</span>
+              </div>
+              <div style="font-size:12px; line-height:1.5; color:var(--text-main);">${escapeHtml(s.prompt || '(sin prompt)')}</div>
+            </div>`;
+        }
+        // designed_text — show structured spec
+        const items = Array.isArray(s.items) ? s.items : [];
+        const itemsHtml = items.length ? `
+          <ul style="margin:6px 0 0 18px; padding:0; font-size:12px; color:var(--text-main);">
+            ${items.slice(0,4).map(it => `<li style="margin-bottom:3px;"><strong>${escapeHtml(it.title || it.value || it.label || '')}</strong>${it.desc ? ' — ' + escapeHtml(it.desc) : ''}</li>`).join('')}
+          </ul>` : '';
+        return `
+          <div style="margin-bottom:10px; padding:12px 14px; border:1px solid #D8B4FE; border-radius:6px; background:#FAF5FF;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:10px; font-weight:700; color:#6B21A8; text-transform:uppercase; letter-spacing:0.5px;">Slide ${s.index} · 🎨 Designed text · ${escapeHtml(s.variant || 'cards')}</span>
+              ${s.tag ? `<span style="font-size:10px; padding:2px 8px; background:#F3E8FF; color:#6B21A8; border-radius:99px; font-weight:600;">${escapeHtml(s.tag)}</span>` : ''}
+            </div>
+            ${s.headline ? `<div style="font-size:13px; font-weight:700; line-height:1.3; color:var(--text-main); margin-bottom:4px;">${escapeHtml(s.headline)}</div>` : ''}
+            ${s.sub ? `<div style="font-size:12px; color:var(--text-muted); margin-bottom:4px;">${escapeHtml(s.sub)}</div>` : ''}
+            ${itemsHtml}
+            ${s.highlight ? `<div style="margin-top:6px; padding:6px 10px; background:#FEF3C7; border-left:3px solid #F59E0B; font-size:12px; color:#78350F;">${escapeHtml(s.highlight)}</div>` : ''}
+            ${s.cta_text ? `<div style="margin-top:6px; padding:6px 10px; background:#ECFDF5; border:1px solid #BBF7D0; border-radius:4px; font-size:12px; color:#065F46;"><strong>${escapeHtml(s.cta_tag || 'CTA')}:</strong> ${escapeHtml(s.cta_text)}</div>` : ''}
+          </div>`;
+      }).join('');
+    } else if (legacyPrompts.length > 1) {
+      vpOut.innerHTML = legacyPrompts.map((sp, i) => `
+        <div style="margin-bottom:10px; padding:10px 12px; border:1px solid #E0F2FE; border-radius:6px; background:#F0F9FF;">
+          <div style="font-size:10px; font-weight:700; color:#0369A1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">Slide ${i+1} de ${legacyPrompts.length}</div>
+          <div style="font-size:12px; line-height:1.5; color:var(--text-main);">${escapeHtml(sp)}</div>
+        </div>
+      `).join('');
+    } else {
+      vpOut.textContent = r.visual_prompt || '(sin visual prompt)';
+    }
+  }
+  const meta = document.getElementById('cb-visual-meta');
+  if (meta) {
+    const fmtBadge = r.format
+      ? `<span style="background:#E0F2FE;color:#0369A1;padding:2px 8px;border-radius:4px;font-weight:700">${escapeHtml(r.format)}${r.slide_count > 1 ? ' · ' + r.slide_count + ' slides' : ''}</span>`
+      : '';
+    const langBadge = r.language ? `<span style="background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;margin-left:4px;">lang: ${escapeHtml(r.language)}</span>` : '';
+    let mixBadge = '';
+    if (slides) {
+      const photo = slides.filter(s => s.kind === 'photo').length;
+      const designed = slides.filter(s => s.kind === 'designed_text').length;
+      mixBadge = `<span style="background:#F3E8FF;color:#6B21A8;padding:2px 8px;border-radius:4px;font-weight:700;margin-left:4px;">${photo} 📷 · ${designed} 🎨</span>`;
+    }
+    meta.innerHTML = fmtBadge + langBadge + mixBadge;
+  }
+  lucide.createIcons();
+}
+
+// Enable/disable the 3 agent buttons based on what's been generated so far.
+function updateAgentButtonsEnabled() {
+  const briefDone = !!(lastBriefResult && lastBriefResult.brief);
+  const capBtn  = document.getElementById('btn-caption-generate');
+  const visBtn  = document.getElementById('btn-visual-generate');
+  if (capBtn) {
+    capBtn.disabled = !briefDone;
+    capBtn.title = briefDone ? '' : 'Armá el brief primero.';
+    capBtn.style.opacity = briefDone ? '1' : '0.55';
+  }
+  if (visBtn) {
+    visBtn.disabled = !briefDone;
+    visBtn.title = briefDone ? '' : 'Armá el brief primero.';
+    visBtn.style.opacity = briefDone ? '1' : '0.55';
+  }
+}
+
+function handleCopyVisualPrompt() {
+  const el = document.getElementById('cb-visual-prompt-output');
+  if (!el || !el.textContent) return;
+  navigator.clipboard.writeText(el.textContent).then(
+    () => showToast('Visual prompt copiado al portapapeles.'),
+    () => showToast('No se pudo copiar.', 'error'),
+  );
+}
+
+// ── Slide lightbox ─────────────────────────────────────────────────────────
+// Fullscreen overlay to view a carousel slide at its real resolution.
+// Click outside or press Esc to close. Left/Right arrows navigate between
+// slides; clicking the slide itself closes the lightbox.
+function openSlideLightbox(urls, startIndex = 0) {
+  if (!Array.isArray(urls) || !urls.length) return;
+  let idx = Math.max(0, Math.min(startIndex, urls.length - 1));
+
+  const overlay = document.createElement('div');
+  overlay.id = 'cb-lightbox';
+  overlay.style.cssText = `
+    position:fixed; inset:0; background:rgba(8,8,12,0.92);
+    z-index:9999; display:flex; align-items:center; justify-content:center;
+    padding:40px; cursor:zoom-out; user-select:none;
+    animation: cbLbFadeIn 0.15s ease-out;
+  `;
+  overlay.innerHTML = `
+    <style>
+      @keyframes cbLbFadeIn { from { opacity:0 } to { opacity:1 } }
+      #cb-lightbox .cb-lb-btn {
+        position:absolute; top:50%; transform:translateY(-50%);
+        width:48px; height:48px; border-radius:50%;
+        background:rgba(255,255,255,0.10); color:white; border:none;
+        font-size:24px; font-weight:700; cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+        transition:background .15s, transform .15s;
+      }
+      #cb-lightbox .cb-lb-btn:hover { background:rgba(255,255,255,0.22); }
+      #cb-lightbox .cb-lb-btn:active { transform:translateY(-50%) scale(0.92); }
+      #cb-lightbox .cb-lb-btn.prev { left:24px; }
+      #cb-lightbox .cb-lb-btn.next { right:24px; }
+      #cb-lightbox .cb-lb-close {
+        position:absolute; top:20px; right:24px;
+        width:40px; height:40px; border-radius:50%;
+        background:rgba(255,255,255,0.10); color:white; border:none;
+        font-size:22px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+      }
+      #cb-lightbox .cb-lb-close:hover { background:rgba(255,255,255,0.22); }
+      #cb-lightbox .cb-lb-counter {
+        position:absolute; top:24px; left:50%; transform:translateX(-50%);
+        color:rgba(255,255,255,0.8); font-size:13px; font-weight:600;
+        background:rgba(0,0,0,0.35); padding:6px 14px; border-radius:99px;
+        letter-spacing:0.5px;
+      }
+      #cb-lightbox img.cb-lb-img {
+        max-width:min(92vw, 1080px); max-height:88vh;
+        width:auto; height:auto; object-fit:contain;
+        border-radius:8px; box-shadow:0 24px 60px rgba(0,0,0,0.5);
+        background:#0A0A0A; cursor:zoom-out;
+      }
+    </style>
+    <button class="cb-lb-close" type="button" title="Cerrar (Esc)">✕</button>
+    <span class="cb-lb-counter"></span>
+    <button class="cb-lb-btn prev" type="button" title="Slide anterior (←)" ${urls.length < 2 ? 'style="display:none"' : ''}>‹</button>
+    <img class="cb-lb-img" alt="slide" />
+    <button class="cb-lb-btn next" type="button" title="Slide siguiente (→)" ${urls.length < 2 ? 'style="display:none"' : ''}>›</button>
+  `;
+  document.body.appendChild(overlay);
+
+  const img      = overlay.querySelector('.cb-lb-img');
+  const counter  = overlay.querySelector('.cb-lb-counter');
+  const prevBtn  = overlay.querySelector('.cb-lb-btn.prev');
+  const nextBtn  = overlay.querySelector('.cb-lb-btn.next');
+  const closeBtn = overlay.querySelector('.cb-lb-close');
+
+  const render = () => {
+    img.src = urls[idx];
+    counter.textContent = `${idx + 1} / ${urls.length}`;
+  };
+  render();
+
+  const close = () => {
+    document.removeEventListener('keydown', onKey);
+    overlay.remove();
+  };
+  const prev = (e) => { e?.stopPropagation(); idx = (idx - 1 + urls.length) % urls.length; render(); };
+  const next = (e) => { e?.stopPropagation(); idx = (idx + 1) % urls.length; render(); };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft')  prev(e);
+    else if (e.key === 'ArrowRight') next(e);
+  };
+
+  // Click outside the image closes; clicking buttons/image does not.
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target === img) close();
+  });
+  prevBtn.addEventListener('click', prev);
+  nextBtn.addEventListener('click', next);
+  closeBtn.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+}
+
+// ── WF13 — Image Generation from WF12's visual_prompt ──────────────────────
+// The unified agent (WF12) outputs the visual_prompt as text. This handler
+// takes that prompt + the draft_id and fires WF13, a thin workflow that
+// pipes the prompt straight into Gemini 2.5 Flash Image ("nanobanana") and
+// returns the image as a data: URL. WF09 (the legacy creative brain that
+// also routed through OpenAI) is bypassed entirely — see the architectural
+// note in MEMORY.md → wf13-image-gen for why.
+const WF13_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf13-image-gen';
+
+function enableWf09ImageButton(unifiedResult) {
+  const btn = document.getElementById('btn-generate-image-wf09');
+  if (!btn) return;
+  const ok = !!(unifiedResult && unifiedResult.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
+  btn.disabled = !ok;
+  btn.title = ok ? 'Manda el visual prompt a WF09 para generar la imagen.'
+                 : 'Primero generá el contenido arriba para tener un visual prompt.';
+}
+
+// Generate one image for ONE photo prompt via WF13. Returns the data/URL or null.
+async function generateOnePhotoViaWf13({ brandId, draftId, channel, prompt, index }) {
+  const payload = {
+    brand_id:      brandId,
+    draft_id:      draftId,
+    channel,
+    slide_prompts: [prompt],
+    visual_prompt: prompt,
+    source:        'wf12-agent3-photo',
+    slide_index:   index,
+  };
+  const res = await fetch(WF13_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  const text = await res.text();
+  let result; try { result = JSON.parse(text); } catch (_) { result = text; }
+  if (Array.isArray(result)) result = result[0];
+  if (result && result.json && typeof result.ok === 'undefined') result = result.json;
+  if (!res.ok) throw new Error(`WF13 HTTP ${res.status}`);
+  const urls = Array.isArray(result?.image_urls) && result.image_urls.length
+    ? result.image_urls
+    : (result?.image_url ? [result.image_url] : []);
+  return urls[0] || null;
+}
+
+async function handleGenerateImageFromUnified() {
+  const btn  = document.getElementById('btn-generate-image-wf09');
+  const body = document.getElementById('cb-wf09-image-body');
+  const meta = document.getElementById('cb-wf09-image-meta');
+  if (!btn || !body) return;
+
+  if (!lastVisualResult || !lastVisualResult.slides && !lastVisualResult.visual_prompt) {
+    showToast('Falta el visual prompt — generá el Agente 3 (visual) primero.', 'error');
+    return;
+  }
+
+  // Source of truth = structured slides[] from WF12 mode=visual.
+  // Fallback to legacy slide_prompts[] / visual_prompt for backward compat.
+  let slides = Array.isArray(lastVisualResult.slides) && lastVisualResult.slides.length
+    ? lastVisualResult.slides
+    : null;
+  if (!slides) {
+    const legacyPrompts = Array.isArray(lastVisualResult.slide_prompts) && lastVisualResult.slide_prompts.length
+      ? lastVisualResult.slide_prompts
+      : [lastVisualResult.visual_prompt];
+    slides = legacyPrompts.map((p, i) => ({ index: i + 1, kind: 'photo', prompt: p }));
+  }
+
+  const draftId = lastVisualResult.draft_id || lastCaptionResult?.draft_id || lastBuiltDraftId || null;
+  const channel = lastVisualResult.channel || contentBuilderActiveTab || 'Instagram';
+  const brandId = brandKitData.brandId;
+  const palette    = lastVisualResult.brand_defaults?.palette;
+  const typography = lastVisualResult.brand_defaults?.typography;
+  const toneFlags  = lastVisualResult.brand_defaults?.tone_flags || lastBriefResult?.brand_defaults?.tone_flags || [];
+
+  const photoCount    = slides.filter(s => s.kind === 'photo').length;
+  const designedCount = slides.filter(s => s.kind === 'designed_text').length;
+  const totalSlides   = slides.length;
+
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Renderizando…`;
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:8px;color:var(--text-muted);font-size:12px;">
+      <div><i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle"></i> Procesando ${totalSlides} slides — ${photoCount} 📷 photo (Gemini) + ${designedCount} 🎨 designed (canvas).</div>
+      <div id="cb-wf09-progress" style="font-size:11px; color:#6B21A8;"></div>
+    </div>`;
+  lucide.createIcons();
+  const progressEl = document.getElementById('cb-wf09-progress');
+
+  try {
+    // Render each slide according to its kind. Photo slides run sequentially to
+    // avoid hammering Gemini; designed slides are instant (client-side canvas).
+    const results = new Array(slides.length);
+    for (let i = 0; i < slides.length; i++) {
+      const s = slides[i];
+      if (progressEl) progressEl.textContent = `Slide ${s.index}/${totalSlides} — ${s.kind === 'photo' ? '📷 Gemini' : '🎨 canvas'}…`;
+      if (s.kind === 'photo') {
+        const url = await generateOnePhotoViaWf13({ brandId, draftId, channel, prompt: s.prompt, index: s.index });
+        results[i] = url ? { index: s.index, kind: 'photo', url } : { index: s.index, kind: 'photo', error: 'no image returned' };
+      } else {
+        // designed_text — local html2canvas render using BRAND palette + typography
+        // + brand-tone-aware doodle decorations.
+        const dataUrl = await renderDesignedSlide(s, s.index, totalSlides, { palette, typography, toneFlags });
+        results[i] = dataUrl
+          ? { index: s.index, kind: 'designed_text', url: dataUrl }
+          : { index: s.index, kind: 'designed_text', error: 'canvas render failed' };
+      }
+    }
+
+    const usable = results.filter(r => r.url);
+    if (!usable.length) {
+      body.innerHTML = `<div style="color:#991B1B;font-size:12px;">No se pudo generar ningún slide. Errores: ${escapeHtml(JSON.stringify(results.filter(r => r.error)))}</div>`;
+      throw new Error('Ningún slide renderizado');
+    }
+
+    const gridCols = usable.length === 1 ? '1fr' : (usable.length === 2 ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))');
+    // Store full-res URLs in order on the body element so the lightbox click handler
+    // can read them by index without serializing data URLs into onclick attributes.
+    const lightboxUrls = results.map(r => r.url || null);
+    const slidesGrid = results.map((r, i) => {
+      if (r.error) return `<div style="padding:24px;border:1px dashed #FCA5A5;border-radius:8px;text-align:center;color:#991B1B;font-size:11px;background:#FEF2F2;">Slide ${r.index} falló<br><small>${escapeHtml(r.error)}</small></div>`;
+      const isDesigned = r.kind === 'designed_text';
+      return `
+        <div class="cb-slide-thumb" data-slide-idx="${i}" style="position:relative;border-radius:8px;overflow:hidden;border:1px solid ${isDesigned ? '#D8B4FE' : '#BAE6FD'};background:${isDesigned ? '#FAF5FF' : '#F0F9FF'};cursor:zoom-in;transition:transform .12s, box-shadow .12s;">
+          <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.72);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;z-index:2;">${r.index}/${totalSlides} · ${isDesigned ? '🎨' : '📷'}</div>
+          <img src="${escapeHtml(r.url)}" alt="slide ${r.index}" style="width:100%;display:block;aspect-ratio:1/1;object-fit:cover;background:#FAFBFC;pointer-events:none;" />
+        </div>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
+        <div id="cb-slides-grid" style="display:grid;grid-template-columns:${gridCols};gap:8px;">${slidesGrid}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:#6B21A8;font-weight:600;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:4px"></i>${photoCount} foto${photoCount === 1 ? '' : 's'} via Gemini + ${designedCount} diseñada${designedCount === 1 ? '' : 's'} via canvas · ${escapeHtml(channel)}</span>
+          <span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">Click un slide para verlo grande</span>
+        </div>
+      </div>`;
+    // Wire click → lightbox for each thumbnail.
+    body.querySelectorAll('.cb-slide-thumb').forEach(el => {
+      el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 6px 18px rgba(99,102,241,0.18)'; });
+      el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = ''; });
+      el.addEventListener('click', () => {
+        const idx = Number(el.dataset.slideIdx);
+        openSlideLightbox(lightboxUrls.filter(Boolean), idx);
+      });
+    });
+    if (meta) {
+      meta.style.display = '';
+      const errs = results.filter(r => r.error).length;
+      meta.innerHTML = `<span><strong>renderizados:</strong> ${usable.length}/${totalSlides}</span> · <span><strong>draft_id:</strong> ${draftId ? draftId.slice(0,8) + '…' : '—'}</span>${errs ? ` · <span style="color:#991B1B"><strong>${errs} con error</strong></span>` : ''}`;
+    }
+    showToast(`Carrusel listo — ${usable.length}/${totalSlides} slides.`);
+    btn.innerHTML = `<i data-lucide="check" style="width:12px"></i> ${usable.length}/${totalSlides} listos`;
+    btn.style.background = '#10B981';
+  } catch (err) {
+    console.error('[image-gen] error:', err);
+    showToast(`Falló la generación: ${err.message || err}`, 'error');
+    btn.innerHTML = '<i data-lucide="alert-circle" style="width:12px"></i> Error — reintentar';
+    btn.style.background = '#EF4444';
+  } finally {
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.innerHTML = original;
+      btn.style.background = '#8B5CF6';
+      enableWf09ImageButton(lastVisualResult || lastUnifiedResult);
+      lucide.createIcons();
+    }, 2500);
+    lucide.createIcons();
+  }
+}
+
+// ── WF07 Content Builder + QA (LEGACY — reemplazado por WF12, queda por compat) ──
 const WF07_URL = `https://n8n.srv949269.hstgr.cloud/webhook/wf07-content-builder${_CB_SFX}`;
 // Reuses brandKitData.brandId
 
@@ -4936,6 +5776,8 @@ async function generateDraft() {
     // (it stopped populating hook_id at some point per project memory).
     const userBriefExtra = (document.getElementById('cb-user-brief')?.value || '').trim();
     const inspiration = await buildInspirationPayload(brandKitData.brandId, channel);
+    // Same saved-briefing contract as WF06 — see generateContentBrief() for details.
+    const savedBrief = await loadUserBriefing(brandKitData.brandId, channel);
 
     const payload = {
       brand_id: brandKitData.brandId,
@@ -4945,6 +5787,11 @@ async function generateDraft() {
       business_verticals: brandVerticals.length ? brandVerticals : null,
       selected_vertical: selectedVertical,
       user_brief_extra:  userBriefExtra || null,
+      saved_briefing:    savedBrief && savedBrief.briefing_text ? {
+        text:       savedBrief.briefing_text,
+        updated_at: savedBrief.updated_at,
+      } : null,
+      briefing_locked:   !!(savedBrief && savedBrief.briefing_text),
       ...inspiration,
     };
     console.log('[WF07] sending payload:', payload);
@@ -5182,7 +6029,11 @@ async function generateVisualBrief(draftId, extra = {}) {
   }
 }
 
-async function handleGenerateVisual() {
+// Legacy WF09 carousel renderer — its button `btn-generate-visual` was removed
+// when the 3-agent pipeline replaced the monolithic unified flow. Kept here as
+// dead-code fallback until we delete the surrounding helpers it references.
+// Renamed to stop colliding (function hoisting) with the new Agent-3 handler.
+async function handleGenerateVisualLegacyWF09() {
   const btn = document.getElementById('btn-generate-visual');
   if (!btn) return;
   if (!lastBuiltDraftId) {
@@ -5462,10 +6313,11 @@ async function fetchCarouselSlideSpecs(slideCount) {
 }
 
 // ── Carousel text-slide template renderer ──────────────────────────────────
-// SWL's actual IG carousels are 60%+ designed text slides (tag pill + headline +
-// cards/stats) — image-gen models can't render typography reliably, so we build
-// these slides client-side as HTML elements and rasterize them with html2canvas.
-// Each slide is rendered off-screen at 1080×1080 and exported as a data URL.
+// Image-gen models (Gemini, DALL-E, SDXL) cannot render readable typography —
+// they hallucinate letters and produce gibberish for anything beyond ~3 words.
+// So we build text-heavy slides client-side as HTML and rasterize them with
+// html2canvas at 1080×1080, using the BRAND's real palette + typography from
+// brand_profiles.data_json. Result: pixel-perfect text in the brand's fonts.
 
 const SWL_PALETTE = {
   bg:        '#0A0A0A',
@@ -5479,88 +6331,526 @@ const SWL_PALETTE = {
   tagText:   '#1A1A1A',
 };
 
-// `spec` shape: { tag, headline, sub, items: [{emoji, title, desc}] | [{value, label, sub}], variant: 'cards' | 'stats' | 'cta', highlight? }
-async function renderSwlTextSlide(spec, slideIndex, slideTotal) {
-  if (typeof html2canvas === 'undefined') {
-    console.warn('[renderSwlTextSlide] html2canvas not loaded');
+// Derive a slide-renderer palette from brand_profiles.data_json.palette
+// (the source of truth for any brand). Each entry has shape { hex, role }.
+// Recognized roles (best-effort): primary, secondary, accent, background, text.
+// Returns a palette compatible with the renderSwlTextSlide template — when the
+// brand has no palette defined, falls back to SWL_PALETTE so the demo still works.
+function buildPaletteFromBrand(brandPalette) {
+  if (!Array.isArray(brandPalette) || !brandPalette.length) return { ...SWL_PALETTE };
+  const byRole = {};
+  brandPalette.forEach(p => {
+    if (p && p.hex) byRole[(p.role || '').toLowerCase()] = p.hex;
+  });
+  // Pick by role with fallbacks to positional index.
+  const accent = byRole.accent || byRole.primary || byRole.secondary || brandPalette[0]?.hex || SWL_PALETTE.accent;
+  const bg     = byRole.background || byRole.dark || byRole.secondary || (brandPalette.find(p => /background|dark|black/i.test(p.role || ''))?.hex) || SWL_PALETTE.bg;
+  const text   = byRole.text || byRole.light || byRole.white || (brandPalette.find(p => /text|light|white/i.test(p.role || ''))?.hex) || SWL_PALETTE.text;
+  // Heuristic: if accent is light and bg is also light, swap text to dark for contrast.
+  const isLight = (hex) => {
+    const m = String(hex || '').replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) return false;
+    const [r,g,b] = [m[1],m[2],m[3]].map(h => parseInt(h, 16));
+    return (0.299*r + 0.587*g + 0.114*b) > 160;
+  };
+  const finalText = isLight(bg) ? '#1A1A1A' : (text || '#FFFFFF');
+  const finalTextMuted = isLight(bg) ? '#4B5563' : '#B8B8B8';
+  // Compute an "accent on background" tint by mixing accent at ~22% with bg.
+  const mix22 = (() => {
+    const m1 = String(accent).replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    const m2 = String(bg).replace('#','').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m1 || !m2) return SWL_PALETTE.accentBg;
+    const mk = (h1, h2) => Math.round(parseInt(h1,16)*0.22 + parseInt(h2,16)*0.78).toString(16).padStart(2,'0');
+    return `#${mk(m1[1],m2[1])}${mk(m1[2],m2[2])}${mk(m1[3],m2[3])}`;
+  })();
+  return {
+    bg, bgCard: bg, cardBorder: accent,
+    text: finalText, textMuted: finalTextMuted,
+    accent, accentBg: mix22,
+    tagBg: accent, tagText: isLight(accent) ? '#1A1A1A' : '#FFFFFF',
+  };
+}
+
+// Build CSS font-family stack from brand typography (with safe fallbacks).
+function buildFontStackFromBrand(brandTypography, role = 'heading') {
+  const safe = "'Inter','Helvetica Neue',-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif";
+  const fam = brandTypography && brandTypography[role];
+  if (!fam) return safe;
+  return `'${fam}', ${safe}`;
+}
+
+// Render a headline where SOME words are highlighted in the brand accent color.
+// `accentWords` is an array of words/phrases the visual agent picked for emphasis
+// (e.g. ["signs","Business","Ready","AI"] → "<span>4 </span><accent>signs</accent>...").
+// Matching is case-insensitive and whole-token only — won't accidentally tint
+// substrings inside longer words.
+function renderTwoColorHeadline(headline, accentWords, accentColor) {
+  const text = String(headline || '');
+  if (!text) return '';
+  if (!Array.isArray(accentWords) || !accentWords.length) return escapeHtml(text);
+
+  // Normalize accent terms — lowercased + trimmed; strip punctuation for matching.
+  const accentSet = new Set(
+    accentWords
+      .map(w => String(w || '').trim().toLowerCase().replace(/^[¿¡"'(\[]+|[.,;:!?")\]]+$/g, ''))
+      .filter(Boolean)
+  );
+
+  // Split keeping whitespace so we can rebuild the headline as-is.
+  const tokens = text.split(/(\s+)/);
+  return tokens.map(tok => {
+    if (!tok.trim()) return tok; // preserve spaces
+    const norm = tok.toLowerCase().replace(/^[¿¡"'(\[]+|[.,;:!?")\]]+$/g, '');
+    if (accentSet.has(norm)) {
+      return `<span style="color:${accentColor};">${escapeHtml(tok)}</span>`;
+    }
+    return escapeHtml(tok);
+  }).join('');
+}
+
+// ── Doodle library — vectorial decorations tinted with brand accent ────────
+// Two sets:
+//   SKETCHY    — organic / hand-drawn / slight wobble  → for playful, casual brands
+//   GEOMETRIC  — clean / precise / symmetric           → for formal, corporate brands
+// Each entry is a function(color, sizePx) → SVG markup string. The visual
+// agent emits decorations[{ type, position, size }] per designed slide; the
+// renderer picks SKETCHY or GEOMETRIC based on the brand tone flags.
+const DOODLES_SKETCHY = {
+  arrow_curve: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round">
+      <path d="M 10 20 Q 30 60 50 50 Q 70 40 80 70" />
+      <path d="M 70 60 L 80 72 L 88 60" />
+    </svg>`,
+  asterisk: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round">
+      <path d="M 50 15 L 49 50" /><path d="M 50 85 L 51 50" />
+      <path d="M 18 32 L 50 50" /><path d="M 82 68 L 50 50" />
+      <path d="M 18 68 L 50 50" /><path d="M 82 32 L 50 50" />
+    </svg>`,
+  squiggle: (c, s) => `
+    <svg viewBox="0 0 200 40" width="${s}" height="${s * 0.2}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round">
+      <path d="M 5 20 Q 25 5 45 22 Q 65 38 85 18 Q 105 2 125 22 Q 145 38 165 18 Q 185 5 195 22" />
+    </svg>`,
+  circle: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round">
+      <path d="M 50 15 Q 90 14 88 52 Q 86 88 48 88 Q 12 86 12 50 Q 13 16 50 15 Z" />
+    </svg>`,
+  underline_wavy: (c, s) => `
+    <svg viewBox="0 0 300 30" width="${s}" height="${s * 0.1}" fill="none" stroke="${c}" stroke-width="4" stroke-linecap="round">
+      <path d="M 5 15 Q 30 3 55 15 Q 80 27 105 15 Q 130 3 155 15 Q 180 27 205 15 Q 230 3 255 15 Q 280 27 295 15" />
+    </svg>`,
+  scribble: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="2.5" stroke-linecap="round">
+      <path d="M 20 30 Q 35 20 50 30 Q 65 40 80 30 M 20 45 Q 35 55 50 45 Q 65 35 80 45 M 20 60 Q 35 70 50 60 Q 65 50 80 60 M 20 75 Q 35 65 50 75 Q 65 85 80 75" />
+    </svg>`,
+  star: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3" stroke-linejoin="round">
+      <path d="M 50 12 L 60 38 L 88 42 L 67 60 L 74 88 L 50 73 L 26 88 L 33 60 L 12 42 L 40 38 Z" />
+    </svg>`,
+  dots_scatter: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="${c}" stroke="none">
+      <circle cx="20" cy="28" r="3"/><circle cx="42" cy="18" r="2.5"/><circle cx="68" cy="32" r="4"/>
+      <circle cx="84" cy="22" r="2.5"/><circle cx="18" cy="58" r="2.5"/><circle cx="38" cy="68" r="3.5"/>
+      <circle cx="62" cy="52" r="2.5"/><circle cx="82" cy="68" r="3"/><circle cx="50" cy="82" r="2.5"/>
+    </svg>`,
+  exclaim_circle: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round">
+      <path d="M 50 12 Q 88 14 88 50 Q 88 87 50 88 Q 12 87 12 50 Q 12 13 50 12 Z" />
+      <path d="M 50 28 L 50 58" /><circle cx="50" cy="72" r="3" fill="${c}"/>
+    </svg>`,
+  brackets: (c, s) => `
+    <svg viewBox="0 0 120 80" width="${s}" height="${s * 0.66}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round">
+      <path d="M 25 12 Q 12 12 12 25 L 12 55 Q 12 68 25 68" />
+      <path d="M 95 12 Q 108 12 108 25 L 108 55 Q 108 68 95 68" />
+    </svg>`,
+};
+
+const DOODLES_GEOMETRIC = {
+  arrow_curve: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="square" stroke-linejoin="miter">
+      <path d="M 15 75 L 75 25" />
+      <path d="M 55 25 L 75 25 L 75 45" />
+    </svg>`,
+  asterisk: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="4">
+      <path d="M 50 15 L 50 85" /><path d="M 15 50 L 85 50" />
+      <path d="M 25 25 L 75 75" /><path d="M 75 25 L 25 75" />
+    </svg>`,
+  squiggle: (c, s) => `
+    <svg viewBox="0 0 200 40" width="${s}" height="${s * 0.2}" fill="none" stroke="${c}" stroke-width="3">
+      <path d="M 5 20 L 30 20 L 50 8 L 70 32 L 90 8 L 110 32 L 130 8 L 150 32 L 170 8 L 195 20" />
+    </svg>`,
+  circle: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3">
+      <circle cx="50" cy="50" r="38" />
+    </svg>`,
+  underline_wavy: (c, s) => `
+    <svg viewBox="0 0 300 20" width="${s}" height="${s * 0.067}" fill="${c}" stroke="none">
+      <rect x="5" y="8" width="290" height="4" rx="2" />
+    </svg>`,
+  scribble: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3">
+      <rect x="18" y="18" width="64" height="64" rx="6" />
+      <path d="M 18 50 L 82 50" /><path d="M 50 18 L 50 82" />
+    </svg>`,
+  star: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="${c}" stroke="none">
+      <path d="M 50 10 L 58 42 L 90 50 L 58 58 L 50 90 L 42 58 L 10 50 L 42 42 Z" />
+    </svg>`,
+  dots_scatter: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="${c}" stroke="none">
+      <circle cx="25" cy="25" r="3"/><circle cx="50" cy="25" r="3"/><circle cx="75" cy="25" r="3"/>
+      <circle cx="25" cy="50" r="3"/><circle cx="50" cy="50" r="3"/><circle cx="75" cy="50" r="3"/>
+      <circle cx="25" cy="75" r="3"/><circle cx="50" cy="75" r="3"/><circle cx="75" cy="75" r="3"/>
+    </svg>`,
+  exclaim_circle: (c, s) => `
+    <svg viewBox="0 0 100 100" width="${s}" height="${s}" fill="none" stroke="${c}" stroke-width="3">
+      <circle cx="50" cy="50" r="38" />
+      <path d="M 50 28 L 50 58" stroke-linecap="square"/><circle cx="50" cy="72" r="3" fill="${c}"/>
+    </svg>`,
+  brackets: (c, s) => `
+    <svg viewBox="0 0 120 80" width="${s}" height="${s * 0.66}" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="square">
+      <path d="M 25 12 L 12 12 L 12 68 L 25 68" />
+      <path d="M 95 12 L 108 12 L 108 68 L 95 68" />
+    </svg>`,
+};
+
+// Size keyword → pixels. Tuned for 1080×1080 slides — a "medium" doodle is
+// ~15% of the slide width so it reads at thumbnail size too.
+const DOODLE_SIZES = { small: 90, medium: 160, large: 240, xl: 340 };
+// Position keyword → absolute style anchor (within slide root = 1080×1080).
+const DOODLE_POSITIONS = {
+  'top-left':     'top:90px;    left:70px;',
+  'top-right':    'top:90px;    right:70px;',
+  'bottom-left':  'bottom:90px; left:70px;',
+  'bottom-right': 'bottom:90px; right:70px;',
+  'mid-left':     'top:50%;     left:50px;  transform:translateY(-50%);',
+  'mid-right':    'top:50%;     right:50px; transform:translateY(-50%);',
+  'center':       'top:50%;     left:50%;   transform:translate(-50%,-50%);',
+};
+
+// Pick which set to use based on tone flags. Sketchy if any "playful" or "casual"
+// or "expansive" flag is present; geometric for "formal" / "serious" / "technical".
+function pickDoodleSet(toneFlags) {
+  if (!Array.isArray(toneFlags) || !toneFlags.length) return DOODLES_GEOMETRIC;
+  const txt = toneFlags.join(' ').toLowerCase();
+  const sketchyHits  = (txt.match(/\b(playful|casual|expansive|bold)\b/g) || []).length;
+  const geometricHits = (txt.match(/\b(formal|serious|technical|humble|short)\b/g) || []).length;
+  return sketchyHits > geometricHits ? DOODLES_SKETCHY : DOODLES_GEOMETRIC;
+}
+
+// Build a Lucide-icon doodle. The visual agent picks an icon NAME (e.g. "cpu",
+// "brain", "zap", "code", "git-branch") matching the slide message + brand industry.
+// We use Lucide's own createIcons() pipeline to render the SVG — that way we're
+// resilient to internal icon-shape changes between Lucide versions (UMD bundle
+// from unpkg@latest can swap between tuple-arrays, objects, factory functions).
+function buildLucideIconSvg(iconName, color, sizePx) {
+  if (typeof lucide === 'undefined') return '';
+
+  // Off-screen container so the temporary <i> doesn't visually flash.
+  const host = document.createElement('div');
+  host.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;width:0;height:0;overflow:hidden;';
+  const i = document.createElement('i');
+  // Lucide accepts both kebab-case and snake-case via the data-lucide attribute.
+  i.setAttribute('data-lucide', String(iconName || '').toLowerCase().replace(/[_\s]+/g, '-'));
+  host.appendChild(i);
+  document.body.appendChild(host);
+
+  try {
+    if (typeof lucide.createIcons === 'function') {
+      // Scoping the run to `host` would be ideal but the public API scans the
+      // whole document. Cost is small — it's a single DOM pass.
+      lucide.createIcons();
+    }
+    const svg = host.querySelector('svg');
+    if (!svg) {
+      console.warn(`[buildLucideIconSvg] Lucide did not render icon "${iconName}"`);
+      return '';
+    }
+    svg.setAttribute('width', String(sizePx));
+    svg.setAttribute('height', String(sizePx));
+    svg.setAttribute('stroke', color);
+    svg.removeAttribute('class');
+    return svg.outerHTML;
+  } catch (e) {
+    console.warn('[buildLucideIconSvg] error:', e);
+    return '';
+  } finally {
+    host.remove();
+  }
+}
+
+// ── Stock photo fetcher (Unsplash) ─────────────────────────────────────────
+// The Visual agent can emit photo_overlay slides with a `background_query`.
+// We fetch a matching photo from Unsplash and use it as the slide background.
+// Access key is asked once and cached in localStorage — same pattern as a
+// "configure once, works forever" Canva-style integration.
+const UNSPLASH_API = 'https://api.unsplash.com';
+const UNSPLASH_KEY_STORAGE = 'cb_unsplash_access_key';
+
+function getUnsplashKey() {
+  return localStorage.getItem(UNSPLASH_KEY_STORAGE) || '';
+}
+function setUnsplashKey(key) {
+  if (key && typeof key === 'string') localStorage.setItem(UNSPLASH_KEY_STORAGE, key.trim());
+}
+async function promptForUnsplashKey() {
+  const existing = getUnsplashKey();
+  if (existing) return existing;
+  const key = window.prompt(
+    'Unsplash Access Key\n\nPegá tu Access Key (crear en unsplash.com/developers — gratis, 5 min).\nSe guarda en este browser, no se sube a ningún lado.'
+  );
+  if (!key) return '';
+  setUnsplashKey(key);
+  return key.trim();
+}
+
+// In-memory cache so we don't re-fetch the same query within a session.
+const _stockPhotoCache = new Map();
+
+async function fetchStockPhoto(query) {
+  if (!query || typeof query !== 'string') return null;
+  const cleanQuery = query.trim().slice(0, 200);
+  if (_stockPhotoCache.has(cleanQuery)) return _stockPhotoCache.get(cleanQuery);
+
+  const key = await promptForUnsplashKey();
+  if (!key) {
+    console.warn('[unsplash] no access key — skipping background photo');
     return null;
   }
+
+  try {
+    const url = `${UNSPLASH_API}/search/photos?query=${encodeURIComponent(cleanQuery)}&per_page=10&orientation=squarish&content_filter=high`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Client-ID ${key}`, 'Accept-Version': 'v1' },
+    });
+    if (!res.ok) {
+      console.warn(`[unsplash] HTTP ${res.status} — query="${cleanQuery}"`);
+      if (res.status === 401) {
+        // Clear the bad key so the user gets re-prompted.
+        localStorage.removeItem(UNSPLASH_KEY_STORAGE);
+      }
+      return null;
+    }
+    const body = await res.json();
+    if (!Array.isArray(body.results) || !body.results.length) {
+      console.warn(`[unsplash] no results for query="${cleanQuery}"`);
+      _stockPhotoCache.set(cleanQuery, null);
+      return null;
+    }
+    // Pick the top result. Use the `regular` size (~1080px wide) — perfect for our 1080×1080 slides.
+    const photo = body.results[0];
+    const out = {
+      url:        photo.urls.regular || photo.urls.full,
+      thumb:      photo.urls.small,
+      photographer: photo.user?.name || null,
+      photographer_url: photo.user?.links?.html || null,
+      unsplash_url: photo.links?.html || null,
+    };
+    _stockPhotoCache.set(cleanQuery, out);
+    return out;
+  } catch (e) {
+    console.error('[unsplash] fetch error:', e);
+    return null;
+  }
+}
+
+// Load an image into a data URL so html2canvas can rasterize it without CORS issues.
+async function loadImageAsDataUrl(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onloadend = () => resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+  } catch (e) {
+    console.warn('[loadImageAsDataUrl] fetch failed, falling back to direct URL:', e);
+    return url;
+  }
+}
+
+// Render absolutely-positioned decoration overlays for one slide. Returns HTML.
+// Supports two doodle "types" of inputs:
+//   • Built-in geometric/sketchy names — arrow_curve, asterisk, squiggle, etc.
+//   • `lucide_icon` + d.icon (any Lucide icon name) → renders the Lucide SVG.
+function renderDecorations(decorations, accentColor, toneFlags) {
+  if (!Array.isArray(decorations) || !decorations.length) return '';
+  const set = pickDoodleSet(toneFlags);
+  return decorations.map(d => {
+    const sizePx = DOODLE_SIZES[d.size || 'medium'] || DOODLE_SIZES.medium;
+    const posCSS = DOODLE_POSITIONS[d.position || 'bottom-right'] || DOODLE_POSITIONS['bottom-right'];
+    const rotate = typeof d.rotate === 'number' ? d.rotate : 0;
+    const baseTransform = posCSS.match(/transform:([^;]+);/)?.[1] || '';
+    const finalTransform = rotate ? `${baseTransform} rotate(${rotate}deg)` : baseTransform;
+    const cssWithoutTransform = posCSS.replace(/transform:[^;]+;/, '');
+
+    let svg = '';
+    if (d.type === 'lucide_icon' && d.icon) {
+      svg = buildLucideIconSvg(d.icon, accentColor, sizePx);
+    }
+    if (!svg) {
+      // Fallback to built-in geometric / sketchy library.
+      const builder = set[d.type] || set.asterisk;
+      svg = builder(accentColor, sizePx);
+    }
+    return `<div style="position:absolute; ${cssWithoutTransform}${finalTransform ? `transform:${finalTransform};` : ''} opacity:${d.opacity || 0.85}; pointer-events:none; z-index:0;">${svg}</div>`;
+  }).join('');
+}
+
+// `spec` shape: { tag, headline, sub, items, variant: 'cards'|'stats'|'cta'|'headline_only', highlight, cta_tag, cta_text, brand_handle }
+// `opts` shape: { palette?: brand_profiles.data_json.palette[], typography?: { heading, body, mono } }
+async function renderDesignedSlide(spec, slideIndex, slideTotal, opts = {}) {
+  if (typeof html2canvas === 'undefined') {
+    console.warn('[renderDesignedSlide] html2canvas not loaded');
+    return null;
+  }
+  const P = buildPaletteFromBrand(opts.palette);
+  const headingFont = buildFontStackFromBrand(opts.typography, 'heading');
+  const bodyFont    = buildFontStackFromBrand(opts.typography, 'body');
   const variant = spec.variant || 'cards';
   const items = Array.isArray(spec.items) ? spec.items : [];
 
-  // Build the inner HTML based on variant
+  // photo_overlay variant — Canva-style: real stock photo background with a
+  // semi-transparent overlay and text on top. The visual agent picks this for
+  // hero / closing / context-setting slides where a photo adds value.
+  let bgImageDataUrl = null;
+  if (variant === 'photo_overlay' && spec.background_query) {
+    const photo = await fetchStockPhoto(spec.background_query);
+    if (photo?.url) {
+      // Inline the image as data: URL so html2canvas can render it without CORS issues.
+      bgImageDataUrl = await loadImageAsDataUrl(photo.url);
+    }
+  }
+
   let itemsHtml = '';
   if (variant === 'stats') {
     itemsHtml = items.map(it => `
       <div style="text-align:center;padding:18px 12px;">
-        <div style="font-size:88px;font-weight:800;color:${SWL_PALETTE.text};line-height:1;margin-bottom:8px;font-family:'Inter','Helvetica Neue',sans-serif;">${escapeHtml(it.value || '—')}</div>
-        <div style="font-size:22px;font-weight:700;color:${SWL_PALETTE.text};margin-bottom:6px;">${escapeHtml(it.label || '')}</div>
-        <div style="font-size:15px;color:${SWL_PALETTE.textMuted};line-height:1.4;max-width:480px;margin:0 auto;">${escapeHtml(it.desc || '')}</div>
+        <div style="font-size:88px;font-weight:800;color:${P.accent};line-height:1;margin-bottom:8px;font-family:${headingFont};">${escapeHtml(it.value || '—')}</div>
+        <div style="font-size:22px;font-weight:700;color:${P.text};margin-bottom:6px;font-family:${headingFont};">${escapeHtml(it.label || it.title || '')}</div>
+        <div style="font-size:15px;color:${P.textMuted};line-height:1.4;max-width:480px;margin:0 auto;font-family:${bodyFont};">${escapeHtml(it.desc || '')}</div>
       </div>
     `).join('');
   } else if (variant === 'cta') {
+    // Auto-size card: padding sized to content, no forced height. Card is wrapped
+    // in a container that pushes it to the bottom-third so the headline above
+    // has breathing room without leaving a giant empty box.
     itemsHtml = `
-      <div style="margin-top:48px;padding:32px 36px;background:${SWL_PALETTE.accentBg};border:2px solid ${SWL_PALETTE.accent};border-radius:14px;">
-        <div style="font-size:18px;color:${SWL_PALETTE.accent};font-weight:700;letter-spacing:0.5px;margin-bottom:10px;text-transform:uppercase;">${escapeHtml(spec.cta_tag || 'Next step')}</div>
-        <div style="font-size:32px;font-weight:800;color:${SWL_PALETTE.text};line-height:1.2;">${escapeHtml(spec.cta_text || '')}</div>
+      <div style="display:flex; flex-direction:column; justify-content:flex-end; flex:1; margin-top:32px;">
+        <div style="padding:28px 32px; background:${P.accentBg}; border:2px solid ${P.accent}; border-radius:14px; display:inline-block;">
+          ${spec.cta_tag ? `<div style="font-size:18px;color:${P.accent};font-weight:700;letter-spacing:0.5px;margin-bottom:8px;text-transform:uppercase;font-family:${headingFont};">${escapeHtml(spec.cta_tag)}</div>` : ''}
+          <div style="font-size:32px;font-weight:800;color:${P.text};line-height:1.2;font-family:${headingFont};">${escapeHtml(spec.cta_text || spec.headline || '')}</div>
+        </div>
       </div>
     `;
+  } else if (variant === 'headline_only') {
+    itemsHtml = '';  // headline alone — sub already rendered below the headline
   } else {
-    // cards variant (default)
+    // cards (default)
     itemsHtml = items.map(it => `
-      <div style="padding:20px 22px;background:transparent;border:2px solid ${SWL_PALETTE.cardBorder};border-radius:12px;">
+      <div style="padding:20px 22px;background:transparent;border:2px solid ${P.cardBorder};border-radius:12px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
           ${it.emoji ? `<span style="font-size:24px;">${escapeHtml(it.emoji)}</span>` : ''}
-          <span style="font-size:22px;font-weight:700;color:${SWL_PALETTE.text};">${escapeHtml(it.title || '')}</span>
+          <span style="font-size:22px;font-weight:700;color:${P.text};font-family:${headingFont};">${escapeHtml(it.title || '')}</span>
         </div>
-        <div style="font-size:15px;color:${SWL_PALETTE.textMuted};line-height:1.45;">${escapeHtml(it.desc || '')}</div>
+        <div style="font-size:15px;color:${P.textMuted};line-height:1.45;font-family:${bodyFont};">${escapeHtml(it.desc || '')}</div>
       </div>
     `).join('');
   }
 
   const highlightHtml = spec.highlight ? `
-    <div style="margin-top:28px;padding:18px 22px;background:${SWL_PALETTE.accentBg};border-left:4px solid ${SWL_PALETTE.accent};border-radius:8px;">
-      <span style="color:${SWL_PALETTE.accent};font-weight:600;font-size:15px;line-height:1.5;">${escapeHtml(spec.highlight)}</span>
+    <div style="margin-top:28px;padding:18px 22px;background:${P.accentBg};border-left:4px solid ${P.accent};border-radius:8px;">
+      <span style="color:${P.accent};font-weight:600;font-size:15px;line-height:1.5;font-family:${bodyFont};">${escapeHtml(spec.highlight)}</span>
     </div>` : '';
 
-  // Off-screen render container — 1080×1080 (IG square) with internal padding
+  // Decorations — vectorial doodles tinted with brand accent, absolutely
+  // positioned over the slide. The visual agent picks type/position/size based
+  // on slide variant + brand tone (see WF12 visual mode prompt).
+  const toneFlags = (opts.toneFlags || opts.brandDefaults?.tone_flags || []);
+  const decorationsHtml = renderDecorations(spec.decorations || [], P.accent, toneFlags);
+
   const root = document.createElement('div');
-  root.style.cssText = `
-    position:fixed;left:-9999px;top:0;width:1080px;height:1080px;
-    background:${SWL_PALETTE.bg};color:${SWL_PALETTE.text};
-    font-family:'Inter','Helvetica Neue',-apple-system,sans-serif;
-    padding:72px 64px;box-sizing:border-box;
-    display:flex;flex-direction:column;gap:24px;
-  `;
-  root.innerHTML = `
-    <!-- Top row: tag pill + slide counter -->
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      ${spec.tag ? `<span style="display:inline-block;padding:6px 14px;background:${SWL_PALETTE.tagBg};color:${SWL_PALETTE.tagText};font-size:14px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;background:rgba(255,255,255,0.08);color:${SWL_PALETTE.text};font-size:16px;font-weight:700;border-radius:99px;">${slideIndex}/${slideTotal}</span>
-    </div>
 
-    <!-- Headline -->
-    <h1 style="font-size:52px;font-weight:800;color:${SWL_PALETTE.text};line-height:1.12;margin:0;letter-spacing:-0.5px;max-width:920px;">${escapeHtml(spec.headline || '')}</h1>
+  // photo_overlay → Canva-style: photo on top half (or fullbleed), gray/dark
+  // overlay on the rest with text on top. Mirrors SWL Instagram's actual look.
+  if (variant === 'photo_overlay') {
+    const photoFraction = typeof spec.photo_fraction === 'number'
+      ? Math.max(0.2, Math.min(0.7, spec.photo_fraction))
+      : 0.5; // default: photo takes top 50% of the slide
+    const overlayColor = spec.overlay_color || '#7A7A7A';  // SWL uses ~50% gray
+    const overlayOpacity = typeof spec.overlay_opacity === 'number' ? spec.overlay_opacity : 0.85;
+    const photoHeightPx = Math.round(1080 * photoFraction);
 
-    ${spec.sub ? `<p style="font-size:20px;color:${SWL_PALETTE.textMuted};line-height:1.4;margin:0;max-width:880px;">${escapeHtml(spec.sub)}</p>` : ''}
+    root.style.cssText = `
+      position:fixed;left:-9999px;top:0;width:1080px;height:1080px;
+      background:${P.bg};color:#FFFFFF;
+      font-family:${bodyFont};
+      overflow:hidden;
+    `;
+    root.innerHTML = `
+      ${decorationsHtml}
+      <!-- Photo top half -->
+      <div style="position:absolute; top:0; left:0; right:0; height:${photoHeightPx}px; background:${bgImageDataUrl ? `url('${bgImageDataUrl}') center/cover no-repeat` : `linear-gradient(135deg, ${P.bg}, ${P.accent})`}; z-index:0;"></div>
+      <!-- Gray overlay on bottom half (or full slide) -->
+      <div style="position:absolute; top:${photoHeightPx}px; left:0; right:0; bottom:0; background:${overlayColor}; opacity:${overlayOpacity}; z-index:0;"></div>
+      <!-- Tag pill + slide counter on top of photo -->
+      <div style="position:absolute; top:60px; left:64px; right:64px; display:flex; justify-content:space-between; align-items:center; z-index:2;">
+        ${spec.tag ? `<span style="display:inline-block;padding:8px 16px;background:${P.tagBg};color:${P.tagText};font-size:14px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;font-family:${headingFont};box-shadow:0 2px 8px rgba(0,0,0,0.3);">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;background:${P.accent};color:${P.tagText};font-size:16px;font-weight:700;border-radius:99px;font-family:${headingFont};box-shadow:0 2px 8px rgba(0,0,0,0.3);">${slideIndex}/${slideTotal}</span>
+      </div>
+      <!-- Text content on bottom half (over the gray overlay) -->
+      <div style="position:absolute; top:${photoHeightPx + 60}px; left:0; right:0; bottom:60px; padding:0 64px; z-index:2; display:flex; flex-direction:column; gap:20px;">
+        <h1 style="font-size:72px;font-weight:800;line-height:1.05;margin:0;letter-spacing:-1px;font-family:${headingFont};color:#FFFFFF;text-shadow:0 2px 6px rgba(0,0,0,0.25);">${renderTwoColorHeadline(spec.headline || '', spec.headline_accent_words || [], P.accent)}</h1>
+        ${spec.sub ? `<p style="font-size:22px;color:rgba(255,255,255,0.95);line-height:1.4;margin:0;max-width:920px;font-family:${bodyFont};text-shadow:0 1px 3px rgba(0,0,0,0.2);">${escapeHtml(spec.sub)}</p>` : ''}
+        ${spec.items && spec.items.length ? `<div style="margin-top:8px;display:flex;flex-direction:column;gap:10px;">${spec.items.slice(0, 3).map(it => `
+          <div style="padding:14px 20px; background:rgba(255,255,255,0.10); backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,0.18); border-radius:14px;">
+            <div style="font-size:20px;font-weight:700;color:#FFFFFF;font-family:${headingFont};">${escapeHtml(it.title || '')}</div>
+            ${it.desc ? `<div style="font-size:15px;color:rgba(255,255,255,0.85);margin-top:3px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
+          </div>`).join('')}</div>` : ''}
+        ${spec.cta_text ? `<div style="margin-top:auto; padding:20px 24px; background:${P.accent}; border-radius:12px; display:inline-block; align-self:flex-start;"><div style="font-size:16px;color:${P.tagText};font-weight:700;letter-spacing:0.5px;margin-bottom:4px;text-transform:uppercase;font-family:${headingFont};">${escapeHtml(spec.cta_tag || '')}</div><div style="font-size:24px;font-weight:800;color:${P.tagText};line-height:1.2;font-family:${headingFont};">${escapeHtml(spec.cta_text)}</div></div>` : ''}
+      </div>
+    `;
+  } else {
+    root.style.cssText = `
+      position:fixed;left:-9999px;top:0;width:1080px;height:1080px;
+      background:${P.bg};color:${P.text};
+      font-family:${bodyFont};
+      padding:${variant === 'headline_only' ? '120px 80px' : '72px 64px'};box-sizing:border-box;
+      display:flex;flex-direction:column;gap:${variant === 'headline_only' ? '40px' : '24px'};
+      ${variant === 'headline_only' ? 'justify-content:center;' : ''}
+      overflow:hidden;
+    `;
+    const headlineSize = variant === 'headline_only' ? '72px' : '52px';
+    const renderedHeadline = renderTwoColorHeadline(spec.headline || '', spec.headline_accent_words || [], P.accent);
+    root.innerHTML = `
+      ${decorationsHtml}
+      <div style="display:flex;justify-content:space-between;align-items:center;position:relative;z-index:1;">
+        ${spec.tag ? `<span style="display:inline-block;padding:6px 14px;background:${P.tagBg};color:${P.tagText};font-size:14px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;font-family:${headingFont};">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;background:${P.accentBg};color:${P.accent};font-size:16px;font-weight:700;border-radius:99px;font-family:${headingFont};">${slideIndex}/${slideTotal}</span>
+      </div>
 
-    <!-- Items grid (cards/stats/cta) -->
-    <div style="flex:1;display:${variant === 'stats' ? 'flex' : 'grid'};${variant === 'stats' ? 'flex-direction:column;justify-content:center;gap:32px;' : 'grid-template-columns:1fr 1fr;gap:18px;align-content:start;'}margin-top:18px;">
-      ${itemsHtml}
-    </div>
+      <h1 style="font-size:${headlineSize};font-weight:800;color:${P.text};line-height:1.12;margin:0;letter-spacing:-0.5px;max-width:920px;font-family:${headingFont};position:relative;z-index:1;">${renderedHeadline}</h1>
 
-    ${highlightHtml}
+      ${spec.sub ? `<p style="font-size:${variant === 'headline_only' ? '24px' : '20px'};color:${P.textMuted};line-height:1.4;margin:0;max-width:880px;font-family:${bodyFont};position:relative;z-index:1;">${escapeHtml(spec.sub)}</p>` : ''}
 
-    <!-- Footer brand mark -->
-    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;color:${SWL_PALETTE.textMuted};font-size:14px;font-weight:600;letter-spacing:0.4px;">
-      <span>${escapeHtml(spec.brand_handle || 'swl.consulting')}</span>
-    </div>
-  `;
+      ${itemsHtml ? `<div style="flex:1;display:${variant === 'stats' ? 'flex' : variant === 'cta' ? 'flex' : 'grid'};${variant === 'stats' ? 'flex-direction:column;justify-content:center;gap:32px;' : variant === 'cta' ? 'flex-direction:column;' : 'grid-template-columns:1fr 1fr;gap:18px;align-content:start;'}margin-top:18px;position:relative;z-index:1;">${itemsHtml}</div>` : ''}
+
+      ${highlightHtml ? `<div style="position:relative;z-index:1;">${highlightHtml}</div>` : ''}
+
+      <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;color:${P.textMuted};font-size:14px;font-weight:600;letter-spacing:0.4px;font-family:${bodyFont};position:relative;z-index:1;">
+        <span>${escapeHtml(spec.brand_handle || '')}</span>
+      </div>
+    `;
+  }
   document.body.appendChild(root);
 
   try {
     const canvas = await html2canvas(root, {
-      backgroundColor: SWL_PALETTE.bg,
+      backgroundColor: P.bg,
       scale: 1,
       width: 1080,
       height: 1080,
@@ -5568,11 +6858,16 @@ async function renderSwlTextSlide(spec, slideIndex, slideTotal) {
     });
     return canvas.toDataURL('image/png');
   } catch (e) {
-    console.error('[renderSwlTextSlide] failed:', e);
+    console.error('[renderDesignedSlide] failed:', e);
     return null;
   } finally {
     root.remove();
   }
+}
+
+// Backward-compat alias — older code paths still reference this name.
+async function renderSwlTextSlide(spec, slideIndex, slideTotal) {
+  return renderDesignedSlide(spec, slideIndex, slideTotal, {});
 }
 
 // ── WF10 Auto Publisher (simulation) ───────────────────
@@ -6188,11 +7483,12 @@ function switchView(viewId) {
   }
 
   if (viewId === 'content-builder') {
+    resetCbAgentState();
+    setTimeout(() => updateAgentButtonsEnabled(), 60);
     setTimeout(() => refreshContentQueue(), 80);
     setTimeout(() => hydrateContentBuilderInsights(), 120);
     setTimeout(() => hydrateContentBuilderCampaign(), 80);
     setTimeout(() => hydrateContentBuilderContext(), 100);
-    setTimeout(() => hydrateCreativeBrainView(), 160);
   }
 
   if (viewId === 'hook-miner') {
@@ -8739,6 +10035,7 @@ function generateViewHTML(view) {
               <textarea class="bk-input area" oninput="updateBrandField('mission', this.value)" placeholder="1-3 sentences describing what you do and who for">${brandKitData.mission}</textarea>
             </div>
           </div>
+          <p style="margin:10px 0 0 0; font-size:11px; color:var(--text-muted);"><i data-lucide="info" style="width:11px;vertical-align:middle;margin-right:3px"></i>El <strong>idioma de publicación se elige por canal</strong> en ContentBuilder (Instagram, TikTok, LinkedIn pueden tener idiomas distintos).</p>
         </div>
 
         <!-- 2. Colorimetría -->
@@ -8776,10 +10073,11 @@ function generateViewHTML(view) {
                 `).join('')}
               </div>
             </div>
-            <label class="bk-label">Fine-tune — click any swatch to change</label>
-            <div style="display:grid; grid-template-columns:repeat(6, 1fr); gap:14px;">
+            <label class="bk-label">Fine-tune — click any swatch para cambiar · × para borrar · + Add color para sumar</label>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:14px;">
               ${brandKitData.palette.map((c, i) => `
-                <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative;">
+                  <button type="button" onclick="removePaletteColor(${i})" title="Borrar este color" style="position:absolute; top:6px; right:6px; z-index:2; width:22px; height:22px; border-radius:50%; border:none; background:rgba(0,0,0,0.55); color:white; font-size:12px; font-weight:700; cursor:pointer; line-height:1; display:flex; align-items:center; justify-content:center;">×</button>
                   <div id="bk-swatch-${i}" style="height:70px; background:${c.hex}; position:relative; cursor:pointer;">
                     <input type="color" value="${c.hex}" oninput="updatePaletteColor(${i}, this.value)" style="position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; border:none; padding:0;">
                   </div>
@@ -8789,6 +10087,10 @@ function generateViewHTML(view) {
                   </div>
                 </div>
               `).join('')}
+              <button type="button" onclick="addPaletteColor()" title="Agregar un color a la paleta" style="border:2px dashed var(--border); border-radius:8px; background:#FAFBFC; cursor:pointer; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:115px; color:var(--text-muted); font-family:var(--font-main); transition:border-color .15s, color .15s;" onmouseover="this.style.borderColor='#6366F1';this.style.color='#6366F1'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+                <div style="font-size:28px; font-weight:300; line-height:1;">+</div>
+                <div style="font-size:11px; font-weight:600; margin-top:6px; letter-spacing:0.3px;">Add color</div>
+              </button>
             </div>
           ` : ''}
         </div>
@@ -9184,15 +10486,6 @@ function generateViewHTML(view) {
             <div id="smb-heatmap"></div>
           </div>
         </div>
-
-        <!-- CTA to CompetitorsViews -->
-        <div class="card" style="margin-top:16px; padding:20px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; background:linear-gradient(135deg,#ECFEFF 0%, #CFFAFE 100%); border:1px solid #A5F3FC;">
-          <div>
-            <h3 style="margin:0; font-size:15px; color:#0E7490;">Now benchmark against your competitors</h3>
-            <p style="margin:4px 0 0; font-size:12px; color:#0369A1;">CompetitorsViews picks up the same channels and compares your tone, cadence and engagement against every brand you tracked in Branding Bio.</p>
-          </div>
-          <button class="btn-sm btn-primary" onclick="switchView('competitors-views')" style="background:#06B6D4;border:none;"><i data-lucide="arrow-right" style="width:14px"></i> Open CompetitorsViews</button>
-        </div>
       </div>
     `,
 
@@ -9494,12 +10787,9 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
-          <div style="display:flex; gap:6px; flex-wrap:wrap;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-last-batch">Last batch: Today, 09:50 AM</span></span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Uses: SocialMediaBios voice · CompetitorsViews insights · HookMiner frameworks</span>
-          </div>
-          <button id="wf06-generate-btn" onclick="handleRegenerate()" style="padding:8px 16px; background:#22C55E; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="sparkles" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate Brief</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:12px;">
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-last-batch">Last batch: Today, 09:50 AM</span></span>
+          <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i>Uses: SocialMediaBios voice · CompetitorsViews insights · HookMiner frameworks</span>
         </div>
 
         <div class="agent-stats">
@@ -9593,6 +10883,20 @@ function generateViewHTML(view) {
             </button>
           </div>
 
+          <!-- Per-channel language picker — overrides brand-wide language for this channel -->
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:10px 14px; background:#FAFBFC; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; font-size:12px;">
+            <span style="color:var(--text-muted);"><i data-lucide="languages" style="width:13px;vertical-align:middle;margin-right:4px"></i>Idioma para <strong id="cb-lang-channel-name" style="color:var(--text-main);">este canal</strong>:</span>
+            <select id="cb-channel-language" onchange="setChannelLanguage(contentBuilderActiveTab, this.value)" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; font-family:var(--font-main); cursor:pointer; background:white;">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="pt">Português</option>
+              <option value="fr">Français</option>
+              <option value="it">Italiano</option>
+              <option value="de">Deutsch</option>
+            </select>
+            <span style="color:var(--text-muted); font-size:10.5px;">— guardá Branding Bio para persistir</span>
+          </div>
+
           <!-- Per-channel Apify availability banner (LinkedIn shows warning) -->
           <div id="cb-apify-banner" style="display:none; padding:10px 14px; background:#FFFBEB; border:1px solid #FDE68A; border-radius:8px; margin-bottom:12px; font-size:12px; color:#92400E;"></div>
 
@@ -9630,74 +10934,125 @@ function generateViewHTML(view) {
 
           <!-- Briefing del usuario — único input de texto. Alimenta WF06 (brief), WF07 (draft) y WF09 (visual). -->
           <div style="padding:16px; border:1px solid #FED7AA; border-radius:10px; background:linear-gradient(180deg,#FFF7ED 0%,white 80%); margin-bottom:14px;">
-            <label style="font-size:11px; color:#9A3412; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; display:block; margin-bottom:6px;">
-              <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— qué querés que cree el agente (texto + visual se derivan de acá)</span>
-            </label>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
+              <label style="font-size:11px; color:#9A3412; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin:0;">
+                <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— qué querés que cree el agente (texto + visual se derivan de acá)</span>
+              </label>
+              <button id="btn-save-briefing" onclick="handleSaveUserBriefing()" title="Guarda el briefing en Supabase (user_briefings) — el agente WF06 lo lee como base del prompt en vez de tratarlo como hint opcional." style="padding:6px 12px; background:white; color:#9A3412; border:1px solid #FED7AA; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="save" style="width:11px"></i> Guardar briefing
+              </button>
+            </div>
             <textarea id="cb-user-brief" rows="3" placeholder="Ej: carrusel de 5 slides con datos duros sobre ROI. Tono más directo. No mencionar precios." style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
-            <div style="margin-top:8px; font-size:10.5px; color:var(--text-muted);" id="cb-inspiration-line">
+            <div id="cb-briefing-saved" style="margin-top:6px; font-size:10.5px; color:#9A3412;">
+              Sin guardar — el agente solo va a leer lo que esté escrito al momento de generar.
+            </div>
+            <div style="margin-top:6px; font-size:10.5px; color:var(--text-muted);" id="cb-inspiration-line">
               <i data-lucide="sparkles" style="width:10px;vertical-align:middle;margin-right:3px"></i>Inspirado en: hooks de HookMiner + posts top de competidores (cargando…) — se respeta la voz de la marca, no se copia.
             </div>
           </div>
 
-          <!-- STEP 1 — Brief Generator (WF06) -->
-          <div class="cb-step" id="cb-step-1">
-            <div class="cb-step-head">
-              <span class="cb-step-num">1</span>
-              <div class="cb-step-title">
-                <strong>Brief — el agente arma el prompt</strong>
-                <span class="cb-step-sub">webhook <code>wf06-brief-generator</code> · usa tono de SocialMediaBios + hooks de HookMiner + posts top de competidores (como inspiración, no plagio)</span>
-                <span class="cb-step-sub" style="margin-top:4px; color:#7C3AED;"><i data-lucide="wand-2" style="width:10px;vertical-align:middle;margin-right:3px"></i>Estilo: <span id="cb-brief-style-hint">Hook contrarian + insight + 3 lecciones numeradas + CTA hacia comentario o DM.</span></span>
-              </div>
-              <button id="btn-regenerate" class="cb-step-btn s1" onclick="handleRegenerate()">
-                <i data-lucide="sparkles" style="width:12px"></i> Generate Brief
-              </button>
-            </div>
-            <div id="cb-step-1-body" class="cb-step-body empty">
-              Sin brief todavía. Click en <strong>Generate Brief</strong> arriba para que WF06 lea el contexto y devuelva el prompt.
-            </div>
-          </div>
+          <!-- ─── 3 agentes secuenciales (WF12 con mode= brief/caption/visual) ───
+               1. Brief: lee Branding Bio + SMB + HookMiner + CompetitorsViews y
+                  produce el brief estructurado.
+               2. Texto: toma el brief + las publicaciones top de la marca + los
+                  hooks ganadores y escribe el caption.
+               3. Visual: toma el brief + paleta + tipografía y escribe los
+                  visual prompts (cita hex codes literales).
+               Cada paso tiene su propio botón. Caption y Visual quedan
+               deshabilitados hasta que el Brief exista. -->
 
-          <!-- STEP 2 — Draft Builder (WF07) -->
-          <div class="cb-step" id="cb-step-2">
+          <!-- AGENTE 1 · BRIEF -->
+          <div class="cb-step" id="cb-step-brief" style="border:1px solid #E9D5FF; background:linear-gradient(180deg,#FAF5FF 0%,white 70%);">
             <div class="cb-step-head">
-              <span class="cb-step-num">2</span>
+              <span class="cb-step-num" style="background:#7C3AED">1</span>
               <div class="cb-step-title">
-                <strong>Contenido escrito — caption listo para publicar</strong>
-                <span class="cb-step-sub">webhook <code>wf07-content-builder</code> · escribe + corre QA contra reglas de voz</span>
+                <strong>Agente 1 · Brief — qué se va a publicar y por qué</strong>
+                <span class="cb-step-sub">Lee <strong>Branding Bio</strong> (paleta + tipografía), <strong>SocialMediaBios</strong> (voz + top posts), <strong>HookMiner</strong> (hooks ganadores) y <strong>CompetitorsViews</strong> (estructuras virales) → produce objetivo, ángulo, tono, paleta, hooks a usar y qué evitar.</span>
               </div>
-              <button id="btn-build-draft" class="cb-step-btn s2" onclick="handleBuildDraft()">
-                <i data-lucide="wand-2" style="width:12px"></i> Build Draft
+              <button id="btn-brief-generate" class="cb-step-btn" style="background:#7C3AED;color:white;" onclick="handleGenerateBrief()">
+                <i data-lucide="sparkles" style="width:12px"></i> Armar brief
               </button>
             </div>
             <div class="cb-step-body">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                  <span id="cb-tag-channel" class="lm-tag" style="background:linear-gradient(135deg,#833AB4,#FD1D1D 60%,#FCB045);color:white;font-weight:700">Instagram</span>
-                  <span class="lm-tag" style="background:#FEE2E2;color:#991B1B">Contrarian hook</span>
-                  <span class="lm-tag" style="background:#F0FDF4;color:#166534">Hook score 96</span>
+              <details id="cb-composed-prompt-wrap" style="margin-bottom:14px; border:1px solid var(--border); border-radius:8px; background:#FAFBFC;">
+                <summary style="padding:10px 14px; cursor:pointer; font-size:12px; font-weight:700; color:#6B21A8; user-select:none;">
+                  <i data-lucide="file-code" style="width:11px;vertical-align:middle;margin-right:5px"></i>Ver el contexto que el agente leyó (<span id="cb-composed-prompt-counts" style="color:var(--text-muted);font-weight:400;">aún no generado</span>)
+                </summary>
+                <pre id="cb-composed-prompt" style="margin:0; padding:14px; font-size:11px; line-height:1.5; color:#1F2937; white-space:pre-wrap; word-break:break-word; max-height:420px; overflow-y:auto; background:#FAFBFC; border-top:1px solid var(--border);">— Sin generar todavía. Click en "Armar brief" para ver qué fuentes leyó el agente.</pre>
+              </details>
+              <div id="cb-brief-body" style="min-height:140px; padding:16px; border:1px dashed #DDD6FE; border-radius:8px; background:#FAFBFC; color:var(--text-muted); font-size:12px; font-style:italic; text-align:center; display:flex; align-items:center; justify-content:center;">
+                Sin brief todavía. El agente lee tus 4 fuentes y produce objetivo, ángulo, tono, paleta y hooks recomendados.
+              </div>
+            </div>
+          </div>
+
+          <!-- AGENTE 2 · TEXTO -->
+          <div class="cb-step" id="cb-step-caption" style="margin-top:14px; border:1px solid #BBF7D0; background:linear-gradient(180deg,#F0FDF4 0%,white 70%);">
+            <div class="cb-step-head">
+              <span class="cb-step-num" style="background:#10B981">2</span>
+              <div class="cb-step-title">
+                <strong>Agente 2 · Texto del post — anclado al brief</strong>
+                <span class="cb-step-sub">Toma el brief de arriba + las publicaciones top de la marca + los hooks ganadores → escribe el caption respetando voz, ALWAYS / NEVER y formato del canal.</span>
+              </div>
+              <button id="btn-caption-generate" class="cb-step-btn" style="background:#10B981;color:white;opacity:0.55;" onclick="handleGenerateCaption()" disabled title="Armá el brief primero.">
+                <i data-lucide="type" style="width:12px"></i> Generar texto del post
+              </button>
+            </div>
+            <div class="cb-step-body">
+              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; background:white;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="font-size:12px; color:#1F2937;"><i data-lucide="type" style="width:12px;vertical-align:middle;margin-right:4px;color:#10B981"></i>Caption</strong>
+                  <span id="cb-tag-channel" class="lm-tag" style="background:linear-gradient(135deg,#833AB4,#FD1D1D 60%,#FCB045);color:white;font-weight:700;font-size:10px;">Instagram</span>
                 </div>
-                <span id="cb-generated-meta" style="font-size:11px; color:var(--text-muted);">Sin draft aún</span>
+                <p id="cb-post-body" style="font-size:13px; line-height:1.6; color:var(--text-main); white-space:pre-line; margin:0; min-height:120px;">Sin caption todavía. Armá el brief primero, después generá el texto.</p>
+                <div id="cb-post-hashtags" style="margin-top:10px; line-height:1.8;"></div>
               </div>
-              <p id="cb-post-body" style="font-size:14px; line-height:1.65; color:var(--text-main); white-space:pre-line; margin:0; padding:14px; background:#FAFBFC; border:1px dashed var(--border); border-radius:8px;">Hacé click en <strong>Build Draft</strong> y WF07 va a generar el caption usando el brief del paso 1, el tono aprendido en SocialMediaBios y los hooks de HookMiner.</p>
             </div>
           </div>
 
-          <!-- STEP 3 — Visual Render (WF09) -->
-          <div class="cb-step" id="cb-step-3">
+          <!-- AGENTE 3 · VISUAL PROMPT -->
+          <div class="cb-step" id="cb-step-visual" style="margin-top:14px; border:1px solid #BAE6FD; background:linear-gradient(180deg,#F0F9FF 0%,white 70%);">
             <div class="cb-step-head">
-              <span class="cb-step-num">3</span>
+              <span class="cb-step-num" style="background:#0EA5E9">3</span>
               <div class="cb-step-title">
-                <strong>Visual on-brand — imagen o carrusel</strong>
-                <span class="cb-step-sub">webhook <code>wf09-creative-brain</code> · DALL-E 3 + paleta de Branding Bio</span>
+                <strong>Agente 3 · Visual prompt — anclado al brief</strong>
+                <span class="cb-step-sub">Toma el brief + paleta exacta (hex) + tipografía → escribe el visual prompt (single o slide_prompts[] para carrusel) que después se manda a Gemini.</span>
               </div>
-              <button id="btn-generate-visual" class="cb-step-btn s3" onclick="handleGenerateVisual()">
-                <i data-lucide="image" style="width:12px"></i> Generate Visual
+              <button id="btn-visual-generate" class="cb-step-btn" style="background:#0EA5E9;color:white;opacity:0.55;" onclick="handleGenerateVisual()" disabled title="Armá el brief primero.">
+                <i data-lucide="image" style="width:12px"></i> Generar prompt visual
               </button>
             </div>
             <div class="cb-step-body">
-              <div id="visual-brief-body" style="min-height:60px;">
-                <div style="color:var(--text-muted); font-size:12px; font-style:italic;">Sin visual aún. WF09 va a usar el prompt visual de <strong>Campaign Setup</strong> + la paleta de Branding Bio. Para SWL el agente sugiere carrusel multi-slide.</div>
+              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; background:white;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <strong style="font-size:12px; color:#1F2937;"><i data-lucide="image" style="width:12px;vertical-align:middle;margin-right:4px;color:#0EA5E9"></i>Visual prompt</strong>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <span id="cb-visual-meta" style="font-size:10px;"></span>
+                    <button id="btn-copy-visual" onclick="handleCopyVisualPrompt()" style="font-size:10px; padding:3px 8px; border:1px solid var(--border); border-radius:4px; background:white; cursor:pointer;"><i data-lucide="copy" style="width:10px"></i> copy</button>
+                  </div>
+                </div>
+                <div id="cb-visual-prompt-output" style="font-size:13px; line-height:1.6; color:var(--text-main); white-space:pre-line; margin:0; min-height:120px;">Sin visual prompt todavía. Armá el brief primero, después generá el visual.</div>
               </div>
+            </div>
+          </div>
+
+          <!-- Image Generation — WF13 takes the visual_prompt from WF12 and produces a real image via Gemini nanobanana -->
+          <div class="cb-step" id="cb-step-image" style="border:1px solid #DDD6FE; background:linear-gradient(180deg,#FAF5FF 0%,white 70%); margin-top:14px;">
+            <div class="cb-step-head">
+              <span class="cb-step-num" style="background:#8B5CF6">🎨</span>
+              <div class="cb-step-title">
+                <strong>Imagen — generación real con Gemini nanobanana</strong>
+                <span class="cb-step-sub">webhook <code>wf13-image-gen</code> · toma el <em>visual_prompt</em> de arriba y lo manda directo a Gemini 2.5 Flash Image (sin pasar por OpenAI)</span>
+              </div>
+              <button id="btn-generate-image-wf09" class="cb-step-btn" style="background:#8B5CF6;color:white;" onclick="handleGenerateImageFromUnified()" disabled title="Primero generá el contenido arriba para tener un visual prompt.">
+                <i data-lucide="image" style="width:12px"></i> Generar imagen
+              </button>
+            </div>
+            <div class="cb-step-body">
+              <div id="cb-wf09-image-body" style="min-height:120px; display:flex; align-items:center; justify-content:center; padding:24px; border:1px dashed var(--border); border-radius:8px; background:#FAFBFC; color:var(--text-muted); font-size:12px; font-style:italic; text-align:center;">
+                Generá el contenido arriba primero. Cuando esté listo, este botón se habilita y WF13 va a usar el visual prompt generado por el agente.
+              </div>
+              <div id="cb-wf09-image-meta" style="margin-top:10px; font-size:11px; color:var(--text-muted); display:none;"></div>
             </div>
           </div>
 
@@ -9783,121 +11138,6 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <!-- ─────────────────────────────────────────── -->
-        <!-- Visual Creative section (formerly CreativeBrain) -->
-        <!-- ─────────────────────────────────────────── -->
-        <div style="margin-top:32px; padding-top:24px; border-top:2px dashed var(--border);">
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-            <span style="font-size:22px;">🎨</span>
-            <h2 style="margin:0; font-size:20px; font-weight:800; color:#6B21A8;">Visual Creative — multi-format assets on-brand</h2>
-          </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 18px 28px;">Renders the content above into banners, ad variants, email templates and short-form video covers. Every asset on-brand by default. Driven by the visual prompt in <strong>Campaign Setup</strong>.</p>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-            <div style="display:flex; gap:12px; flex-wrap:wrap;">
-              <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-creative-last-batch">Last batch: —</span></span>
-              <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cb-brand-guide">Brand guide: —</span></span>
-            </div>
-            <button id="cb-generate-visual-btn" onclick="handleGenerateVisualFromCB()" style="padding:8px 16px; background:#A855F7; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:6px"></i>Generate New Visual</button>
-          </div>
-
-          <!-- Asset gallery -->
-          <div class="card" style="margin-top:18px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-              <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> <span id="cb-gallery-title">Asset Library</span></h3>
-              <select id="cb-format-filter" onchange="hydrateCreativeBrainView()" style="padding:4px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
-                <option value="">All formats</option>
-              </select>
-            </div>
-            <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-top:14px;" id="cb-gallery">
-              <div style="grid-column: 1 / -1; padding:24px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
-            </div>
-          </div>
-
-          <!-- Format distribution + compliance -->
-          <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
-            <div class="card" style="height:320px; display:flex; flex-direction:column;">
-              <h3 class="card-title">Assets by Format (30d)</h3>
-              <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpAssetFormatChart"></canvas></div>
-            </div>
-            <div class="card">
-              <h3 class="card-title"><i data-lucide="shield-check"></i> Brand Compliance Check</h3>
-              <div style="margin-top:14px;">
-                ${[
-                  {label:'Logo placement & sizing', pct:100, color:'#10B981'},
-                  {label:'Palette adherence', pct:98, color:'#10B981'},
-                  {label:'Typography rules', pct:96, color:'#10B981'},
-                  {label:'Tone alignment (vs voice rules)', pct:94, color:'#10B981'},
-                  {label:'Imagery style guide', pct:87, color:'#F59E0B'},
-                ].map(c => `<div style="margin-bottom:14px;"><div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span>${c.label}</span><span style="color:${c.color}; font-weight:600;">${c.pct}%</span></div><div style="height:6px; background:#F3F4F6; border-radius:3px; overflow:hidden;"><div style="height:100%; width:${c.pct}%; background:${c.color};"></div></div></div>`).join('')}
-                <div style="padding:10px 12px; background:#FFF7ED; border-left:3px solid #F59E0B; border-radius:4px; margin-top:14px;">
-                  <strong style="font-size:12px;">⚠ 2 flagged assets</strong><p style="font-size:11px; color:var(--text-muted); margin-top:4px;">Imagery style drift detected in 2 video covers — human review recommended before publish.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Template Library -->
-          <div class="card" style="margin-top:24px;">
-            <h3 class="card-title"><i data-lucide="layout-template"></i> Template Library — pre-configured and brand-locked</h3>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-top:14px;">
-              ${[
-                {name:'LinkedIn Single Post',    size:'1200×627', variants:12, color:'#0A66C2'},
-                {name:'LinkedIn Carousel (10)',  size:'1080×1080', variants:8, color:'#0A66C2'},
-                {name:'Email Hero Banner',       size:'600×200',  variants:6, color:'#F59E0B'},
-                {name:'YouTube Thumbnail',       size:'1280×720', variants:14, color:'#EF4444'},
-                {name:'Blog Hero Image',         size:'1600×900', variants:9, color:'#374151'},
-                {name:'X/Twitter Card',          size:'1200×675', variants:7, color:'#0F172A'},
-                {name:'Instagram Story',         size:'1080×1920', variants:5, color:'#EC4899'},
-                {name:'Google Ad · Display',     size:'336×280',  variants:11, color:'#22C55E'},
-              ].map(t => `
-                <div style="padding:12px; border:1px solid var(--border); border-radius:8px; transition:transform 0.15s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                  <div style="width:100%; aspect-ratio:${t.size.replace('×','/')}; background:linear-gradient(135deg, ${t.color}22, ${t.color}55); border-radius:4px; margin-bottom:8px; max-height:90px;"></div>
-                  <div style="font-size:12px; font-weight:700;">${t.name}</div>
-                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${t.size} · ${t.variants} variants</div>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-
-          <!-- A/B Test results -->
-          <div class="card" style="margin-top:24px;">
-            <h3 class="card-title"><i data-lucide="git-branch"></i> A/B Test Results — last 30 days</h3>
-            <table class="lm-table" style="margin-top:14px;">
-              <thead><tr><th>Asset pair</th><th>Variant A</th><th>Variant B</th><th>Winner</th><th>Lift</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td><strong style="font-size:13px;">LinkedIn — dashboards post</strong><br><span style="font-size:11px;color:var(--text-muted)">Image vs text-only</span></td>
-                  <td>Static banner · dark<br><span style="font-size:11px;color:var(--text-muted)">2.1% CTR</span></td>
-                  <td>Text-only + emoji<br><span style="font-size:11px;color:var(--text-muted)">4.8% CTR</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
-                  <td style="color:#10B981;font-weight:700;">+128%</td>
-                </tr>
-                <tr>
-                  <td><strong style="font-size:13px;">Email — weekly brief header</strong><br><span style="font-size:11px;color:var(--text-muted)">Colorful vs minimal</span></td>
-                  <td>Gradient hero<br><span style="font-size:11px;color:var(--text-muted)">48% open</span></td>
-                  <td>Minimal · logo only<br><span style="font-size:11px;color:var(--text-muted)">52% open</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
-                  <td style="color:#10B981;font-weight:700;">+8%</td>
-                </tr>
-                <tr>
-                  <td><strong style="font-size:13px;">YouTube thumbnail</strong><br><span style="font-size:11px;color:var(--text-muted)">Face vs screenshot</span></td>
-                  <td>Dev face close-up<br><span style="font-size:11px;color:var(--text-muted)">7.2% CTR</span></td>
-                  <td>Code screenshot<br><span style="font-size:11px;color:var(--text-muted)">5.1% CTR</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">A wins</span></td>
-                  <td style="color:#10B981;font-weight:700;">+41%</td>
-                </tr>
-                <tr>
-                  <td><strong style="font-size:13px;">Google Ad · Display 336×280</strong><br><span style="font-size:11px;color:var(--text-muted)">CTA variant</span></td>
-                  <td>"Start free trial"<br><span style="font-size:11px;color:var(--text-muted)">1.8% CTR</span></td>
-                  <td>"See it live"<br><span style="font-size:11px;color:var(--text-muted)">2.4% CTR</span></td>
-                  <td><span class="lm-tag" style="background:#D1FAE5;color:#065F46">B wins</span></td>
-                  <td style="color:#10B981;font-weight:700;">+33%</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     `,
 
