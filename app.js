@@ -6507,6 +6507,23 @@ function buildFontStackFromBrand(brandTypography, role = 'heading') {
 // (e.g. ["signs","Business","Ready","AI"] → "<span>4 </span><accent>signs</accent>...").
 // Matching is case-insensitive and whole-token only — won't accidentally tint
 // substrings inside longer words.
+// Pick the most CHROMATIC palette color for accent text/tags. Brand palettes
+// often mislabel roles (e.g. SWL tags its gold as "Text/Dark" and white as
+// "Accent"), so role-based picking gives an invisible white accent. Choosing
+// the highest-chroma hex reliably lands on the real brand color (the gold).
+function pickAccentColor(brandPalette, fallback) {
+  if (!Array.isArray(brandPalette)) return fallback;
+  let best = null, bestChroma = -1;
+  for (const p of brandPalette) {
+    const m = String((p && p.hex) || '').replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) continue;
+    const [r, g, b] = [m[1], m[2], m[3]].map(h => parseInt(h, 16));
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    if (chroma > bestChroma) { bestChroma = chroma; best = p.hex; }
+  }
+  return (best && bestChroma > 28) ? best : fallback;
+}
+
 function renderTwoColorHeadline(headline, accentWords, accentColor) {
   const text = String(headline || '');
   if (!text) return '';
@@ -6910,39 +6927,44 @@ async function renderDesignedSlide(spec, slideIndex, slideTotal, opts = {}) {
   // HYBRID — full-bleed Gemini visual + gradient scrim + code-rendered text
   // (perfect spelling, real brand fonts). Primary path for WF12 visual slides.
   if (spec.bg_prompt && bgImageDataUrl) {
+    // Accent = the brand's most chromatic color (gold for SWL), not the
+    // (often mislabeled) "accent" role which can be white/invisible.
+    const accentText = pickAccentColor(opts.palette, P.accent);
     const hItems = (() => {
       if (variant === 'stats' && items.length) {
-        return `<div style="display:flex;gap:30px;flex-wrap:wrap;margin-top:6px;">` + items.slice(0, 3).map(it => `
+        return `<div style="display:flex;gap:34px;flex-wrap:wrap;margin-top:8px;">` + items.slice(0, 3).map(it => `
           <div style="min-width:150px;">
-            <div style="font-size:84px;font-weight:800;color:${P.accent};line-height:1;font-family:${headingFont};text-shadow:0 2px 10px rgba(0,0,0,0.5);">${escapeHtml(it.value || '')}</div>
+            <div style="font-size:80px;font-weight:800;color:${accentText};line-height:1;font-family:${headingFont};">${escapeHtml(it.value || '')}</div>
             <div style="font-size:20px;font-weight:700;color:#fff;margin-top:4px;font-family:${headingFont};">${escapeHtml(it.label || it.title || '')}</div>
-            ${it.desc ? `<div style="font-size:14px;color:rgba(255,255,255,0.82);margin-top:2px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
+            ${it.desc ? `<div style="font-size:14px;color:rgba(255,255,255,0.78);margin-top:2px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
           </div>`).join('') + `</div>`;
       }
       if (variant === 'cards' && items.length) {
-        return `<div style="display:flex;flex-direction:column;gap:12px;margin-top:6px;">` + items.slice(0, 4).map(it => `
-          <div style="padding:16px 20px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);border-radius:14px;">
+        return `<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">` + items.slice(0, 4).map(it => `
+          <div style="padding:16px 20px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-left:3px solid ${accentText};border-radius:12px;">
             <div style="font-size:22px;font-weight:700;color:#fff;font-family:${headingFont};">${escapeHtml(it.title || '')}</div>
-            ${it.desc ? `<div style="font-size:15px;color:rgba(255,255,255,0.82);margin-top:3px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
+            ${it.desc ? `<div style="font-size:15px;color:rgba(255,255,255,0.8);margin-top:3px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
           </div>`).join('') + `</div>`;
       }
       return '';
     })();
     const hCta = spec.cta_text ? `
-      <div style="margin-top:6px;padding:20px 26px;background:${P.accent};border-radius:14px;align-self:flex-start;">
-        ${spec.cta_tag ? `<div style="font-size:15px;color:${P.tagText};font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:${headingFont};margin-bottom:4px;">${escapeHtml(spec.cta_tag)}</div>` : ''}
-        <div style="font-size:30px;font-weight:800;color:${P.tagText};line-height:1.15;font-family:${headingFont};">${escapeHtml(spec.cta_text)}</div>
+      <div style="margin-top:8px;padding:20px 26px;background:${accentText};border-radius:14px;align-self:flex-start;">
+        ${spec.cta_tag ? `<div style="font-size:15px;color:#1A1A1A;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:${headingFont};margin-bottom:4px;">${escapeHtml(spec.cta_tag)}</div>` : ''}
+        <div style="font-size:30px;font-weight:800;color:#1A1A1A;line-height:1.15;font-family:${headingFont};">${escapeHtml(spec.cta_text)}</div>
       </div>` : '';
+    // Full-bleed Gemini visual; a strong bottom band guarantees the code text is
+    // always crisp (no "baches"), while the top of the frame shows the visual.
     root.style.cssText = `position:fixed;left:-9999px;top:0;width:1080px;height:1080px;background:#0c0c0d url('${bgImageDataUrl}') center/cover no-repeat;font-family:${bodyFont};overflow:hidden;`;
     root.innerHTML = `
-      <div style="position:absolute;inset:0;background:linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.64) 34%, rgba(0,0,0,0.20) 64%, rgba(0,0,0,0.0) 100%);z-index:0;"></div>
-      <div style="position:absolute;top:56px;left:64px;right:64px;display:flex;justify-content:space-between;align-items:center;z-index:2;">
-        ${spec.tag ? `<span style="padding:8px 16px;background:${P.tagBg};color:${P.tagText};font-size:14px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;font-family:${headingFont};box-shadow:0 2px 8px rgba(0,0,0,0.4);">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
-        <span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:${P.accent};color:${P.tagText};font-size:16px;font-weight:700;border-radius:99px;font-family:${headingFont};box-shadow:0 2px 8px rgba(0,0,0,0.4);">${slideIndex}/${slideTotal}</span>
+      <div style="position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom, rgba(6,6,8,0.55), rgba(6,6,8,0));z-index:1;"></div>
+      <div style="position:absolute;top:52px;left:64px;right:64px;display:flex;justify-content:space-between;align-items:center;z-index:3;">
+        ${spec.tag ? `<span style="padding:8px 16px;background:${accentText};color:#1A1A1A;font-size:14px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;font-family:${headingFont};">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:${accentText};color:#1A1A1A;font-size:16px;font-weight:800;border-radius:99px;font-family:${headingFont};">${slideIndex}/${slideTotal}</span>
       </div>
-      <div style="position:absolute;left:0;right:0;bottom:64px;padding:0 64px;z-index:2;display:flex;flex-direction:column;gap:18px;">
-        <h1 style="font-size:68px;font-weight:800;line-height:1.06;margin:0;letter-spacing:-1px;font-family:${headingFont};color:#fff;text-shadow:0 2px 12px rgba(0,0,0,0.55);">${renderTwoColorHeadline(spec.headline || '', spec.headline_accent_words || [], P.accent)}</h1>
-        ${spec.sub ? `<p style="font-size:24px;color:rgba(255,255,255,0.92);line-height:1.4;margin:0;max-width:880px;font-family:${bodyFont};text-shadow:0 1px 5px rgba(0,0,0,0.5);">${escapeHtml(spec.sub)}</p>` : ''}
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:2;padding:160px 64px 64px;background:linear-gradient(to top, rgba(5,5,7,0.97) 58%, rgba(5,5,7,0.80) 80%, rgba(5,5,7,0) 100%);display:flex;flex-direction:column;gap:16px;">
+        <h1 style="font-size:66px;font-weight:800;line-height:1.07;margin:0;letter-spacing:-1px;font-family:${headingFont};color:#fff;">${renderTwoColorHeadline(spec.headline || '', spec.headline_accent_words || [], accentText)}</h1>
+        ${spec.sub ? `<p style="font-size:23px;color:rgba(255,255,255,0.9);line-height:1.4;margin:0;max-width:900px;font-family:${bodyFont};">${escapeHtml(spec.sub)}</p>` : ''}
         ${hItems}
         ${hCta}
       </div>`;
