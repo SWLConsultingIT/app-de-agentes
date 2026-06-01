@@ -5115,6 +5115,10 @@ let lastCaptionResult = null;  // output of mode='caption'
 let lastVisualResult  = null;  // output of mode='visual'
 // Backward-compat — handleApproveQueue / WF13 image gen still read this.
 let lastUnifiedResult = null;
+// Per-slide state for the "corregir un slide" feature: original prompt + url + ctx
+// so the user can regenerate a single slide with a spelling/content correction.
+let lastRenderedSlides = [];        // [{ slot, index, kind, prompt, url, error }]
+let lastImageGenCtx    = null;      // { brandId, draftId, channel }
 
 function resetCbAgentState() {
   lastBriefResult = null;
@@ -5646,6 +5650,9 @@ async function handleGenerateImageFromUnified() {
   const typography = lastVisualResult.brand_defaults?.typography;
   const toneFlags  = lastVisualResult.brand_defaults?.tone_flags || lastBriefResult?.brand_defaults?.tone_flags || [];
 
+  // Remember the context so a single slide can be regenerated with a correction.
+  lastImageGenCtx = { brandId, draftId, channel };
+
   const photoCount    = slides.filter(s => s.kind === 'photo').length;
   const designedCount = slides.filter(s => s.kind === 'designed_text').length;
   const totalSlides   = slides.length;
@@ -5690,9 +5697,18 @@ async function handleGenerateImageFromUnified() {
     const gridCols = usable.length === 1 ? '1fr' : (usable.length === 2 ? '1fr 1fr' : 'repeat(auto-fit, minmax(180px, 1fr))');
     // Store full-res URLs in order on the body element so the lightbox click handler
     // can read them by index without serializing data URLs into onclick attributes.
-    const lightboxUrls = results.map(r => r.url || null);
+    // Persist per-slide state so a single slide can be regenerated with a correction.
+    lastRenderedSlides = results.map((r, i) => ({
+      slot:   i,
+      index:  r.index,
+      kind:   r.kind,
+      prompt: (slides[i] && slides[i].prompt) || '',
+      url:    r.url || null,
+      error:  r.error || null,
+    }));
+
     const slidesGrid = results.map((r, i) => {
-      if (r.error) return `<div style="padding:24px;border:1px dashed #FCA5A5;border-radius:8px;text-align:center;color:#991B1B;font-size:11px;background:#FEF2F2;">Slide ${r.index} falló<br><small>${escapeHtml(r.error)}</small></div>`;
+      if (r.error) return `<div class="cb-slide-cell" data-slide-idx="${i}" style="padding:24px;border:1px dashed #FCA5A5;border-radius:8px;text-align:center;color:#991B1B;font-size:11px;background:#FEF2F2;">Slide ${r.index} falló<br><small>${escapeHtml(r.error)}</small></div>`;
       const isDesigned = r.kind === 'designed_text';
       return `
         <div class="cb-slide-thumb" data-slide-idx="${i}" style="position:relative;border-radius:8px;overflow:hidden;border:1px solid ${isDesigned ? '#D8B4FE' : '#BAE6FD'};background:${isDesigned ? '#FAF5FF' : '#F0F9FF'};cursor:zoom-in;transition:transform .12s, box-shadow .12s;">
@@ -5701,6 +5717,10 @@ async function handleGenerateImageFromUnified() {
         </div>`;
     }).join('');
 
+    const fixOptions = lastRenderedSlides
+      .map(s => `<option value="${s.slot}">Slide ${s.index}${s.error ? ' (falló)' : ''}</option>`)
+      .join('');
+
     body.innerHTML = `
       <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
         <div id="cb-slides-grid" style="display:grid;grid-template-columns:${gridCols};gap:8px;">${slidesGrid}</div>
@@ -5708,15 +5728,37 @@ async function handleGenerateImageFromUnified() {
           <span style="font-size:11px;color:#6B21A8;font-weight:600;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:4px"></i>${photoCount} foto${photoCount === 1 ? '' : 's'} via Gemini + ${designedCount} diseñada${designedCount === 1 ? '' : 's'} via canvas · ${escapeHtml(channel)}</span>
           <span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">Click un slide para verlo grande</span>
         </div>
+        <div id="cb-fix-section" style="margin-top:4px;padding:12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;">
+          <div style="font-size:11px;font-weight:700;color:#9A3412;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
+            <i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:4px"></i>Corregir un slide
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <select id="cb-fix-slide" style="padding:8px 10px;border:1px solid #FDBA74;border-radius:8px;font-size:12px;background:white;color:#7C2D12;">${fixOptions}</select>
+            <input id="cb-fix-note" type="text" placeholder='ej: dice &quot;negoico&quot;, debe decir &quot;negocio&quot; · sacá la línea de abajo' style="flex:1;min-width:260px;padding:8px 10px;border:1px solid #FDBA74;border-radius:8px;font-size:12px;" />
+            <button id="cb-fix-btn" style="padding:8px 14px;border:none;border-radius:8px;background:#EA580C;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+              <i data-lucide="refresh-cw" style="width:12px;vertical-align:middle;margin-right:4px"></i>Regenerar slide
+            </button>
+          </div>
+          <div style="font-size:10.5px;color:#9A3412;margin-top:6px;font-style:italic;">Escribí cómo debe decir el texto, o qué sacar / qué poner. Regenera solo ese slide con Gemini, manteniendo el estilo.</div>
+        </div>
       </div>`;
-    // Wire click → lightbox for each thumbnail.
+    // Wire click → lightbox for each thumbnail (urls read live from state so corrections show).
     body.querySelectorAll('.cb-slide-thumb').forEach(el => {
       el.addEventListener('mouseenter', () => { el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 6px 18px rgba(99,102,241,0.18)'; });
       el.addEventListener('mouseleave', () => { el.style.transform = ''; el.style.boxShadow = ''; });
       el.addEventListener('click', () => {
-        const idx = Number(el.dataset.slideIdx);
-        openSlideLightbox(lightboxUrls.filter(Boolean), idx);
+        const slot = Number(el.dataset.slideIdx);
+        const urls = lastRenderedSlides.map(s => s.url).filter(Boolean);
+        const before = lastRenderedSlides.slice(0, slot).filter(s => s.url).length;
+        openSlideLightbox(urls, before);
       });
+    });
+    // Wire the correction section.
+    const fixBtn = document.getElementById('cb-fix-btn');
+    if (fixBtn) fixBtn.addEventListener('click', () => {
+      const slot = Number(document.getElementById('cb-fix-slide')?.value);
+      const note = (document.getElementById('cb-fix-note')?.value || '').trim();
+      regenerateSlideWithCorrection(slot, note);
     });
     if (meta) {
       meta.style.display = '';
@@ -5740,6 +5782,76 @@ async function handleGenerateImageFromUnified() {
       lucide.createIcons();
     }, 2500);
     lucide.createIcons();
+  }
+}
+
+// Regenerate ONE slide with a user correction (spelling fix / what to remove or add).
+// Appends the correction to that slide's original Gemini prompt and swaps the image in place.
+async function regenerateSlideWithCorrection(slot, note) {
+  if (!Number.isInteger(slot) || !lastRenderedSlides[slot]) {
+    showToast('Elegí un slide para corregir.', 'error');
+    return;
+  }
+  if (!note) {
+    showToast('Escribí la corrección (cómo va el texto, o qué sacar / qué poner).', 'error');
+    return;
+  }
+  const slide = lastRenderedSlides[slot];
+  if (!slide.prompt) {
+    showToast('Ese slide no tiene prompt original para regenerar.', 'error');
+    return;
+  }
+  const ctx = lastImageGenCtx || {};
+  const correctedPrompt =
+    `${slide.prompt}\n\nUSER CORRECTION (apply literally, keep the SAME visual style, palette, layout and medium): ${note}. ` +
+    `Re-render this slide fixing the text exactly as specified — every rendered word must be spelled correctly with proper Spanish accents. ` +
+    `Render ONLY the meaningful headline/body words; never render hex codes, hashtags or font names as text.`;
+
+  const fixBtn  = document.getElementById('cb-fix-btn');
+  const origBtn = fixBtn ? fixBtn.innerHTML : '';
+  if (fixBtn) {
+    fixBtn.disabled = true;
+    fixBtn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Regenerando…';
+    lucide.createIcons();
+  }
+
+  try {
+    const url = await generateOnePhotoViaWf13({
+      brandId: ctx.brandId, draftId: ctx.draftId, channel: ctx.channel,
+      prompt: correctedPrompt, index: slide.index,
+    });
+    if (!url) throw new Error('Gemini no devolvió imagen');
+
+    lastRenderedSlides[slot].url = url;
+    lastRenderedSlides[slot].error = null;
+
+    const cell = document.querySelector(`#cb-slides-grid [data-slide-idx="${slot}"]`);
+    const img = cell ? cell.querySelector('img') : null;
+    if (img) {
+      img.src = url;
+    } else if (cell) {
+      // The slot was an error cell — turn it into a real thumbnail.
+      cell.outerHTML = `
+        <div class="cb-slide-thumb" data-slide-idx="${slot}" style="position:relative;border-radius:8px;overflow:hidden;border:1px solid #BAE6FD;background:#F0F9FF;cursor:zoom-in;">
+          <div style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,0.72);color:white;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;z-index:2;">${slide.index} · 📷</div>
+          <img src="${escapeHtml(url)}" alt="slide ${slide.index}" style="width:100%;display:block;aspect-ratio:1/1;object-fit:cover;background:#FAFBFC;pointer-events:none;" />
+        </div>`;
+      const newCell = document.querySelector(`#cb-slides-grid .cb-slide-thumb[data-slide-idx="${slot}"]`);
+      if (newCell) newCell.addEventListener('click', () => {
+        const urls = lastRenderedSlides.map(s => s.url).filter(Boolean);
+        const before = lastRenderedSlides.slice(0, slot).filter(s => s.url).length;
+        openSlideLightbox(urls, before);
+      });
+    }
+
+    const noteInput = document.getElementById('cb-fix-note');
+    if (noteInput) noteInput.value = '';
+    showToast(`Slide ${slide.index} regenerado.`);
+  } catch (e) {
+    console.error('[fix-slide] error:', e);
+    showToast(`No se pudo regenerar el slide: ${e.message || e}`, 'error');
+  } finally {
+    if (fixBtn) { fixBtn.disabled = false; fixBtn.innerHTML = origBtn; lucide.createIcons(); }
   }
 }
 
