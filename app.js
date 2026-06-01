@@ -11137,41 +11137,6 @@ function generateViewHTML(view) {
             3 pasos secuenciales conectados a n8n. Cada paso es un webhook independiente. El brief, el copy y el visual cambian según el canal — el agente lee el análisis de <strong>SocialMediaBios</strong> almacenado en Supabase para producir contenido que matchea el perfil real.
           </p>
 
-          <!-- Brand context strip (auto-pulled from SocialMediaBios) -->
-          <div style="padding:12px 14px; background:linear-gradient(135deg, #FDF4FF 0%, #F0F9FF 100%); border:1px solid #F3E8FF; border-radius:10px; margin-bottom:18px;">
-            <div style="font-size:11px; color:#6B21A8; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
-              <i data-lucide="brain" style="width:11px;vertical-align:middle;margin-right:4px"></i>
-              Contexto que el agente está usando
-            </div>
-            <div id="cb-context-pills" style="display:flex; gap:6px; flex-wrap:wrap;">
-              <span class="cb-context-pill"><span class="lbl">handle:</span>—</span>
-            </div>
-            <div id="cb-format-recommendation" style="margin-top:10px; padding:8px 12px; background:white; border:1px dashed #C7D2FE; border-radius:8px; font-size:12px; display:none;">
-              <i data-lucide="zap" style="width:12px;vertical-align:middle;color:#7C3AED;margin-right:4px"></i>
-              <strong style="color:#1E1B4B">Formato recomendado:</strong>
-              <span id="cb-format-reco-text" style="color:var(--text-main)">—</span>
-            </div>
-          </div>
-
-          <!-- Briefing del usuario — único input de texto. Alimenta WF06 (brief), WF07 (draft) y WF09 (visual). -->
-          <div style="padding:16px; border:1px solid #FED7AA; border-radius:10px; background:linear-gradient(180deg,#FFF7ED 0%,white 80%); margin-bottom:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; gap:8px;">
-              <label style="font-size:11px; color:#9A3412; text-transform:uppercase; letter-spacing:0.5px; font-weight:700; margin:0;">
-                <i data-lucide="message-square" style="width:11px;vertical-align:middle;margin-right:4px"></i>Briefing <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— qué querés que cree el agente (texto + visual se derivan de acá)</span>
-              </label>
-              <button id="btn-save-briefing" onclick="handleSaveUserBriefing()" title="Guarda el briefing en Supabase (user_briefings) — el agente WF06 lo lee como base del prompt en vez de tratarlo como hint opcional." style="padding:6px 12px; background:white; color:#9A3412; border:1px solid #FED7AA; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
-                <i data-lucide="save" style="width:11px"></i> Guardar briefing
-              </button>
-            </div>
-            <textarea id="cb-user-brief" rows="3" placeholder="Ej: carrusel de 5 slides con datos duros sobre ROI. Tono más directo. No mencionar precios." style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:6px; font-size:13px; font-family:var(--font-main); line-height:1.5; outline:none; background:white; resize:vertical;"></textarea>
-            <div id="cb-briefing-saved" style="margin-top:6px; font-size:10.5px; color:#9A3412;">
-              Sin guardar — el agente solo va a leer lo que esté escrito al momento de generar.
-            </div>
-            <div style="margin-top:6px; font-size:10.5px; color:var(--text-muted);" id="cb-inspiration-line">
-              <i data-lucide="sparkles" style="width:10px;vertical-align:middle;margin-right:3px"></i>Inspirado en: hooks de HookMiner + posts top de competidores (cargando…) — se respeta la voz de la marca, no se copia.
-            </div>
-          </div>
-
           <!-- ─── 3 agentes secuenciales (WF12 con mode= brief/caption/visual) ───
                1. Brief: lee Branding Bio + SMB + HookMiner + CompetitorsViews y
                   produce el brief estructurado.
