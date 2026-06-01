@@ -3,6 +3,7 @@ _project/
 .env
 *.env
 .mcp.json
+n8n-workflows/
 
 # macOS
 .DS_Store
@@ -11,4 +12,6 @@ _project/
 
 # Skills (repos externos — demasiado pesados para subir)
 skills/
+
+# Vercel
 .vercel
