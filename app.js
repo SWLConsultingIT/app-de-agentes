@@ -5520,6 +5520,14 @@ function openSlideLightbox(urls, startIndex = 0) {
         display:flex; align-items:center; justify-content:center;
       }
       #cb-lightbox .cb-lb-close:hover { background:rgba(255,255,255,0.22); }
+      #cb-lightbox .cb-lb-dl {
+        position:absolute; top:20px; right:74px;
+        width:40px; height:40px; border-radius:50%;
+        background:rgba(255,255,255,0.10); color:white; border:none;
+        font-size:18px; cursor:pointer;
+        display:flex; align-items:center; justify-content:center;
+      }
+      #cb-lightbox .cb-lb-dl:hover { background:rgba(255,255,255,0.22); }
       #cb-lightbox .cb-lb-counter {
         position:absolute; top:24px; left:50%; transform:translateX(-50%);
         color:rgba(255,255,255,0.8); font-size:13px; font-weight:600;
@@ -5534,6 +5542,7 @@ function openSlideLightbox(urls, startIndex = 0) {
       }
     </style>
     <button class="cb-lb-close" type="button" title="Cerrar (Esc)">✕</button>
+    <button class="cb-lb-dl" type="button" title="Descargar este slide">⬇</button>
     <span class="cb-lb-counter"></span>
     <button class="cb-lb-btn prev" type="button" title="Slide anterior (←)" ${urls.length < 2 ? 'style="display:none"' : ''}>‹</button>
     <img class="cb-lb-img" alt="slide" />
@@ -5571,6 +5580,8 @@ function openSlideLightbox(urls, startIndex = 0) {
   });
   prevBtn.addEventListener('click', prev);
   nextBtn.addEventListener('click', next);
+  const dlBtn = overlay.querySelector('.cb-lb-dl');
+  if (dlBtn) dlBtn.addEventListener('click', (e) => { e.stopPropagation(); downloadDataUrl(urls[idx], `slide-${idx + 1}.png`); });
   closeBtn.addEventListener('click', close);
   document.addEventListener('keydown', onKey);
 }
@@ -5727,7 +5738,10 @@ async function handleGenerateImageFromUnified() {
         <div id="cb-slides-grid" style="display:grid;grid-template-columns:${gridCols};gap:8px;">${slidesGrid}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
           <span style="font-size:11px;color:#6B21A8;font-weight:600;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:4px"></i>${usable.length} slide${usable.length === 1 ? '' : 's'} · visual Gemini + texto real (ortografía perfecta) · ${escapeHtml(channel)}</span>
-          <span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">Click un slide para verlo grande</span>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button id="cb-download-all" title="Descarga cada slide como PNG a tu compu — no se pierden al regenerar" style="padding:7px 14px;border:none;border-radius:8px;background:#16A34A;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;"><i data-lucide="download" style="width:12px;vertical-align:middle;margin-right:4px"></i>Descargar todas</button>
+            <span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">Click un slide para verlo grande</span>
+          </div>
         </div>
         <div id="cb-fix-section" style="margin-top:4px;padding:12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;">
           <div style="font-size:11px;font-weight:700;color:#9A3412;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
@@ -5761,6 +5775,8 @@ async function handleGenerateImageFromUnified() {
       const note = (document.getElementById('cb-fix-note')?.value || '').trim();
       regenerateSlideWithCorrection(slot, note);
     });
+    const dlBtn = document.getElementById('cb-download-all');
+    if (dlBtn) dlBtn.addEventListener('click', () => downloadAllSlides(channel));
     if (meta) {
       meta.style.display = '';
       const errs = results.filter(r => r.error).length;
@@ -5864,6 +5880,32 @@ async function regenerateSlideWithCorrection(slot, note) {
   } finally {
     if (fixBtn) { fixBtn.disabled = false; fixBtn.innerHTML = origBtn; lucide.createIcons(); }
   }
+}
+
+// Trigger a browser download of a data: (or http) URL.
+function downloadDataUrl(url, filename) {
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) { console.error('[download] failed', e); }
+}
+
+// Download every rendered slide as a PNG so the carousel is never lost on
+// regeneration. Files land in the browser's downloads folder.
+async function downloadAllSlides(channel) {
+  const slides = (lastRenderedSlides || []).filter(s => s.url);
+  if (!slides.length) { showToast('No hay imágenes para descargar.', 'error'); return; }
+  const slug = String(channel || 'post').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'post';
+  const stamp = new Date().toISOString().slice(0, 10);
+  for (const s of slides) {
+    downloadDataUrl(s.url, `${slug}-${stamp}-slide-${s.index}.png`);
+    await new Promise(r => setTimeout(r, 350));  // avoid the browser blocking the burst
+  }
+  showToast(`Descargando ${slides.length} imagen${slides.length === 1 ? '' : 'es'} — revisá tu carpeta de descargas.`);
 }
 
 // ── WF07 Content Builder + QA (LEGACY — reemplazado por WF12, queda por compat) ──
