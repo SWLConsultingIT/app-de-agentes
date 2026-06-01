@@ -4863,6 +4863,11 @@ async function buildInspirationPayload(brandId, channel) {
 // in the payload as `saved_briefing` so the agent treats it as locked spec
 // instead of an optional hint.
 async function loadUserBriefing(brandId, channel) {
+  // Briefing UI was removed — generation runs purely from brand identity +
+  // visual-style audit + hooks/competitors. We intentionally ignore any
+  // briefing previously saved in Supabase so it can't silently steer the agent.
+  return null;
+  // eslint-disable-next-line no-unreachable
   if (!brandId || !channel) return null;
   try {
     const params = new URLSearchParams({
