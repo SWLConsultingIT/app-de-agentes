@@ -3294,7 +3294,9 @@ function renderBrandVerticals() {
     const badgeColor = v.source === 'scraper' ? '#7C3AED' : (v.source === 'manual' ? '#0EA5E9' : '#64748B');
     const badgeBg    = v.source === 'scraper' ? '#F3E8FF' : (v.source === 'manual' ? '#E0F2FE' : '#F1F5F9');
     const badgeText  = v.source === 'scraper' ? 'Detectado' : (v.source === 'manual' ? 'Manual' : 'Default');
-    const desc = v.desc ? `<span style="color:var(--text-muted)"> — ${escapeHtml(v.desc)}</span>` : '';
+    const hasProfile = v.profile && typeof v.profile === 'object' && (v.profile.summary || v.profile.one_paragraph);
+    const descText = hasProfile ? (v.profile.summary || v.profile.one_paragraph) : v.desc;
+    const desc = descText ? `<span style="color:var(--text-muted)"> — ${escapeHtml(descText)}</span>` : '';
 
     // Channel matrix: one pill per channel with toggle + posts/month number input
     const totalPosts = CB_VERTICAL_CHANNELS.reduce((s, c) => s + (v.channels[c.key].enabled ? Number(v.channels[c.key].postsPerMonth) || 0 : 0), 0);
@@ -3333,9 +3335,11 @@ function renderBrandVerticals() {
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span style="font-size:9.5px; font-weight:700; color:${badgeColor}; background:${badgeBg}; padding:2px 6px; border-radius:99px; letter-spacing:0.3px; text-transform:uppercase;">${badgeText}</span>
           <strong style="color:#4C1D95; font-size:13px;">${escapeHtml(v.name)}</strong>
+          ${hasProfile ? `<span title="Perfil de contenido generado por WF15 — los agentes lo usan para escribir contenido propio de esta vertical" style="font-size:9.5px; font-weight:700; color:#7C3AED; background:#F3E8FF; border:1px solid #E9D5FF; padding:2px 7px; border-radius:99px; letter-spacing:0.3px;">✦ PERFIL IA</span>` : `<span title="Esta vertical aún no tiene perfil de contenido — dale a 'Perfilar verticales'" style="font-size:9.5px; font-weight:700; color:#92929D; background:#F1F5F9; border:1px solid var(--border); padding:2px 7px; border-radius:99px; letter-spacing:0.3px;">sin perfil</span>`}
           ${desc}
           <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
             <span style="font-size:10.5px; color:var(--text-muted); background:#FAF5FF; border:1px solid #E9D5FF; padding:2px 8px; border-radius:99px;"><strong style="color:#4C1D95">${totalPosts}</strong> posts/mes</span>
+            ${hasProfile ? `<button onclick="viewVerticalProfile(${i})" title="Ver el perfil de contenido" style="background:none;border:1px solid #E9D5FF;color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">ver perfil</button>` : ''}
             <button onclick="editBrandVerticalDesc(${i})" title="Editar descripción" style="background:none;border:1px solid var(--border);color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">edit</button>
             <button onclick="removeBrandVertical(${i})" title="Eliminar" style="background:none;border:1px solid var(--border);color:#991B1B;cursor:pointer;padding:3px 8px;font-size:13px;line-height:1;border-radius:5px;">×</button>
           </span>
@@ -3373,6 +3377,7 @@ function reattachPipelineToActiveSlot() {
 function toggleVerticalExpansion(idx) {
   const v = brandKitData.verticals?.[idx];
   if (!v) return;
+  cbWithCellSwitch(() => {
   if (cbExpandedVerticalIdx === idx) {
     // Collapse — go back to "mix all" mode
     cbExpandedVerticalIdx = null;
@@ -3400,6 +3405,7 @@ function toggleVerticalExpansion(idx) {
       if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
   }
+  });
 }
 
 function toggleVerticalChannel(idx, channelKey) {
@@ -3461,6 +3467,46 @@ function editBrandVerticalDesc(idx) {
   persistBrandVerticals();
 }
 
+// Read-only modal that renders the WF15 content profile for one vertical so the
+// user can see exactly what the generator agents now receive.
+function viewVerticalProfile(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v || !v.profile) return;
+  const p = v.profile;
+  const esc = (s) => escapeHtml(String(s == null ? '' : s));
+  const textRow = (label, val) => val ? `<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7C3AED;margin-bottom:2px;">${label}</div><div style="font-size:13px;color:#1E293B;line-height:1.5;">${esc(val)}</div></div>` : '';
+  const listRow = (label, arr) => Array.isArray(arr) && arr.length ? `<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7C3AED;margin-bottom:4px;">${label}</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${arr.map(x => `<span style="font-size:11.5px;background:#F3E8FF;color:#4C1D95;border:1px solid #E9D5FF;padding:2px 9px;border-radius:99px;">${esc(x)}</span>`).join('')}</div></div>` : '';
+  const when = v.profileUpdatedAt ? new Date(v.profileUpdatedAt).toLocaleString() : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'cb-vprofile-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:680px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,0.3);">
+      <div style="position:sticky;top:0;background:linear-gradient(135deg,#7C3AED,#4C1D95);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:0.5px;opacity:0.85;text-transform:uppercase;">✦ Perfil de contenido · WF15</div>
+          <div style="font-size:17px;font-weight:700;margin-top:2px;">${esc(v.name)}</div>
+        </div>
+        <button onclick="document.getElementById('cb-vprofile-modal').remove()" style="background:rgba(255,255,255,0.18);border:none;color:white;width:30px;height:30px;border-radius:8px;font-size:18px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="padding:20px;">
+        ${textRow('Resumen', p.summary)}
+        ${textRow('Audiencia', p.audience)}
+        ${textRow('Propuesta de valor', p.value_prop)}
+        ${listRow('Pain points', p.pain_points)}
+        ${listRow('Proof points', p.proof_points)}
+        ${listRow('Vocabulario', p.vocabulary)}
+        ${listRow('Ángulos de contenido', p.content_angles)}
+        ${textRow('Ajuste de tono', p.tone_shift)}
+        ${textRow('Briefing', p.one_paragraph)}
+        ${when ? `<div style="margin-top:14px;font-size:10.5px;color:var(--text-muted);">Perfilada ${esc(when)} · fuente: ${esc(v.profile.profiler || 'wf15')}</div>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 // Merge-and-upsert: read current brand_profiles.data_json, replace only the
 // `verticals` field, write back. Falls back to no-op if there's no brandId yet
 // (e.g. demo state before Branding Bio has been saved).
@@ -3485,7 +3531,9 @@ async function persistBrandVerticals() {
 let cbActiveVertical = null;
 
 function setActiveVertical(name) {
-  cbActiveVertical = name && name !== '__all__' ? name : null;
+  cbWithCellSwitch(() => {
+    cbActiveVertical = name && name !== '__all__' ? name : null;
+  });
 }
 
 function renderActiveVerticalSelect() {
@@ -3513,6 +3561,87 @@ async function hydrateBrandVerticalsFromSupabase() {
     }
   } catch (e) {
     console.warn('[verticals] hydrate failed:', e);
+  }
+}
+
+// Pull the per-vertical content profiles WF15 wrote into `vertical_profiles`
+// and merge them onto the matching brandKitData.verticals entries (by name).
+// This is what makes the generator agents produce vertical-specific content:
+// the `profile` object rides along inside `selected_vertical` in every payload.
+async function hydrateVerticalProfilesFromSupabase() {
+  if (!brandKitData.brandId) return;
+  if (!(brandKitData.verticals || []).length) return;
+  try {
+    const rows = await supabaseGet(`vertical_profiles?brand_id=eq.${brandKitData.brandId}&select=vertical_name,source_url,profile_json,updated_at`);
+    if (!Array.isArray(rows) || !rows.length) return;
+    const byName = new Map(rows.map(r => [(r.vertical_name || '').toLowerCase().trim(), r]));
+    let merged = 0;
+    for (const v of brandKitData.verticals) {
+      const row = byName.get((v.name || '').toLowerCase().trim());
+      if (row && row.profile_json && typeof row.profile_json === 'object') {
+        v.profile = row.profile_json;
+        v.profileUpdatedAt = row.updated_at || null;
+        merged++;
+      }
+    }
+    if (merged) renderBrandVerticals();
+  } catch (e) {
+    console.warn('[vertical-profiles] hydrate failed:', e);
+  }
+}
+
+// ── WF15 — Vertical Profiler trigger ────────────────────────────────────────
+// Claude reads the brand website and writes a structured content profile per
+// vertical into `vertical_profiles`. One call profiles ALL verticals at once.
+const WF15_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf15-vertical-profiler';
+
+async function profileBrandVerticals() {
+  const btn = document.getElementById('cb-profile-verticals');
+  if (!brandKitData.brandId) {
+    showToast('Branding Bio aún no fue guardado. Andá a Branding Bio → Save & Sync primero.');
+    return;
+  }
+  const names = (brandKitData.verticals || []).map(v => v.name).filter(Boolean);
+  if (!names.length) {
+    showToast('No hay verticales para perfilar. Detectá o agregá verticales primero.');
+    return;
+  }
+  const websiteUrl = brandKitData.websiteUrl;
+  if (!websiteUrl) {
+    showToast('Falta el website del cliente. Cargalo en Branding Bio primero.');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Perfilando…';
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+  }
+  try {
+    const res = await fetch(WF15_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: brandKitData.brandId, website_url: websiteUrl, vertical_names: names }),
+    });
+    const bodyText = await res.text();
+    let body; try { body = JSON.parse(bodyText); } catch { body = null; }
+    if (Array.isArray(body)) body = body[0];
+    if (!res.ok || !body?.ok) {
+      console.warn('[WF15] unexpected response:', res.status, bodyText.slice(0, 400));
+      showToast('WF15 no devolvió perfiles. Revisá el workflow.', 'error');
+      return;
+    }
+    // Pull the freshly-written profiles back and merge them in.
+    await hydrateVerticalProfilesFromSupabase();
+    showToast(`Perfiladas ${body.upserted} vertical${body.upserted === 1 ? '' : 'es'} ✓ — los agentes ya las usan.`);
+  } catch (e) {
+    console.error('[WF15] failed:', e);
+    showToast('Error al perfilar verticales: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Perfilar verticales';
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+    }
   }
 }
 
@@ -3576,6 +3705,8 @@ async function syncFromBrandingBio() {
 
     renderBrandVerticals();
     renderActiveVerticalSelect();
+    // Re-attach WF15 content profiles (remote-added verticals don't carry one).
+    hydrateVerticalProfilesFromSupabase();
     if (remoteVerticals.length === 0) {
       showToast(`Branding Bio remoto no tiene verticales guardadas. Conservé tus ${localVerticals.length} vertical${localVerticals.length === 1 ? '' : 'es'} locales — guardá desde Branding Bio para sincronizar.`);
     } else {
@@ -3647,7 +3778,7 @@ async function suggestVisualConcept() {
     const payload = {
       brand_id:        brandKitData.brandId,
       channel,
-      vertical:        vertical ? { name: vertical.name, desc: vertical.desc || '' } : null,
+      vertical:        vertical ? { name: vertical.name, desc: vertical.desc || '', profile: vertical.profile || null } : null,
       specs,
       top_post_urls:   topPostUrls,
       smb_context: smbChannel ? {
@@ -3780,10 +3911,16 @@ function updateSlideCount(value) {
 function hydrateContentBuilderCampaign() {
   // Activate the current tab so verticales, persona, format and visual prompt all reflect it
   if (typeof setContentBuilderTab === 'function') setContentBuilderTab(contentBuilderActiveTab || 'Instagram');
+  // Capture the empty-state HTML of each output container NOW (fresh DOM) so an
+  // empty cell restores cleanly even before any brand is saved.
+  cbCaptureDefaultsOnce();
   // Brand-wide verticales — render local copy first, then try to pull from Supabase
   renderBrandVerticals();
   renderActiveVerticalSelect();
-  hydrateBrandVerticalsFromSupabase().then(renderActiveVerticalSelect);
+  hydrateBrandVerticalsFromSupabase()
+    .then(() => hydrateVerticalProfilesFromSupabase())
+    .then(() => cbHydrateCellsFromSupabase())
+    .then(renderActiveVerticalSelect);
 
   // If SocialMediaBios is still showing mock data (e.g. user landed on ContentBuilder
   // directly without visiting SMB first), try to pull the real analysis from Supabase
@@ -3898,10 +4035,11 @@ function syncChannelLanguageSelector() {
 
 function setContentBuilderTab(channel) {
   if (!CB_CHANNEL_PROFILES[channel]) return;
-  if (typeof resetCbAgentState === 'function' && channel !== contentBuilderActiveTab) {
-    resetCbAgentState();
-    setTimeout(() => updateAgentButtonsEnabled(), 0);
-  }
+  // Switching channel = switching cells. Save the current cell's rendered output
+  // and restore the target cell's (instead of wiping). The guard lets nested
+  // callers (toggleVerticalExpansion) own the snapshot/restore boundary.
+  const _outerSwitch = !_cbCellSwitching && channel !== contentBuilderActiveTab;
+  if (_outerSwitch) { _cbCellSwitching = true; cbSnapshotActiveCell(); }
   contentBuilderActiveTab = channel;
   setTimeout(() => syncChannelLanguageSelector(), 0);
   const profile = CB_CHANNEL_PROFILES[channel];
@@ -4019,6 +4157,11 @@ function setContentBuilderTab(channel) {
   // the locked spec WF06/WF07 will use. Switching tabs swaps briefings — each
   // channel has its own row in user_briefings.
   hydrateUserBriefingForChannel(channel);
+
+  // Restore the target cell's rendered output (snapshot or durable data).
+  if (_outerSwitch) {
+    Promise.resolve(cbRestoreCell(cbActiveCellKey())).finally(() => { _cbCellSwitching = false; });
+  }
 }
 
 // Builds context pills + format recommendation from SocialMediaBios analysis
@@ -4988,7 +5131,7 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
   try {
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -5132,7 +5275,184 @@ function resetCbAgentState() {
   lastUnifiedResult = null;
 }
 
+// ── ContentBuilder · per-cell (channel × vertical) generation memory ─────────
+// Each channel×vertical pair keeps its OWN rendered output, so generating for one
+// cell never overwrites another's images. In-session fidelity = HTML snapshot of
+// the output containers + the generation globals. Durable across page reloads = a
+// LIGHT record persisted to cb_cell_state (brief/caption/visual text + draft_id);
+// images rehydrate from creative_assets by draft_id on demand (canvas/template
+// slides without an asset_id don't survive a reload — Gemini photos do).
+const CB_CELL_OUTPUT_IDS = ['cb-brief-body', 'cb-post-body', 'cb-post-hashtags', 'cb-visual-prompt-output', 'visual-brief-body', 'cb-wf09-image-body'];
+const cbCellState = {};        // key -> { html:{id:innerHTML}, g:{globals}, data:{light} }
+let cbCellDefaults = null;     // empty-state innerHTML per container (captured once)
+let cbCurrentCellKey_ = null;  // key currently shown on screen
+let _cbCellSwitching = false;  // guard so nested switches don't double snapshot/restore
+
+function cbCellKey(channel, verticalName) {
+  return `${channel || contentBuilderActiveTab || 'Instagram'}::${verticalName || '__all__'}`;
+}
+function cbActiveCellKey() {
+  return cbCellKey(contentBuilderActiveTab, cbActiveVertical);
+}
+function cbCaptureDefaultsOnce() {
+  if (cbCellDefaults) return;
+  cbCellDefaults = {};
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    cbCellDefaults[id] = el ? el.innerHTML : '';
+  }
+}
+function cbResetOutputsToDefault() {
+  cbCaptureDefaultsOnce();
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = cbCellDefaults[id] || '';
+  }
+}
+function cbApplyGlobals(g) {
+  lastBriefResult      = g?.brief          || null;
+  lastCaptionResult    = g?.caption        || null;
+  lastVisualResult     = g?.visual         || null;
+  lastUnifiedResult    = g?.unified        || null;
+  lastRenderedSlides   = g?.renderedSlides || [];
+  lastBuiltDraftId     = g?.draftId        || null;
+  lastGeneratedBriefId = g?.briefId        || null;
+  lastImageGenCtx      = g?.imageGenCtx    || null;
+  _cbCarouselState     = g?.carousel       || { slides: [], active: 0 };
+}
+function cbSnapshotActiveCell() {
+  cbCaptureDefaultsOnce();
+  const key = cbCurrentCellKey_ || cbActiveCellKey();
+  const html = {};
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el) html[id] = el.innerHTML;
+  }
+  cbCellState[key] = {
+    ...(cbCellState[key] || {}),
+    html,
+    g: {
+      brief: lastBriefResult, caption: lastCaptionResult, visual: lastVisualResult,
+      unified: lastUnifiedResult, renderedSlides: lastRenderedSlides,
+      draftId: lastBuiltDraftId, briefId: lastGeneratedBriefId,
+      imageGenCtx: lastImageGenCtx, carousel: _cbCarouselState,
+    },
+  };
+}
+async function cbRestoreCell(key) {
+  cbCaptureDefaultsOnce();
+  const cell = cbCellState[key];
+  if (cell && cell.html) {
+    for (const id of CB_CELL_OUTPUT_IDS) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = (id in cell.html) ? cell.html[id] : (cbCellDefaults[id] || '');
+    }
+    cbApplyGlobals(cell.g);
+  } else if (cell && cell.data) {
+    // Hydrated from Supabase (text + draft_id) but never rendered this session.
+    cbResetOutputsToDefault();
+    cbApplyGlobals({});
+    await cbRenderCellFromData(cell.data);
+  } else {
+    cbResetOutputsToDefault();
+    cbApplyGlobals({});
+  }
+  cbCurrentCellKey_ = key;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (typeof updateAgentButtonsEnabled === 'function') updateAgentButtonsEnabled();
+}
+async function cbRenderCellFromData(data) {
+  try {
+    if (data.brief)   { lastBriefResult = data.brief;     if (typeof renderBrief === 'function') renderBrief(data.brief); }
+    if (data.caption) { lastCaptionResult = data.caption; if (typeof renderCaption === 'function') renderCaption(data.caption); }
+    if (data.visual)  {
+      lastVisualResult = data.visual; lastUnifiedResult = data.visual;
+      if (typeof renderVisual === 'function') renderVisual(data.visual);
+      if (typeof enableWf09ImageButton === 'function') enableWf09ImageButton(data.visual);
+    }
+    lastBuiltDraftId = data.draftId || null;
+    if (data.draftId) await cbRehydrateImagesForDraft(data.draftId);
+  } catch (e) { console.warn('[cb-cell] render-from-data failed:', e); }
+}
+async function cbRehydrateImagesForDraft(draftId) {
+  try {
+    const rows = await supabaseGet(`creative_assets?draft_id=eq.${draftId}&asset_type=eq.image&order=created_at.asc&select=id,file_url,created_at`);
+    if (!Array.isArray(rows) || !rows.length) return;
+    const slides = rows.filter(r => r.file_url)
+      .map((r, i) => ({ index: i + 1, kind: 'photo', image_url: r.file_url, asset_id: r.id }));
+    if (!slides.length) return;
+    if (slides.length === 1) renderVisualBriefIntoView(null, slides[0].image_url);
+    else renderCarouselIntoView(slides);
+  } catch (e) { console.warn('[cb-cell] image rehydrate failed:', e); }
+}
+// Persist the active cell's LIGHT state (no base64) and mirror it in memory.
+async function cbPersistActiveCell() {
+  if (!brandKitData.brandId) return;
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const verticalName = cbActiveVertical || '__all__';
+  const data = {
+    brief:   lastBriefResult   || null,
+    caption: lastCaptionResult || null,
+    visual:  lastVisualResult  || null,
+    draftId: lastBuiltDraftId  || null,
+  };
+  const key = cbCellKey(channel, cbActiveVertical);
+  cbCellState[key] = { ...(cbCellState[key] || {}), data };
+  try {
+    await supabaseUpsert('cb_cell_state', {
+      brand_id: brandKitData.brandId,
+      channel,
+      vertical_name: verticalName,
+      draft_id: data.draftId,
+      state_json: data,
+    }, 'brand_id,channel,vertical_name');
+  } catch (e) { console.warn('[cb-cell] persist failed:', e); }
+}
+// Call after any successful generation render: refresh the snapshot + persist.
+function cbCommitActiveCell() {
+  if (!cbCurrentCellKey_) cbCurrentCellKey_ = cbActiveCellKey();
+  try { cbSnapshotActiveCell(); } catch (_) {}
+  cbPersistActiveCell();
+}
+// Snapshot the current screen, run a key-changing mutation, restore the new cell.
+// Nested calls (e.g. toggleVerticalExpansion → setContentBuilderTab) just run.
+function cbWithCellSwitch(fn) {
+  if (_cbCellSwitching) return fn();
+  _cbCellSwitching = true;
+  cbSnapshotActiveCell();
+  let r;
+  try { r = fn(); }
+  finally {
+    const newKey = cbActiveCellKey();
+    Promise.resolve(cbRestoreCell(newKey)).finally(() => { _cbCellSwitching = false; });
+  }
+  return r;
+}
+// Pull every cell's durable state for this brand and render the active one.
+async function cbHydrateCellsFromSupabase() {
+  if (!brandKitData.brandId) return;
+  try {
+    const rows = await supabaseGet(`cb_cell_state?brand_id=eq.${brandKitData.brandId}&select=channel,vertical_name,draft_id,state_json`);
+    if (!Array.isArray(rows)) return;
+    for (const r of rows) {
+      const vName = (r.vertical_name && r.vertical_name !== '__all__') ? r.vertical_name : null;
+      const key = cbCellKey(r.channel, vName);
+      const data = (r.state_json && typeof r.state_json === 'object') ? r.state_json : {};
+      if (!data.draftId) data.draftId = r.draft_id || null;
+      cbCellState[key] = { ...(cbCellState[key] || {}), data };
+    }
+    const activeKey = cbActiveCellKey();
+    if (cbCellState[activeKey]?.data) await cbRestoreCell(activeKey);
+    else cbCurrentCellKey_ = activeKey;
+  } catch (e) { console.warn('[cb-cell] hydrate failed:', e); }
+}
+
 async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draftId }) {
+  // Forward the active vertical (with its WF15 content profile) so WF12 can
+  // write content SPECIFIC to that vertical instead of generic brand copy.
+  const activeV = cbActiveVertical
+    ? (brandKitData.verticals || []).find(v => v.name === cbActiveVertical) || null
+    : null;
   const payload = {
     brand_id: brandId,
     channel,
@@ -5143,6 +5463,9 @@ async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draf
     } : null,
     prior_brief: priorBrief || null,
     draft_id:    draftId    || null,
+    selected_vertical: activeV
+      ? { name: activeV.name, desc: activeV.desc || '', profile: activeV.profile || null }
+      : null,
   };
   console.log(`[WF12 mode=${mode}] sending payload:`, payload);
   const res = await fetch(WF12_URL, {
@@ -5195,6 +5518,7 @@ async function handleGenerateBrief() {
     }
     lastBriefResult = result;
     renderBrief(result);
+    cbCommitActiveCell();
     updateAgentButtonsEnabled();
     showToast('Brief listo — ahora generá el texto o el visual.');
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5313,6 +5637,7 @@ async function handleGenerateCaption() {
     // Keep lastUnifiedResult populated so downstream WF13/approval/publish keep working.
     lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
     renderCaption(result);
+    cbCommitActiveCell();
     updateAgentButtonsEnabled();
     showToast('Caption listo.');
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5374,6 +5699,7 @@ async function handleGenerateVisual() {
     lastVisualResult = result;
     lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
     renderVisual(result);
+    cbCommitActiveCell();
     enableWf09ImageButton(lastUnifiedResult);
     updateAgentButtonsEnabled();
     showToast(`Visual prompt listo${result.slide_count > 1 ? ` — ${result.slide_count} slides` : ''}.`);
@@ -5790,6 +6116,7 @@ async function handleGenerateImageFromUnified() {
     showToast(`Carrusel listo — ${usable.length}/${totalSlides} slides.`);
     btn.innerHTML = `<i data-lucide="check" style="width:12px"></i> ${usable.length}/${totalSlides} listos`;
     btn.style.background = '#10B981';
+    cbCommitActiveCell();
   } catch (err) {
     console.error('[image-gen] error:', err);
     showToast(`Falló la generación: ${err.message || err}`, 'error');
@@ -5935,7 +6262,7 @@ async function generateDraft() {
     // hydrated by WF00 scraper and editable in the Verticales del cliente card.
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -6150,7 +6477,7 @@ async function generateVisualBrief(draftId, extra = {}) {
     const verticals = [...(slot.verticals || [])];
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -6304,6 +6631,7 @@ async function handleGenerateVisualLegacyWF09() {
     } else {
       renderCarouselIntoView(slides);
     }
+    cbCommitActiveCell();
     showToast(`Generated ${slides.length}/${totalSlides} slide(s).`);
     setTimeout(() => hydrateCreativeBrainView(), 500);
   }
@@ -6466,6 +6794,7 @@ async function fetchCarouselSlideSpecs(slideCount) {
         brand_handle:   smbChannel?.handle || '',
         vertical_name:  vertical?.name || '',
         vertical_desc:  vertical?.desc || '',
+        vertical_profile: vertical?.profile || null,
         channel,
         draft_text:     draftText,
         agent_prompt:   slot.agentPrompt || '',
@@ -11048,6 +11377,7 @@ function generateViewHTML(view) {
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <button id="cb-sync-brand" onclick="syncFromBrandingBio()" title="Pull desde brand_profiles — sobreescribe la copia local con lo último guardado en Branding Bio" style="display:inline-flex; align-items:center; padding:6px 12px; background:#6366F1; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio</button>
+              <button id="cb-profile-verticals" onclick="profileBrandVerticals()" title="WF15 — Claude lee el website y escribe un perfil de contenido por vertical (audiencia, pain points, vocabulario, ángulos). Los agentes generadores lo consumen para producir contenido propio de cada vertical." style="display:inline-flex; align-items:center; padding:6px 12px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Perfilar verticales</button>
               <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vertical activa</label>
               <select id="cb-active-vertical" style="font-size:12px; padding:6px 10px; border:1px solid #E9D5FF; border-radius:6px; background:white; color:#4C1D95; font-weight:600;">
                 <option value="__all__">Todas las verticales (mix)</option>
