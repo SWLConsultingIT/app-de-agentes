@@ -11095,18 +11095,6 @@ function generateViewHTML(view) {
             3 pasos secuenciales conectados a n8n. Cada paso es un webhook independiente. El brief, el copy y el visual cambian según el canal — el agente lee el análisis de <strong>SocialMediaBios</strong> almacenado en Supabase para producir contenido que matchea el perfil real.
           </p>
 
-          <!-- Per-channel inputs: verticales (full-width) -->
-          <div style="padding:14px; border:1px solid var(--border); border-radius:10px; background:#FAFBFC; margin-bottom:14px;">
-            <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px; display:block;">
-              <i data-lucide="layers" style="width:11px;vertical-align:middle;margin-right:4px"></i>Verticales / productos / campañas <span style="text-transform:none; color:var(--text-muted); font-weight:400;">— para este canal</span>
-            </label>
-            <div style="display:flex; gap:6px; align-items:center;">
-              <input id="cb-vertical-input" type="text" placeholder="ej. Casos de éxito, Tutoriales, Behind-the-scenes" style="flex:1; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:var(--font-main); background:white;" onkeydown="if(event.key==='Enter'){addContentBuilderVertical();event.preventDefault()}" />
-              <button onclick="addContentBuilderVertical()" style="padding:8px 12px; background:#22C55E; color:white; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;"><i data-lucide="plus" style="width:11px;vertical-align:middle;margin-right:3px"></i>Add</button>
-            </div>
-            <div id="cb-vertical-list" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; min-height:28px;"></div>
-          </div>
-
           <!-- Brand context strip (auto-pulled from SocialMediaBios) -->
           <div style="padding:12px 14px; background:linear-gradient(135deg, #FDF4FF 0%, #F0F9FF 100%); border:1px solid #F3E8FF; border-radius:10px; margin-bottom:18px;">
             <div style="font-size:11px; color:#6B21A8; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
