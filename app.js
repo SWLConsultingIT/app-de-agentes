@@ -5651,7 +5651,7 @@ async function handleGenerateImageFromUnified() {
   const toneFlags  = lastVisualResult.brand_defaults?.tone_flags || lastBriefResult?.brand_defaults?.tone_flags || [];
 
   // Remember the context so a single slide can be regenerated with a correction.
-  lastImageGenCtx = { brandId, draftId, channel };
+  lastImageGenCtx = { brandId, draftId, channel, palette, typography, toneFlags };
 
   const photoCount    = slides.filter(s => s.kind === 'photo').length;
   const designedCount = slides.filter(s => s.kind === 'designed_text').length;
@@ -5662,7 +5662,7 @@ async function handleGenerateImageFromUnified() {
   btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Renderizando…`;
   body.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:8px;color:var(--text-muted);font-size:12px;">
-      <div><i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle"></i> Procesando ${totalSlides} slides — ${photoCount} 📷 photo (Gemini) + ${designedCount} 🎨 designed (canvas).</div>
+      <div><i data-lucide="loader-2" style="width:14px;animation:spin 1s linear infinite;vertical-align:middle"></i> Procesando ${totalSlides} slides — visual generado por Gemini + texto con fuentes reales (ortografía perfecta).</div>
       <div id="cb-wf09-progress" style="font-size:11px; color:#6B21A8;"></div>
     </div>`;
   lucide.createIcons();
@@ -5674,14 +5674,14 @@ async function handleGenerateImageFromUnified() {
     const results = new Array(slides.length);
     for (let i = 0; i < slides.length; i++) {
       const s = slides[i];
-      if (progressEl) progressEl.textContent = `Slide ${s.index}/${totalSlides} — ${s.kind === 'photo' ? '📷 Gemini' : '🎨 canvas'}…`;
-      if (s.kind === 'photo') {
+      if (progressEl) progressEl.textContent = `Slide ${s.index}/${totalSlides} — ${s.bg_prompt ? '🎨 Gemini visual + texto' : (s.kind === 'photo' ? '📷 Gemini' : '🎨 canvas')}…`;
+      if (s.kind === 'photo' && !s.bg_prompt) {
         const url = await generateOnePhotoViaWf13({ brandId, draftId, channel, prompt: s.prompt, index: s.index });
         results[i] = url ? { index: s.index, kind: 'photo', url } : { index: s.index, kind: 'photo', error: 'no image returned' };
       } else {
-        // designed_text — local html2canvas render using BRAND palette + typography
-        // + brand-tone-aware doodle decorations.
-        const dataUrl = await renderDesignedSlide(s, s.index, totalSlides, { palette, typography, toneFlags });
+        // Hybrid (or legacy designed_text): Gemini text-free background (when
+        // bg_prompt is present) + code-rendered text overlay via html2canvas.
+        const dataUrl = await renderDesignedSlide(s, s.index, totalSlides, { palette, typography, toneFlags, brandId, draftId, channel });
         results[i] = dataUrl
           ? { index: s.index, kind: 'designed_text', url: dataUrl }
           : { index: s.index, kind: 'designed_text', error: 'canvas render failed' };
@@ -5702,7 +5702,8 @@ async function handleGenerateImageFromUnified() {
       slot:   i,
       index:  r.index,
       kind:   r.kind,
-      prompt: (slides[i] && slides[i].prompt) || '',
+      spec:   slides[i] || null,
+      prompt: (slides[i] && (slides[i].bg_prompt || slides[i].prompt)) || '',
       url:    r.url || null,
       error:  r.error || null,
     }));
@@ -5725,21 +5726,21 @@ async function handleGenerateImageFromUnified() {
       <div style="width:100%;display:flex;flex-direction:column;gap:10px;">
         <div id="cb-slides-grid" style="display:grid;grid-template-columns:${gridCols};gap:8px;">${slidesGrid}</div>
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:11px;color:#6B21A8;font-weight:600;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:4px"></i>${photoCount} foto${photoCount === 1 ? '' : 's'} via Gemini + ${designedCount} diseñada${designedCount === 1 ? '' : 's'} via canvas · ${escapeHtml(channel)}</span>
+          <span style="font-size:11px;color:#6B21A8;font-weight:600;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:4px"></i>${usable.length} slide${usable.length === 1 ? '' : 's'} · visual Gemini + texto real (ortografía perfecta) · ${escapeHtml(channel)}</span>
           <span style="font-size:10.5px;color:var(--text-muted);font-style:italic;">Click un slide para verlo grande</span>
         </div>
         <div id="cb-fix-section" style="margin-top:4px;padding:12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:10px;">
           <div style="font-size:11px;font-weight:700;color:#9A3412;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">
-            <i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:4px"></i>Corregir un slide
+            <i data-lucide="wand-2" style="width:13px;vertical-align:middle;margin-right:4px"></i>Regenerar el visual de un slide
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <select id="cb-fix-slide" style="padding:8px 10px;border:1px solid #FDBA74;border-radius:8px;font-size:12px;background:white;color:#7C2D12;">${fixOptions}</select>
-            <input id="cb-fix-note" type="text" placeholder='ej: dice &quot;negoico&quot;, debe decir &quot;negocio&quot; · sacá la línea de abajo' style="flex:1;min-width:260px;padding:8px 10px;border:1px solid #FDBA74;border-radius:8px;font-size:12px;" />
+            <input id="cb-fix-note" type="text" placeholder='opcional: cómo querés el fondo · ej: la mano robótica del otro lado, más oscuro' style="flex:1;min-width:260px;padding:8px 10px;border:1px solid #FDBA74;border-radius:8px;font-size:12px;" />
             <button id="cb-fix-btn" style="padding:8px 14px;border:none;border-radius:8px;background:#EA580C;color:white;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
               <i data-lucide="refresh-cw" style="width:12px;vertical-align:middle;margin-right:4px"></i>Regenerar slide
             </button>
           </div>
-          <div style="font-size:10.5px;color:#9A3412;margin-top:6px;font-style:italic;">Escribí cómo debe decir el texto, o qué sacar / qué poner. Regenera solo ese slide con Gemini, manteniendo el estilo.</div>
+          <div style="font-size:10.5px;color:#9A3412;margin-top:6px;font-style:italic;">El texto ya sale perfecto (lo pone el código con las fuentes de la marca). Esto vuelve a generar el <b>fondo visual</b> de Gemini de ese slide — dejá la nota vacía para otra variación, o escribí cómo querés el visual.</div>
         </div>
       </div>`;
     // Wire click → lightbox for each thumbnail (urls read live from state so corrections show).
@@ -5792,20 +5793,12 @@ async function regenerateSlideWithCorrection(slot, note) {
     showToast('Elegí un slide para corregir.', 'error');
     return;
   }
-  if (!note) {
-    showToast('Escribí la corrección (cómo va el texto, o qué sacar / qué poner).', 'error');
-    return;
-  }
   const slide = lastRenderedSlides[slot];
   if (!slide.prompt) {
-    showToast('Ese slide no tiene prompt original para regenerar.', 'error');
+    showToast('Ese slide no tiene prompt para regenerar.', 'error');
     return;
   }
   const ctx = lastImageGenCtx || {};
-  const correctedPrompt =
-    `${slide.prompt}\n\nUSER CORRECTION (apply literally, keep the SAME visual style, palette, layout and medium): ${note}. ` +
-    `Re-render this slide fixing the text exactly as specified — every rendered word must be spelled correctly with proper Spanish accents. ` +
-    `Render ONLY the meaningful headline/body words; never render hex codes, hashtags or font names as text.`;
 
   const fixBtn  = document.getElementById('cb-fix-btn');
   const origBtn = fixBtn ? fixBtn.innerHTML : '';
@@ -5816,11 +5809,29 @@ async function regenerateSlideWithCorrection(slot, note) {
   }
 
   try {
-    const url = await generateOnePhotoViaWf13({
-      brandId: ctx.brandId, draftId: ctx.draftId, channel: ctx.channel,
-      prompt: correctedPrompt, index: slide.index,
-    });
-    if (!url) throw new Error('Gemini no devolvió imagen');
+    let url = null;
+    if (slide.spec && slide.spec.bg_prompt) {
+      // HYBRID: re-roll the Gemini background; the text stays code-rendered and
+      // perfectly spelled. The note steers the background VISUAL.
+      const specCopy = { ...slide.spec };
+      if (note) specCopy.bg_prompt = `${specCopy.bg_prompt} . Adjustment for the background visual: ${note}. Still NO text, letters or words anywhere in the image.`;
+      url = await renderDesignedSlide(specCopy, slide.index, lastRenderedSlides.length, {
+        palette: ctx.palette, typography: ctx.typography, toneFlags: ctx.toneFlags,
+        brandId: ctx.brandId, draftId: ctx.draftId, channel: ctx.channel,
+      });
+      if (url) lastRenderedSlides[slot].spec = specCopy;
+    } else {
+      // Legacy all-Gemini composite: regenerate from the corrected prompt.
+      const correctedPrompt =
+        `${slide.prompt}\n\nUSER CORRECTION (apply literally, keep the SAME visual style, palette, layout and medium): ${note}. ` +
+        `Re-render this slide fixing the text exactly as specified — every rendered word spelled correctly with proper Spanish accents. ` +
+        `Render ONLY the meaningful headline/body words; never render hex codes, hashtags or font names as text.`;
+      url = await generateOnePhotoViaWf13({
+        brandId: ctx.brandId, draftId: ctx.draftId, channel: ctx.channel,
+        prompt: correctedPrompt, index: slide.index,
+      });
+    }
+    if (!url) throw new Error('No se generó la imagen');
 
     lastRenderedSlides[slot].url = url;
     lastRenderedSlides[slot].error = null;
@@ -6496,6 +6507,23 @@ function buildFontStackFromBrand(brandTypography, role = 'heading') {
 // (e.g. ["signs","Business","Ready","AI"] → "<span>4 </span><accent>signs</accent>...").
 // Matching is case-insensitive and whole-token only — won't accidentally tint
 // substrings inside longer words.
+// Pick the most CHROMATIC palette color for accent text/tags. Brand palettes
+// often mislabel roles (e.g. SWL tags its gold as "Text/Dark" and white as
+// "Accent"), so role-based picking gives an invisible white accent. Choosing
+// the highest-chroma hex reliably lands on the real brand color (the gold).
+function pickAccentColor(brandPalette, fallback) {
+  if (!Array.isArray(brandPalette)) return fallback;
+  let best = null, bestChroma = -1;
+  for (const p of brandPalette) {
+    const m = String((p && p.hex) || '').replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!m) continue;
+    const [r, g, b] = [m[1], m[2], m[3]].map(h => parseInt(h, 16));
+    const chroma = Math.max(r, g, b) - Math.min(r, g, b);
+    if (chroma > bestChroma) { bestChroma = chroma; best = p.hex; }
+  }
+  return (best && bestChroma > 28) ? best : fallback;
+}
+
 function renderTwoColorHeadline(headline, accentWords, accentColor) {
   const text = String(headline || '');
   if (!text) return '';
@@ -6830,12 +6858,21 @@ async function renderDesignedSlide(spec, slideIndex, slideTotal, opts = {}) {
   // semi-transparent overlay and text on top. The visual agent picks this for
   // hero / closing / context-setting slides where a photo adds value.
   let bgImageDataUrl = null;
-  if (variant === 'photo_overlay' && spec.background_query) {
+  // HYBRID (primary path for WF12 visual slides): Gemini generates a TEXT-FREE
+  // brand background and code overlays the text → perfect spelling, always.
+  if (spec.bg_prompt && opts.brandId) {
+    try {
+      const bgUrl = await generateOnePhotoViaWf13({
+        brandId: opts.brandId, draftId: opts.draftId, channel: opts.channel,
+        prompt: spec.bg_prompt, index: slideIndex,
+      });
+      if (bgUrl) bgImageDataUrl = bgUrl;  // WF13 already returns a data: URL
+    } catch (e) { console.warn('[hybrid bg] Gemini failed, falling back to flat bg', e); }
+  }
+  // LEGACY: Unsplash stock photo for the old photo_overlay variant.
+  if (!bgImageDataUrl && variant === 'photo_overlay' && spec.background_query) {
     const photo = await fetchStockPhoto(spec.background_query);
-    if (photo?.url) {
-      // Inline the image as data: URL so html2canvas can render it without CORS issues.
-      bgImageDataUrl = await loadImageAsDataUrl(photo.url);
-    }
+    if (photo?.url) bgImageDataUrl = await loadImageAsDataUrl(photo.url);
   }
 
   let itemsHtml = '';
@@ -6887,9 +6924,51 @@ async function renderDesignedSlide(spec, slideIndex, slideTotal, opts = {}) {
 
   const root = document.createElement('div');
 
-  // photo_overlay → Canva-style: photo on top half (or fullbleed), gray/dark
-  // overlay on the rest with text on top. Mirrors SWL Instagram's actual look.
-  if (variant === 'photo_overlay') {
+  // HYBRID — full-bleed Gemini visual + gradient scrim + code-rendered text
+  // (perfect spelling, real brand fonts). Primary path for WF12 visual slides.
+  if (spec.bg_prompt && bgImageDataUrl) {
+    // Accent = the brand's most chromatic color (gold for SWL), not the
+    // (often mislabeled) "accent" role which can be white/invisible.
+    const accentText = pickAccentColor(opts.palette, P.accent);
+    const hItems = (() => {
+      if (variant === 'stats' && items.length) {
+        return `<div style="display:flex;gap:34px;flex-wrap:wrap;margin-top:8px;">` + items.slice(0, 3).map(it => `
+          <div style="min-width:150px;">
+            <div style="font-size:80px;font-weight:800;color:${accentText};line-height:1;font-family:${headingFont};">${escapeHtml(it.value || '')}</div>
+            <div style="font-size:20px;font-weight:700;color:#fff;margin-top:4px;font-family:${headingFont};">${escapeHtml(it.label || it.title || '')}</div>
+            ${it.desc ? `<div style="font-size:14px;color:rgba(255,255,255,0.78);margin-top:2px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
+          </div>`).join('') + `</div>`;
+      }
+      if (variant === 'cards' && items.length) {
+        return `<div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">` + items.slice(0, 4).map(it => `
+          <div style="padding:16px 20px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-left:3px solid ${accentText};border-radius:12px;">
+            <div style="font-size:22px;font-weight:700;color:#fff;font-family:${headingFont};">${escapeHtml(it.title || '')}</div>
+            ${it.desc ? `<div style="font-size:15px;color:rgba(255,255,255,0.8);margin-top:3px;font-family:${bodyFont};">${escapeHtml(it.desc)}</div>` : ''}
+          </div>`).join('') + `</div>`;
+      }
+      return '';
+    })();
+    const hCta = spec.cta_text ? `
+      <div style="margin-top:8px;padding:20px 26px;background:${accentText};border-radius:14px;align-self:flex-start;">
+        ${spec.cta_tag ? `<div style="font-size:15px;color:#1A1A1A;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;font-family:${headingFont};margin-bottom:4px;">${escapeHtml(spec.cta_tag)}</div>` : ''}
+        <div style="font-size:30px;font-weight:800;color:#1A1A1A;line-height:1.15;font-family:${headingFont};">${escapeHtml(spec.cta_text)}</div>
+      </div>` : '';
+    // Full-bleed Gemini visual; a strong bottom band guarantees the code text is
+    // always crisp (no "baches"), while the top of the frame shows the visual.
+    root.style.cssText = `position:fixed;left:-9999px;top:0;width:1080px;height:1080px;background:#0c0c0d url('${bgImageDataUrl}') center/cover no-repeat;font-family:${bodyFont};overflow:hidden;`;
+    root.innerHTML = `
+      <div style="position:absolute;top:0;left:0;right:0;height:200px;background:linear-gradient(to bottom, rgba(6,6,8,0.55), rgba(6,6,8,0));z-index:1;"></div>
+      <div style="position:absolute;top:52px;left:64px;right:64px;display:flex;justify-content:space-between;align-items:center;z-index:3;">
+        ${spec.tag ? `<span style="padding:8px 16px;background:${accentText};color:#1A1A1A;font-size:14px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;border-radius:5px;font-family:${headingFont};">${escapeHtml(spec.tag)}</span>` : '<span></span>'}
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;background:${accentText};color:#1A1A1A;font-size:16px;font-weight:800;border-radius:99px;font-family:${headingFont};">${slideIndex}/${slideTotal}</span>
+      </div>
+      <div style="position:absolute;left:0;right:0;bottom:0;z-index:2;padding:160px 64px 64px;background:linear-gradient(to top, rgba(5,5,7,0.97) 58%, rgba(5,5,7,0.80) 80%, rgba(5,5,7,0) 100%);display:flex;flex-direction:column;gap:16px;">
+        <h1 style="font-size:66px;font-weight:800;line-height:1.07;margin:0;letter-spacing:-1px;font-family:${headingFont};color:#fff;">${renderTwoColorHeadline(spec.headline || '', spec.headline_accent_words || [], accentText)}</h1>
+        ${spec.sub ? `<p style="font-size:23px;color:rgba(255,255,255,0.9);line-height:1.4;margin:0;max-width:900px;font-family:${bodyFont};">${escapeHtml(spec.sub)}</p>` : ''}
+        ${hItems}
+        ${hCta}
+      </div>`;
+  } else if (variant === 'photo_overlay') {
     const photoFraction = typeof spec.photo_fraction === 'number'
       ? Math.max(0.2, Math.min(0.7, spec.photo_fraction))
       : 0.5; // default: photo takes top 50% of the slide
