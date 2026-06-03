@@ -279,7 +279,20 @@ function toggleBkColor() {
   switchView(state.currentView);
 }
 
-function getSocialLogo(iconName, color) {
+function detectSocialIcon(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('tiktok'))                                              return { icon: 'music',          color: '#010101' };
+  if (n.includes('youtube'))                                             return { icon: 'youtube',         color: '#FF0000' };
+  if (n.includes('instagram'))                                           return { icon: 'instagram',       color: '#E4405F' };
+  if (n.includes('linkedin'))                                            return { icon: 'linkedin',        color: '#0A66C2' };
+  if (n.includes('twitter') || n === 'x' || n.endsWith(' x') || n.startsWith('x/') || n.includes('x.com')) return { icon: 'twitter', color: '#1DA1F2' };
+  if (n.includes('facebook'))                                            return { icon: 'facebook',        color: '#1877F2' };
+  if (n.includes('whatsapp'))                                            return { icon: 'message-circle',  color: '#25D366' };
+  if (n.includes('email') || n.includes('newsletter') || n.includes('mail')) return { icon: 'mail',      color: '#F59E0B' };
+  return null;
+}
+
+function getSocialLogo(iconName, color, size) {
   const c = color || '#374151';
   const logos = {
     instagram:        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
@@ -292,7 +305,9 @@ function getSocialLogo(iconName, color) {
     mail:             `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
     globe:            `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
   };
-  return logos[iconName] || logos['globe'];
+  const svg = logos[iconName] || logos['globe'];
+  if (!size || size === 18) return svg;
+  return svg.replace('width="18" height="18"', `width="${size}" height="${size}"`);
 }
 
 // ── DEV TOGGLE — route ContentBuilder workflows to [DEV-fran] copies ──
@@ -777,12 +792,12 @@ function renderSocialBiosComparison(channels) {
   setHTML('smb-channel-cards', channels.map(c => {
     const top = (c.topPosts || [])[0];
     const isTop = c.name === topErChannel;
-    const iconMap = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
+    const smbIconKey = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
     return `
       <div class="smb-channel-card" style="border-top:3px solid ${c.color};">
         ${isTop ? `<div class="smb-channel-card-ribbon"><i data-lucide="star" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Top performer</div>` : ''}
         <div class="smb-channel-card-head">
-          <div class="smb-channel-card-avatar" style="background:${c.color};"><i data-lucide="${iconMap[c.name] || 'globe'}" style="width:18px;color:white;"></i></div>
+          <div class="smb-channel-card-avatar" style="background:${c.color};">${getSocialLogo(smbIconKey[c.name] || 'globe', 'white')}</div>
           <div style="flex:1;min-width:0;">
             <div class="smb-channel-card-title">${c.name}</div>
             <a href="${c.profileUrl}" target="_blank" class="smb-channel-card-handle">${c.handle}</a>
@@ -4770,6 +4785,20 @@ function swipeModalTab(section) {
   if (body && _swipeModalVideo) {
     const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.new_concepts;
     body.innerHTML = renderAnalysisMarkdown(content);
+    if (section === 'concepts' && _swipeModalVideo.id) {
+      body.innerHTML += `
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #E5E7EB;">
+          <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🎬 Generar video con Kling AI</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${[1,2,3].map(i => `<button data-concept-btn="${i}" onclick="generateVideoFromConcept(${i})"
+              style="flex:1;min-width:80px;padding:9px 12px;background:#7C3AED;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;"
+              onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              Concept ${i}
+            </button>`).join('')}
+          </div>
+          <div id="swipe-video-status" style="margin-top:10px;font-size:11px;color:#6B7280;min-height:18px;"></div>
+        </div>`;
+    }
   }
 }
 
@@ -4778,6 +4807,45 @@ function closeSwipeModal() {
   if (m) m.style.display = 'none';
   document.body.style.overflow = '';
   _swipeModalVideo = null;
+}
+
+async function generateVideoFromConcept(conceptIndex) {
+  const video = _swipeModalVideo;
+  if (!video?.id) return;
+
+  const brandId = brandKitData?.brandId;
+  if (!brandId) { showToast('Brand no cargado.', 'error'); return; }
+
+  const platformToChannel = { tiktok: 'TikTok', linkedin: 'LinkedIn', twitter: 'Twitter' };
+  const channel = platformToChannel[video.platform] || 'Instagram';
+
+  const statusEl = document.getElementById('swipe-video-status');
+  const btns     = document.querySelectorAll('[data-concept-btn]');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '.5'; });
+  if (statusEl) statusEl.innerHTML = `<i data-lucide="loader-2" style="width:10px;vertical-align:middle;animation:spin 1s linear infinite;margin-right:4px;"></i>Generando Concept ${conceptIndex} con Kling AI… (~2–3 min)`;
+  lucide.createIcons();
+
+  try {
+    const videoUrl = await generateVideoViaKling({
+      brandId,
+      draftId:      '',
+      channel,
+      videoPrompt:  '',
+      duration:     5,
+      smVideoId:    video.id,
+      conceptIndex,
+    });
+    if (!videoUrl) throw new Error('WF16 no devolvió URL de video');
+    if (statusEl) statusEl.innerHTML =
+      `✅ Concept ${conceptIndex} listo · <a href="${escapeHtml(videoUrl)}" target="_blank" style="color:#7C3AED;font-weight:600;">Ver video ↗</a> · <a href="${escapeHtml(videoUrl)}" download="concept-${conceptIndex}.mp4" style="color:#7C3AED;">Descargar</a>`;
+    showToast(`Concept ${conceptIndex} generado con Kling ✓`);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `❌ Error: ${e.message}`;
+    showToast('Error generando video: ' + e.message, 'error');
+  } finally {
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    lucide.createIcons();
+  }
 }
 
 async function toggleSwipeStar(videoId, currentStarred) {
@@ -5369,6 +5437,7 @@ async function cbRenderCellFromData(data) {
       lastVisualResult = data.visual; lastUnifiedResult = data.visual;
       if (typeof renderVisual === 'function') renderVisual(data.visual);
       if (typeof enableWf09ImageButton === 'function') enableWf09ImageButton(data.visual);
+      if (typeof enableVideoButton === 'function') enableVideoButton(data.visual);
     }
     lastBuiltDraftId = data.draftId || null;
     if (data.draftId) await cbRehydrateImagesForDraft(data.draftId);
@@ -5701,6 +5770,7 @@ async function handleGenerateVisual() {
     renderVisual(result);
     cbCommitActiveCell();
     enableWf09ImageButton(lastUnifiedResult);
+    enableVideoButton(lastUnifiedResult);
     updateAgentButtonsEnabled();
     showToast(`Visual prompt listo${result.slide_count > 1 ? ` — ${result.slide_count} slides` : ''}.`);
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5925,14 +5995,144 @@ function openSlideLightbox(urls, startIndex = 0) {
 // also routed through OpenAI) is bypassed entirely — see the architectural
 // note in MEMORY.md → wf13-image-gen for why.
 const WF13_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf13-image-gen';
+const WF16_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf16-video-gen';
+
+function getVideoAspectRatio(channel) {
+  const c = (channel || '').toLowerCase();
+  if (c.includes('tiktok') || c.includes('reel') || c.includes('story')) return '9:16';
+  if (c.includes('youtube') || c.includes('linkedin'))                    return '16:9';
+  return '1:1';
+}
+
+// GenHQ Video Prompting Framework — "Burger Formula" + Kling 3.0 Five Layers
+// Source: CURSO - GENHQ.pdf
+// Formula: [Medium] + [Shot] + [Angle] + [Movement] + [Focus] + [Subject] + [Lighting] + [Color]
+// Kling layers: Scene → Characters → Action → Camera → Audio & Style
+function buildKlingPrompt(visualPrompt, channel, hookType) {
+  const c = (channel || '').toLowerCase();
+
+  let medium, shot, angle, movement, focus, lighting, color, audio;
+
+  if (c.includes('tiktok') || c.includes('reel') || c.includes('story')) {
+    // TikTok/Reels: authentic, energetic, vertical, handheld UGC feel
+    medium   = 'Smartphone camera footage, organic film texture, vertical frame 9:16';
+    shot     = 'MCU (Medium Close Up), subject fills frame';
+    angle    = 'Eye level, slight upward tilt for energy and presence';
+    movement = 'Handheld camera with natural slight tremor, occasional push in toward subject';
+    focus    = 'Shallow focus, subject razor sharp, background soft bokeh';
+    lighting = 'Natural warm light, practical ring light, authentic and unfiltered';
+    color    = 'Warm vibrant tones, high saturation, punchy contrast';
+    audio    = 'Upbeat energy, natural ambient sound, fast-paced rhythm';
+  } else if (c.includes('instagram')) {
+    // Instagram: aesthetic, polished, editorial, aspirational
+    medium   = 'Editorial photography quality, cinematic 1:1 format, film-inspired grain';
+    shot     = 'MID (Medium Shot) to MCU, elegant composition with breathing room';
+    angle    = 'Slight high angle, graceful and flattering';
+    movement = 'Smooth steadicam dolly, slow and deliberate 0.3x speed, cinematic glide';
+    focus    = 'Shallow focus with dreamy bokeh, selective deep focus on hero detail';
+    lighting = 'Golden hour natural light, soft diffused glow, warm and aspirational';
+    color    = 'Warm aesthetic tones, slightly desaturated film look, complementary palette';
+    audio    = 'Soft ambient, subtle lo-fi texture, elegant and emotional';
+  } else if (c.includes('linkedin')) {
+    // LinkedIn: authoritative, professional, B2B trust signals
+    medium   = 'Professional corporate video, clean production value, 16:9 widescreen';
+    shot     = 'MID (Medium Shot), confident framing with environment visible';
+    angle    = 'Eye level, slightly low angle to convey authority and trustworthiness';
+    movement = 'Slow deliberate dolly in, stable tripod or slider movement, no shake';
+    focus    = 'Deep focus throughout, everything sharp and clear';
+    lighting = 'Professional studio lighting, high key, clean shadows, neutral and trustworthy';
+    color    = 'Cool professional palette, neutral tones, slight blue-cool grade';
+    audio    = 'Subtle corporate ambient, clean and minimal background score';
+  } else if (c.includes('youtube')) {
+    // YouTube: cinematic, high production, storytelling-first
+    medium   = 'Cinematic film quality, wide 16:9 format, anamorphic lens character';
+    shot     = 'MLS (Medium Long Shot) establishing, cutting to CU for emphasis';
+    angle    = 'Dynamic varied angles: eye level then low angle for drama';
+    movement = 'Cinematic orbit (arc around subject) combined with slow dolly in';
+    focus    = 'Deep focus opening, rack focus (RF) to subject for dramatic emphasis';
+    lighting = 'Dramatic cinematic motivated lighting, high contrast, chiaroscuro depth';
+    color    = 'Rich cinematic color grade, lifted blacks, deep shadows, film LUT applied';
+    audio    = 'Cinematic score, layered SFX, dramatic build';
+  } else {
+    medium   = 'Cinematic quality footage';
+    shot     = 'MID (Medium Shot)';
+    angle    = 'Eye level';
+    movement = 'Smooth steadicam movement';
+    focus    = 'Shallow focus, subject sharp';
+    lighting = 'Natural cinematic lighting, motivated sources';
+    color    = 'Balanced warm-neutral color palette';
+    audio    = 'Subtle ambient background';
+  }
+
+  // Hook-type specific camera direction (from hook miner data)
+  let hookCamera = '';
+  const h = (hookType || '').toLowerCase();
+  if (h.includes('contrarian') || h.includes('stop') || h.includes('wrong')) {
+    hookCamera = 'Quick dramatic push in on subject face at moment of revelation. Dutch angle for tension.';
+  } else if (h.includes('number') || h.includes('specific')) {
+    hookCamera = 'Clean static shot then slow zoom in for emphasis on key information.';
+  } else if (h.includes('how') || h.includes('we do')) {
+    hookCamera = 'Tracking shot following subject through action, over-the-shoulder perspective.';
+  } else if (h.includes('open') || h.includes('loop') || h.includes('secret')) {
+    hookCamera = 'Slow orbit around subject, building anticipation. Rack focus from environment to face.';
+  } else if (h.includes('persona') || h.includes('every')) {
+    hookCamera = 'Dolly in combined with slight low angle, empowering and direct.';
+  }
+
+  // Assemble Kling 3.0 five-layer prompt
+  const prompt = [
+    // Layer 1: Scene
+    `Scene: ${medium}.`,
+    // Layer 2: Characters + Subject
+    `${shot}. ${angle}. ${visualPrompt}.`,
+    // Layer 3: Action + Movement
+    `Camera: ${movement}. ${hookCamera}`.trim(),
+    // Layer 4: Focus + Lighting + Color
+    `Focus: ${focus}. Lighting: ${lighting}. Color: ${color}.`,
+    // Layer 5: Audio & Style
+    `Style: ${audio}. Photorealistic, ultra high quality, no text overlay, no watermark, no subtitles, no UI elements.`,
+  ].join(' ');
+
+  return prompt;
+}
+
+async function generateVideoViaKling({ brandId, draftId, channel, videoPrompt, duration, smVideoId, conceptIndex }) {
+  const payload = {
+    brand_id:        brandId,
+    draft_id:        draftId,
+    channel,
+    video_prompt:    videoPrompt,
+    aspect_ratio:    getVideoAspectRatio(channel),
+    duration:        duration || '5',
+    negative_prompt: 'text overlay, watermark, logo, subtitle, low quality, blurry, distorted, flickering',
+  };
+  if (smVideoId)    payload.sm_video_id   = smVideoId;
+  if (conceptIndex) payload.concept_index = conceptIndex;
+  const res = await fetch(WF16_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`WF16 HTTP ${res.status}`);
+  const text = await res.text();
+  let result; try { result = JSON.parse(text); } catch (_) { result = {}; }
+  if (Array.isArray(result)) result = result[0];
+  return result?.video_url || result?.url || null;
+}
 
 function enableWf09ImageButton(unifiedResult) {
   const btn = document.getElementById('btn-generate-image-wf09');
   if (!btn) return;
   const ok = !!(unifiedResult && unifiedResult.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
   btn.disabled = !ok;
-  btn.title = ok ? 'Manda el visual prompt a WF09 para generar la imagen.'
+  btn.title = ok ? 'Genera el video con Kling AI (fal.ai) usando el visual prompt del agente.'
                  : 'Primero generá el contenido arriba para tener un visual prompt.';
+  if (ok) {
+    const channel = unifiedResult.channel || contentBuilderActiveTab || 'Instagram';
+    const ar = getVideoAspectRatio(channel);
+    const arBadge = document.getElementById('cb-video-ar-badge');
+    if (arBadge) arBadge.textContent = ar;
+  }
 }
 
 // Generate one image for ONE photo prompt via WF13. Returns the data/URL or null.
@@ -6130,6 +6330,99 @@ async function handleGenerateImageFromUnified() {
       enableWf09ImageButton(lastVisualResult || lastUnifiedResult);
       lucide.createIcons();
     }, 2500);
+    lucide.createIcons();
+  }
+}
+
+// ── WF16 Video Generation (Kling AI via fal.ai) ──────────────────────────────
+
+function enableVideoButton(unifiedResult) {
+  const btn = document.getElementById('btn-generate-video-wf16');
+  if (!btn) return;
+  const ok = !!(unifiedResult?.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
+  btn.disabled = !ok;
+  if (!ok) return;
+
+  const channel  = unifiedResult.channel || contentBuilderActiveTab || 'Instagram';
+  const hookType = unifiedResult.hook_type || lastBriefResult?.hook_type || '';
+
+  // Update aspect ratio badge
+  const arBadge = document.getElementById('cb-video-ar-badge');
+  if (arBadge) arBadge.textContent = getVideoAspectRatio(channel);
+
+  // Build GenHQ-structured Kling prompt and show in editable textarea
+  const prompt = buildKlingPrompt(unifiedResult.visual_prompt, channel, hookType);
+  const promptWrap = document.getElementById('cb-video-prompt-wrap');
+  const promptText = document.getElementById('cb-video-prompt-text');
+  if (promptWrap) promptWrap.style.display = '';
+  if (promptText) promptText.value = prompt;
+}
+
+async function handleGenerateVideo() {
+  const btn  = document.getElementById('btn-generate-video-wf16');
+  const body = document.getElementById('cb-video-body');
+  const meta = document.getElementById('cb-video-meta');
+  if (!btn || !body) return;
+
+  if (!lastVisualResult?.visual_prompt) {
+    showToast('Falta el visual prompt — generá el Agente 3 (visual) primero.', 'error');
+    return;
+  }
+
+  const channel  = lastVisualResult.channel || contentBuilderActiveTab || 'Instagram';
+  const brandId  = brandKitData.brandId;
+  const draftId  = lastVisualResult.draft_id || lastCaptionResult?.draft_id || lastBuiltDraftId || null;
+  const duration = document.getElementById('cb-video-duration')?.value || '5';
+  const ar       = getVideoAspectRatio(channel);
+  const hookType = lastBriefResult?.hook_type || '';
+  // Use edited prompt from textarea if available, otherwise build fresh
+  const promptTextarea = document.getElementById('cb-video-prompt-text');
+  const prompt = (promptTextarea?.value?.trim()) || buildKlingPrompt(lastVisualResult.visual_prompt, channel, hookType);
+
+  const origLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Generando…`;
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px;color:var(--text-muted);font-size:12px;">
+      <i data-lucide="loader-2" style="width:28px;animation:spin 1s linear infinite;color:#D97706;"></i>
+      <div style="text-align:center;">
+        <div style="font-weight:600;color:#92400E;margin-bottom:4px;">Generando video con Kling AI…</div>
+        <div>Aspect ratio: <strong>${ar}</strong> · Duración: <strong>${duration}s</strong> · Canal: <strong>${escapeHtml(channel)}</strong></div>
+        <div style="margin-top:6px;font-size:11px;color:#B45309;">⏱ Esto tarda entre 2 y 4 minutos — no cerrés la página</div>
+      </div>
+    </div>`;
+  lucide.createIcons();
+
+  try {
+    const videoUrl = await generateVideoViaKling({ brandId, draftId, channel, videoPrompt: prompt, duration });
+    if (!videoUrl) throw new Error('WF16 no devolvió una URL de video');
+
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <video src="${escapeHtml(videoUrl)}" controls playsinline
+          style="width:100%;max-width:${ar === '9:16' ? '280px' : '100%'};max-height:480px;border-radius:10px;border:1px solid #FDE68A;margin:0 auto;display:block;background:#000;">
+          Tu navegador no soporta video HTML5.
+        </video>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:#92400E;font-weight:600;">
+            <i data-lucide="video" style="width:11px;vertical-align:middle;margin-right:4px;"></i>
+            Kling AI · ${ar} · ${duration}s · ${escapeHtml(channel)}
+          </span>
+          <a href="${escapeHtml(videoUrl)}" download="video-${channel.toLowerCase()}.mp4"
+             style="padding:6px 14px;background:#D97706;color:white;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;">
+            <i data-lucide="download" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Descargar
+          </a>
+        </div>
+      </div>`;
+    lucide.createIcons();
+    if (meta) { meta.textContent = `Video generado · ${ar} · ${duration}s`; meta.style.display = ''; }
+    showToast('Video generado con Kling AI ✓');
+  } catch (e) {
+    body.innerHTML = `<div style="color:#991B1B;font-size:12px;padding:16px;text-align:center;">❌ Error generando video: ${escapeHtml(e.message)}<br><small>Revisá que PIAPI_KEY y ANTHROPIC_API_KEY estén configuradas en n8n y que WF16 esté activo.</small></div>`;
+    showToast('Error generando video: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origLabel;
     lucide.createIcons();
   }
 }
@@ -7639,6 +7932,18 @@ function updateBrandListItem(list, idx, key, value) {
   if (brandKitData[list] && brandKitData[list][idx]) brandKitData[list][idx][key] = value;
 }
 
+function updateChannelName(idx, name) {
+  if (!brandKitData.channels?.[idx]) return;
+  brandKitData.channels[idx].name = name;
+  const detected = detectSocialIcon(name);
+  if (detected) {
+    brandKitData.channels[idx].icon  = detected.icon;
+    brandKitData.channels[idx].color = detected.color;
+    const iconEl = document.getElementById('bk-ch-icon-' + idx);
+    if (iconEl) iconEl.innerHTML = getSocialLogo(detected.icon, detected.color);
+  }
+}
+
 // Add / remove items in list sections
 function addBrandListItem(list, template) {
   brandKitData[list].push(template);
@@ -7658,39 +7963,55 @@ function toggleCompetitorSocials(idx) {
   switchView(state.currentView);
 }
 
-// Attempt to discover social URLs by scanning the competitor's website HTML via a CORS proxy.
-// Mirrors the approach already used by discoverInstagramFromUrl() — best-effort, non-blocking.
+// Discover social URLs for a competitor by calling WF00 (Website Scrapper) with their URL.
+// WF00 runs server-side so there are no CORS issues.
 async function discoverSocialsForCompetitor(idx) {
   const c = brandKitData.competitors?.[idx];
   if (!c?.url) { showToast('Add the website URL first.'); return; }
-  showToast(`Scanning ${c.name}'s website for social links…`);
-  const proxies = [
-    'https://corsproxy.io/?' + encodeURIComponent(c.url),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(c.url),
-  ];
-  let html = '';
-  for (const p of proxies) {
-    try {
-      const r = await fetch(p, { headers: { 'Accept': 'text/html' } });
-      if (r.ok) { html = await r.text(); break; }
-    } catch (_) { /* try next proxy */ }
+  showToast(`Scanning ${c.name}'s website via WF00…`);
+
+  try {
+    const res = await fetch(WF00_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: c.url }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text?.trim()) throw new Error('Empty response from WF00');
+    const data = JSON.parse(text);
+
+    // WF00 returns channels: [{ name, icon, handle, ... }]
+    // Map each channel name to the competitor's social URL field.
+    let found = 0;
+    for (const ch of (data.channels || [])) {
+      const mapping = _competitorChannelMapping(ch.name);
+      if (!mapping) continue;
+      if (c[mapping.field]) continue; // don't overwrite manual entries
+      const raw = (ch.handle || '').replace(/^@/, '').trim();
+      if (!raw) continue;
+      c[mapping.field] = raw.startsWith('http') ? raw : mapping.prefix + raw;
+      found++;
+    }
+
+    showToast(found
+      ? `Found ${found} social channel(s) for ${c.name}.`
+      : `No social channels found for ${c.name}'s website.`);
+  } catch (e) {
+    showToast(`Scan failed: ${e.message}`);
+    console.error('[WF00 competitor socials]', e);
   }
-  if (!html) { showToast('Could not read the website (CORS proxy blocked).'); return; }
-  const patterns = {
-    linkedin_url:  /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in|school)\/[a-zA-Z0-9_\-./]+/i,
-    instagram_url: /https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9_.\-]+/i,
-    tiktok_url:    /https?:\/\/(?:www\.)?tiktok\.com\/@[a-zA-Z0-9_.\-]+/i,
-    youtube_url:   /https?:\/\/(?:www\.)?youtube\.com\/(?:@|c\/|channel\/|user\/)[a-zA-Z0-9_\-./]+/i,
-    x_url:         /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+/i,
-  };
-  let found = 0;
-  for (const [field, re] of Object.entries(patterns)) {
-    if (c[field]) continue; // don't overwrite manual entries
-    const m = html.match(re);
-    if (m) { c[field] = m[0].replace(/[\/"<>?#].*$/, ''); found++; }
-  }
-  showToast(found ? `Found ${found} social URL(s) on ${c.name}'s website.` : `No social links found on ${c.name}'s website.`);
   switchView(state.currentView);
+}
+
+function _competitorChannelMapping(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('linkedin'))  return { field: 'linkedin_url',  prefix: 'https://linkedin.com/company/' };
+  if (n.includes('instagram')) return { field: 'instagram_url', prefix: 'https://instagram.com/' };
+  if (n.includes('tiktok'))    return { field: 'tiktok_url',    prefix: 'https://tiktok.com/@' };
+  if (n.includes('youtube'))   return { field: 'youtube_url',   prefix: 'https://youtube.com/@' };
+  if (n.includes('twitter') || n === 'x' || /\bx\b/.test(n)) return { field: 'x_url', prefix: 'https://x.com/' };
+  return null;
 }
 
 // ── Helpers shared across all modules ──
@@ -10864,17 +11185,18 @@ function generateViewHTML(view) {
               ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>'
               : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
             ${brandKitData.channels.map((c, i) => `
               <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
                 <button class="bk-row-action" onclick="removeBrandListItem('channels', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
-                <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-                  <div style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                  <div id="bk-ch-icon-${i}" style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
                   <div style="flex:1; min-width:0;">
-                    <div style="font-size:13px; font-weight:700; color:var(--text-main);">${c.name}</div>
-                    <div style="font-size:12px; color:var(--text-muted); font-family:monospace;">${c.handle}</div>
+                    <input class="bk-input" type="text" value="${c.name}" oninput="updateChannelName(${i}, this.value)" placeholder="e.g. TikTok, YouTube…" style="font-size:13px; font-weight:700; padding:2px 6px;" />
+                    <input class="bk-input" type="text" value="${c.handle}" oninput="updateBrandListItem('channels', ${i}, 'handle', this.value)" placeholder="@handle o URL" style="font-size:12px; font-family:monospace; padding:2px 6px; margin-top:4px;" />
                   </div>
                 </div>
+                <input class="bk-input" type="text" value="${c.audience || ''}" oninput="updateBrandListItem('channels', ${i}, 'audience', this.value)" placeholder="Descripción de audiencia" style="font-size:11px; width:100%; box-sizing:border-box;" />
               </div>
             `).join('')}
           </div>
@@ -10943,17 +11265,17 @@ function generateViewHTML(view) {
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px;">
             <div class="smb-input-card">
-              <label><i data-lucide="linkedin" style="width:14px;color:#0A66C2"></i> LinkedIn company slug</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('linkedin','#0A66C2',16)}</span> LinkedIn company slug</label>
               <input type="text" value="${socialBiosData.inputs.LinkedIn.handle}" oninput="updateSocialBiosInput('LinkedIn','handle',this.value)" placeholder="swl-consulting" />
               <span class="smb-hint">linkedin.com/company/<b>&lt;slug&gt;</b></span>
             </div>
             <div class="smb-input-card">
-              <label><i data-lucide="instagram" style="width:14px;color:#E4405F"></i> Instagram handle</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('instagram','#E4405F',16)}</span> Instagram handle</label>
               <input type="text" value="${socialBiosData.inputs.Instagram.handle}" oninput="updateSocialBiosInput('Instagram','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">instagram.com/<b>&lt;handle&gt;</b></span>
             </div>
             <div class="smb-input-card">
-              <label><i data-lucide="music" style="width:14px;color:#010101"></i> TikTok handle</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#010101',16)}</span> TikTok handle</label>
               <input type="text" value="${socialBiosData.inputs.TikTok.handle}" oninput="updateSocialBiosInput('TikTok','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">tiktok.com/@<b>&lt;handle&gt;</b></span>
             </div>
@@ -10972,9 +11294,9 @@ function generateViewHTML(view) {
         <!-- Channel selector pills -->
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
           <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')"><i data-lucide="layout-grid" style="width:13px;vertical-align:middle;margin-right:5px;"></i>Compare all</div>
-          <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><i data-lucide="linkedin" style="width:13px;vertical-align:middle;margin-right:5px;color:#0A66C2"></i>LinkedIn</div>
-          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><i data-lucide="instagram" style="width:13px;vertical-align:middle;margin-right:5px;color:#E4405F"></i>Instagram</div>
-          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><i data-lucide="music" style="width:13px;vertical-align:middle;margin-right:5px;color:#000"></i>TikTok</div>
+          <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('linkedin','#0A66C2',14)}</span>LinkedIn</div>
+          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('instagram','#E4405F',14)}</span>Instagram</div>
+          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#000',14)}</span>TikTok</div>
         </div>
 
         <!-- ═══════ Comparison view (visible when "all" selected) ═══════ -->
@@ -11574,6 +11896,43 @@ function generateViewHTML(view) {
                 Generá el contenido arriba primero. Cuando esté listo, este botón se habilita y WF13 va a usar el visual prompt generado por el agente.
               </div>
               <div id="cb-wf09-image-meta" style="margin-top:10px; font-size:11px; color:var(--text-muted); display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Video generation step — WF16 Kling AI -->
+          <div class="cb-step" id="cb-step-video" style="border:1px solid #FDE68A; background:linear-gradient(180deg,#FFFBEB 0%,white 70%); margin-top:14px;">
+            <div class="cb-step-head">
+              <span class="cb-step-num" style="background:#D97706">🎬</span>
+              <div class="cb-step-title">
+                <strong>Video — Kling AI via fal.ai</strong>
+                <span class="cb-step-sub">webhook <code>wf16-video-gen</code> · aspect ratio auto según canal · tarda ~2–3 min · requiere FAL_API_KEY en n8n</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                <span id="cb-video-ar-badge" style="font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;white-space:nowrap;">—</span>
+                <select id="cb-video-duration" style="font-size:11px;border:1px solid #FDE68A;border-radius:6px;padding:3px 6px;background:white;color:#92400E;cursor:pointer;">
+                  <option value="5">5 seg</option>
+                  <option value="10">10 seg</option>
+                </select>
+                <button id="btn-generate-video-wf16" class="cb-step-btn" style="background:#D97706;color:white;" onclick="handleGenerateVideo()" disabled title="Primero generá el contenido arriba para tener un visual prompt.">
+                  <i data-lucide="video" style="width:12px"></i> Generar video
+                </button>
+              </div>
+            </div>
+            <div class="cb-step-body">
+              <!-- Kling prompt preview (editable) — shown after visual agent runs -->
+              <div id="cb-video-prompt-wrap" style="display:none; margin-bottom:10px;">
+                <div style="font-size:11px; font-weight:700; color:#92400E; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">
+                  <i data-lucide="film" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Kling Prompt — GenHQ Framework · editable antes de generar
+                </div>
+                <textarea id="cb-video-prompt-text"
+                  style="width:100%;box-sizing:border-box;min-height:90px;font-size:11px;line-height:1.6;padding:10px;border:1px solid #FDE68A;border-radius:8px;background:#FFFDF5;color:#78350F;resize:vertical;font-family:inherit;"
+                  placeholder="El prompt para Kling aparece acá cuando el Agente 3 (visual) esté listo…"></textarea>
+                <div style="font-size:10px;color:#B45309;margin-top:3px;">Medium · Shot · Angle · Movement · Focus · Subject · Lighting · Color · Audio — Kling 3.0 five-layer structure</div>
+              </div>
+              <div id="cb-video-body" style="min-height:140px; display:flex; align-items:center; justify-content:center; padding:24px; border:1px dashed #FDE68A; border-radius:8px; background:#FFFBEB; color:var(--text-muted); font-size:12px; font-style:italic; text-align:center;">
+                Generá la imagen primero (paso anterior). Cuando tengás el visual prompt listo, este botón se habilita y WF16 genera el video con Kling AI.
+              </div>
+              <div id="cb-video-meta" style="margin-top:10px; font-size:11px; color:var(--text-muted); display:none;"></div>
             </div>
           </div>
 
