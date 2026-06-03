@@ -279,7 +279,20 @@ function toggleBkColor() {
   switchView(state.currentView);
 }
 
-function getSocialLogo(iconName, color) {
+function detectSocialIcon(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('tiktok'))                                              return { icon: 'music',          color: '#010101' };
+  if (n.includes('youtube'))                                             return { icon: 'youtube',         color: '#FF0000' };
+  if (n.includes('instagram'))                                           return { icon: 'instagram',       color: '#E4405F' };
+  if (n.includes('linkedin'))                                            return { icon: 'linkedin',        color: '#0A66C2' };
+  if (n.includes('twitter') || n === 'x' || n.endsWith(' x') || n.startsWith('x/') || n.includes('x.com')) return { icon: 'twitter', color: '#1DA1F2' };
+  if (n.includes('facebook'))                                            return { icon: 'facebook',        color: '#1877F2' };
+  if (n.includes('whatsapp'))                                            return { icon: 'message-circle',  color: '#25D366' };
+  if (n.includes('email') || n.includes('newsletter') || n.includes('mail')) return { icon: 'mail',      color: '#F59E0B' };
+  return null;
+}
+
+function getSocialLogo(iconName, color, size) {
   const c = color || '#374151';
   const logos = {
     instagram:        `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
@@ -292,7 +305,9 @@ function getSocialLogo(iconName, color) {
     mail:             `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
     globe:            `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`,
   };
-  return logos[iconName] || logos['globe'];
+  const svg = logos[iconName] || logos['globe'];
+  if (!size || size === 18) return svg;
+  return svg.replace('width="18" height="18"', `width="${size}" height="${size}"`);
 }
 
 // ── DEV TOGGLE — route ContentBuilder workflows to [DEV-fran] copies ──
@@ -777,12 +792,12 @@ function renderSocialBiosComparison(channels) {
   setHTML('smb-channel-cards', channels.map(c => {
     const top = (c.topPosts || [])[0];
     const isTop = c.name === topErChannel;
-    const iconMap = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
+    const smbIconKey = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
     return `
       <div class="smb-channel-card" style="border-top:3px solid ${c.color};">
         ${isTop ? `<div class="smb-channel-card-ribbon"><i data-lucide="star" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Top performer</div>` : ''}
         <div class="smb-channel-card-head">
-          <div class="smb-channel-card-avatar" style="background:${c.color};"><i data-lucide="${iconMap[c.name] || 'globe'}" style="width:18px;color:white;"></i></div>
+          <div class="smb-channel-card-avatar" style="background:${c.color};">${getSocialLogo(smbIconKey[c.name] || 'globe', 'white')}</div>
           <div style="flex:1;min-width:0;">
             <div class="smb-channel-card-title">${c.name}</div>
             <a href="${c.profileUrl}" target="_blank" class="smb-channel-card-handle">${c.handle}</a>
@@ -3294,7 +3309,9 @@ function renderBrandVerticals() {
     const badgeColor = v.source === 'scraper' ? '#7C3AED' : (v.source === 'manual' ? '#0EA5E9' : '#64748B');
     const badgeBg    = v.source === 'scraper' ? '#F3E8FF' : (v.source === 'manual' ? '#E0F2FE' : '#F1F5F9');
     const badgeText  = v.source === 'scraper' ? 'Detectado' : (v.source === 'manual' ? 'Manual' : 'Default');
-    const desc = v.desc ? `<span style="color:var(--text-muted)"> — ${escapeHtml(v.desc)}</span>` : '';
+    const hasProfile = v.profile && typeof v.profile === 'object' && (v.profile.summary || v.profile.one_paragraph);
+    const descText = hasProfile ? (v.profile.summary || v.profile.one_paragraph) : v.desc;
+    const desc = descText ? `<span style="color:var(--text-muted)"> — ${escapeHtml(descText)}</span>` : '';
 
     // Channel matrix: one pill per channel with toggle + posts/month number input
     const totalPosts = CB_VERTICAL_CHANNELS.reduce((s, c) => s + (v.channels[c.key].enabled ? Number(v.channels[c.key].postsPerMonth) || 0 : 0), 0);
@@ -3333,9 +3350,11 @@ function renderBrandVerticals() {
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <span style="font-size:9.5px; font-weight:700; color:${badgeColor}; background:${badgeBg}; padding:2px 6px; border-radius:99px; letter-spacing:0.3px; text-transform:uppercase;">${badgeText}</span>
           <strong style="color:#4C1D95; font-size:13px;">${escapeHtml(v.name)}</strong>
+          ${hasProfile ? `<span title="Perfil de contenido generado por WF15 — los agentes lo usan para escribir contenido propio de esta vertical" style="font-size:9.5px; font-weight:700; color:#7C3AED; background:#F3E8FF; border:1px solid #E9D5FF; padding:2px 7px; border-radius:99px; letter-spacing:0.3px;">✦ PERFIL IA</span>` : `<span title="Esta vertical aún no tiene perfil de contenido — dale a 'Perfilar verticales'" style="font-size:9.5px; font-weight:700; color:#92929D; background:#F1F5F9; border:1px solid var(--border); padding:2px 7px; border-radius:99px; letter-spacing:0.3px;">sin perfil</span>`}
           ${desc}
           <span style="margin-left:auto; display:inline-flex; align-items:center; gap:6px;">
             <span style="font-size:10.5px; color:var(--text-muted); background:#FAF5FF; border:1px solid #E9D5FF; padding:2px 8px; border-radius:99px;"><strong style="color:#4C1D95">${totalPosts}</strong> posts/mes</span>
+            ${hasProfile ? `<button onclick="viewVerticalProfile(${i})" title="Ver el perfil de contenido" style="background:none;border:1px solid #E9D5FF;color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">ver perfil</button>` : ''}
             <button onclick="editBrandVerticalDesc(${i})" title="Editar descripción" style="background:none;border:1px solid var(--border);color:#7C3AED;cursor:pointer;padding:3px 8px;font-size:11px;border-radius:5px;">edit</button>
             <button onclick="removeBrandVertical(${i})" title="Eliminar" style="background:none;border:1px solid var(--border);color:#991B1B;cursor:pointer;padding:3px 8px;font-size:13px;line-height:1;border-radius:5px;">×</button>
           </span>
@@ -3373,6 +3392,7 @@ function reattachPipelineToActiveSlot() {
 function toggleVerticalExpansion(idx) {
   const v = brandKitData.verticals?.[idx];
   if (!v) return;
+  cbWithCellSwitch(() => {
   if (cbExpandedVerticalIdx === idx) {
     // Collapse — go back to "mix all" mode
     cbExpandedVerticalIdx = null;
@@ -3400,6 +3420,7 @@ function toggleVerticalExpansion(idx) {
       if (slot) slot.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
   }
+  });
 }
 
 function toggleVerticalChannel(idx, channelKey) {
@@ -3461,6 +3482,46 @@ function editBrandVerticalDesc(idx) {
   persistBrandVerticals();
 }
 
+// Read-only modal that renders the WF15 content profile for one vertical so the
+// user can see exactly what the generator agents now receive.
+function viewVerticalProfile(idx) {
+  const v = brandKitData.verticals?.[idx];
+  if (!v || !v.profile) return;
+  const p = v.profile;
+  const esc = (s) => escapeHtml(String(s == null ? '' : s));
+  const textRow = (label, val) => val ? `<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7C3AED;margin-bottom:2px;">${label}</div><div style="font-size:13px;color:#1E293B;line-height:1.5;">${esc(val)}</div></div>` : '';
+  const listRow = (label, arr) => Array.isArray(arr) && arr.length ? `<div style="margin-bottom:10px;"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#7C3AED;margin-bottom:4px;">${label}</div><div style="display:flex;flex-wrap:wrap;gap:5px;">${arr.map(x => `<span style="font-size:11.5px;background:#F3E8FF;color:#4C1D95;border:1px solid #E9D5FF;padding:2px 9px;border-radius:99px;">${esc(x)}</span>`).join('')}</div></div>` : '';
+  const when = v.profileUpdatedAt ? new Date(v.profileUpdatedAt).toLocaleString() : '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'cb-vprofile-modal';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div style="background:white;border-radius:14px;max-width:680px;width:100%;max-height:86vh;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,0.3);">
+      <div style="position:sticky;top:0;background:linear-gradient(135deg,#7C3AED,#4C1D95);color:white;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:9.5px;font-weight:700;letter-spacing:0.5px;opacity:0.85;text-transform:uppercase;">✦ Perfil de contenido · WF15</div>
+          <div style="font-size:17px;font-weight:700;margin-top:2px;">${esc(v.name)}</div>
+        </div>
+        <button onclick="document.getElementById('cb-vprofile-modal').remove()" style="background:rgba(255,255,255,0.18);border:none;color:white;width:30px;height:30px;border-radius:8px;font-size:18px;cursor:pointer;line-height:1;">×</button>
+      </div>
+      <div style="padding:20px;">
+        ${textRow('Resumen', p.summary)}
+        ${textRow('Audiencia', p.audience)}
+        ${textRow('Propuesta de valor', p.value_prop)}
+        ${listRow('Pain points', p.pain_points)}
+        ${listRow('Proof points', p.proof_points)}
+        ${listRow('Vocabulario', p.vocabulary)}
+        ${listRow('Ángulos de contenido', p.content_angles)}
+        ${textRow('Ajuste de tono', p.tone_shift)}
+        ${textRow('Briefing', p.one_paragraph)}
+        ${when ? `<div style="margin-top:14px;font-size:10.5px;color:var(--text-muted);">Perfilada ${esc(when)} · fuente: ${esc(v.profile.profiler || 'wf15')}</div>` : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
 // Merge-and-upsert: read current brand_profiles.data_json, replace only the
 // `verticals` field, write back. Falls back to no-op if there's no brandId yet
 // (e.g. demo state before Branding Bio has been saved).
@@ -3485,7 +3546,9 @@ async function persistBrandVerticals() {
 let cbActiveVertical = null;
 
 function setActiveVertical(name) {
-  cbActiveVertical = name && name !== '__all__' ? name : null;
+  cbWithCellSwitch(() => {
+    cbActiveVertical = name && name !== '__all__' ? name : null;
+  });
 }
 
 function renderActiveVerticalSelect() {
@@ -3513,6 +3576,87 @@ async function hydrateBrandVerticalsFromSupabase() {
     }
   } catch (e) {
     console.warn('[verticals] hydrate failed:', e);
+  }
+}
+
+// Pull the per-vertical content profiles WF15 wrote into `vertical_profiles`
+// and merge them onto the matching brandKitData.verticals entries (by name).
+// This is what makes the generator agents produce vertical-specific content:
+// the `profile` object rides along inside `selected_vertical` in every payload.
+async function hydrateVerticalProfilesFromSupabase() {
+  if (!brandKitData.brandId) return;
+  if (!(brandKitData.verticals || []).length) return;
+  try {
+    const rows = await supabaseGet(`vertical_profiles?brand_id=eq.${brandKitData.brandId}&select=vertical_name,source_url,profile_json,updated_at`);
+    if (!Array.isArray(rows) || !rows.length) return;
+    const byName = new Map(rows.map(r => [(r.vertical_name || '').toLowerCase().trim(), r]));
+    let merged = 0;
+    for (const v of brandKitData.verticals) {
+      const row = byName.get((v.name || '').toLowerCase().trim());
+      if (row && row.profile_json && typeof row.profile_json === 'object') {
+        v.profile = row.profile_json;
+        v.profileUpdatedAt = row.updated_at || null;
+        merged++;
+      }
+    }
+    if (merged) renderBrandVerticals();
+  } catch (e) {
+    console.warn('[vertical-profiles] hydrate failed:', e);
+  }
+}
+
+// ── WF15 — Vertical Profiler trigger ────────────────────────────────────────
+// Claude reads the brand website and writes a structured content profile per
+// vertical into `vertical_profiles`. One call profiles ALL verticals at once.
+const WF15_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf15-vertical-profiler';
+
+async function profileBrandVerticals() {
+  const btn = document.getElementById('cb-profile-verticals');
+  if (!brandKitData.brandId) {
+    showToast('Branding Bio aún no fue guardado. Andá a Branding Bio → Save & Sync primero.');
+    return;
+  }
+  const names = (brandKitData.verticals || []).map(v => v.name).filter(Boolean);
+  if (!names.length) {
+    showToast('No hay verticales para perfilar. Detectá o agregá verticales primero.');
+    return;
+  }
+  const websiteUrl = brandKitData.websiteUrl;
+  if (!websiteUrl) {
+    showToast('Falta el website del cliente. Cargalo en Branding Bio primero.');
+    return;
+  }
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" style="width:11px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:5px"></i>Perfilando…';
+    if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+  }
+  try {
+    const res = await fetch(WF15_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brand_id: brandKitData.brandId, website_url: websiteUrl, vertical_names: names }),
+    });
+    const bodyText = await res.text();
+    let body; try { body = JSON.parse(bodyText); } catch { body = null; }
+    if (Array.isArray(body)) body = body[0];
+    if (!res.ok || !body?.ok) {
+      console.warn('[WF15] unexpected response:', res.status, bodyText.slice(0, 400));
+      showToast('WF15 no devolvió perfiles. Revisá el workflow.', 'error');
+      return;
+    }
+    // Pull the freshly-written profiles back and merge them in.
+    await hydrateVerticalProfilesFromSupabase();
+    showToast(`Perfiladas ${body.upserted} vertical${body.upserted === 1 ? '' : 'es'} ✓ — los agentes ya las usan.`);
+  } catch (e) {
+    console.error('[WF15] failed:', e);
+    showToast('Error al perfilar verticales: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Perfilar verticales';
+      if (typeof lucide !== 'undefined') lucide.createIcons({ nodes: [btn] });
+    }
   }
 }
 
@@ -3576,6 +3720,8 @@ async function syncFromBrandingBio() {
 
     renderBrandVerticals();
     renderActiveVerticalSelect();
+    // Re-attach WF15 content profiles (remote-added verticals don't carry one).
+    hydrateVerticalProfilesFromSupabase();
     if (remoteVerticals.length === 0) {
       showToast(`Branding Bio remoto no tiene verticales guardadas. Conservé tus ${localVerticals.length} vertical${localVerticals.length === 1 ? '' : 'es'} locales — guardá desde Branding Bio para sincronizar.`);
     } else {
@@ -3647,7 +3793,7 @@ async function suggestVisualConcept() {
     const payload = {
       brand_id:        brandKitData.brandId,
       channel,
-      vertical:        vertical ? { name: vertical.name, desc: vertical.desc || '' } : null,
+      vertical:        vertical ? { name: vertical.name, desc: vertical.desc || '', profile: vertical.profile || null } : null,
       specs,
       top_post_urls:   topPostUrls,
       smb_context: smbChannel ? {
@@ -3780,10 +3926,16 @@ function updateSlideCount(value) {
 function hydrateContentBuilderCampaign() {
   // Activate the current tab so verticales, persona, format and visual prompt all reflect it
   if (typeof setContentBuilderTab === 'function') setContentBuilderTab(contentBuilderActiveTab || 'Instagram');
+  // Capture the empty-state HTML of each output container NOW (fresh DOM) so an
+  // empty cell restores cleanly even before any brand is saved.
+  cbCaptureDefaultsOnce();
   // Brand-wide verticales — render local copy first, then try to pull from Supabase
   renderBrandVerticals();
   renderActiveVerticalSelect();
-  hydrateBrandVerticalsFromSupabase().then(renderActiveVerticalSelect);
+  hydrateBrandVerticalsFromSupabase()
+    .then(() => hydrateVerticalProfilesFromSupabase())
+    .then(() => cbHydrateCellsFromSupabase())
+    .then(renderActiveVerticalSelect);
 
   // If SocialMediaBios is still showing mock data (e.g. user landed on ContentBuilder
   // directly without visiting SMB first), try to pull the real analysis from Supabase
@@ -3898,10 +4050,11 @@ function syncChannelLanguageSelector() {
 
 function setContentBuilderTab(channel) {
   if (!CB_CHANNEL_PROFILES[channel]) return;
-  if (typeof resetCbAgentState === 'function' && channel !== contentBuilderActiveTab) {
-    resetCbAgentState();
-    setTimeout(() => updateAgentButtonsEnabled(), 0);
-  }
+  // Switching channel = switching cells. Save the current cell's rendered output
+  // and restore the target cell's (instead of wiping). The guard lets nested
+  // callers (toggleVerticalExpansion) own the snapshot/restore boundary.
+  const _outerSwitch = !_cbCellSwitching && channel !== contentBuilderActiveTab;
+  if (_outerSwitch) { _cbCellSwitching = true; cbSnapshotActiveCell(); }
   contentBuilderActiveTab = channel;
   setTimeout(() => syncChannelLanguageSelector(), 0);
   const profile = CB_CHANNEL_PROFILES[channel];
@@ -4019,6 +4172,11 @@ function setContentBuilderTab(channel) {
   // the locked spec WF06/WF07 will use. Switching tabs swaps briefings — each
   // channel has its own row in user_briefings.
   hydrateUserBriefingForChannel(channel);
+
+  // Restore the target cell's rendered output (snapshot or durable data).
+  if (_outerSwitch) {
+    Promise.resolve(cbRestoreCell(cbActiveCellKey())).finally(() => { _cbCellSwitching = false; });
+  }
 }
 
 // Builds context pills + format recommendation from SocialMediaBios analysis
@@ -4627,6 +4785,20 @@ function swipeModalTab(section) {
   if (body && _swipeModalVideo) {
     const content = section === 'analysis' ? _swipeModalVideo.analysis : _swipeModalVideo.new_concepts;
     body.innerHTML = renderAnalysisMarkdown(content);
+    if (section === 'concepts' && _swipeModalVideo.id) {
+      body.innerHTML += `
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #E5E7EB;">
+          <div style="font-size:11px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">🎬 Generar video con Kling AI</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            ${[1,2,3].map(i => `<button data-concept-btn="${i}" onclick="generateVideoFromConcept(${i})"
+              style="flex:1;min-width:80px;padding:9px 12px;background:#7C3AED;color:white;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s;"
+              onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+              Concept ${i}
+            </button>`).join('')}
+          </div>
+          <div id="swipe-video-status" style="margin-top:10px;font-size:11px;color:#6B7280;min-height:18px;"></div>
+        </div>`;
+    }
   }
 }
 
@@ -4635,6 +4807,45 @@ function closeSwipeModal() {
   if (m) m.style.display = 'none';
   document.body.style.overflow = '';
   _swipeModalVideo = null;
+}
+
+async function generateVideoFromConcept(conceptIndex) {
+  const video = _swipeModalVideo;
+  if (!video?.id) return;
+
+  const brandId = brandKitData?.brandId;
+  if (!brandId) { showToast('Brand no cargado.', 'error'); return; }
+
+  const platformToChannel = { tiktok: 'TikTok', linkedin: 'LinkedIn', twitter: 'Twitter' };
+  const channel = platformToChannel[video.platform] || 'Instagram';
+
+  const statusEl = document.getElementById('swipe-video-status');
+  const btns     = document.querySelectorAll('[data-concept-btn]');
+  btns.forEach(b => { b.disabled = true; b.style.opacity = '.5'; });
+  if (statusEl) statusEl.innerHTML = `<i data-lucide="loader-2" style="width:10px;vertical-align:middle;animation:spin 1s linear infinite;margin-right:4px;"></i>Generando Concept ${conceptIndex} con Kling AI… (~2–3 min)`;
+  lucide.createIcons();
+
+  try {
+    const videoUrl = await generateVideoViaKling({
+      brandId,
+      draftId:      '',
+      channel,
+      videoPrompt:  '',
+      duration:     5,
+      smVideoId:    video.id,
+      conceptIndex,
+    });
+    if (!videoUrl) throw new Error('WF16 no devolvió URL de video');
+    if (statusEl) statusEl.innerHTML =
+      `✅ Concept ${conceptIndex} listo · <a href="${escapeHtml(videoUrl)}" target="_blank" style="color:#7C3AED;font-weight:600;">Ver video ↗</a> · <a href="${escapeHtml(videoUrl)}" download="concept-${conceptIndex}.mp4" style="color:#7C3AED;">Descargar</a>`;
+    showToast(`Concept ${conceptIndex} generado con Kling ✓`);
+  } catch (e) {
+    if (statusEl) statusEl.textContent = `❌ Error: ${e.message}`;
+    showToast('Error generando video: ' + e.message, 'error');
+  } finally {
+    btns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    lucide.createIcons();
+  }
 }
 
 async function toggleSwipeStar(videoId, currentStarred) {
@@ -4988,7 +5199,7 @@ async function generateContentBrief(channel = 'LinkedIn', persona = 'VP Engineer
   try {
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -5132,7 +5343,185 @@ function resetCbAgentState() {
   lastUnifiedResult = null;
 }
 
+// ── ContentBuilder · per-cell (channel × vertical) generation memory ─────────
+// Each channel×vertical pair keeps its OWN rendered output, so generating for one
+// cell never overwrites another's images. In-session fidelity = HTML snapshot of
+// the output containers + the generation globals. Durable across page reloads = a
+// LIGHT record persisted to cb_cell_state (brief/caption/visual text + draft_id);
+// images rehydrate from creative_assets by draft_id on demand (canvas/template
+// slides without an asset_id don't survive a reload — Gemini photos do).
+const CB_CELL_OUTPUT_IDS = ['cb-brief-body', 'cb-post-body', 'cb-post-hashtags', 'cb-visual-prompt-output', 'visual-brief-body', 'cb-wf09-image-body'];
+const cbCellState = {};        // key -> { html:{id:innerHTML}, g:{globals}, data:{light} }
+let cbCellDefaults = null;     // empty-state innerHTML per container (captured once)
+let cbCurrentCellKey_ = null;  // key currently shown on screen
+let _cbCellSwitching = false;  // guard so nested switches don't double snapshot/restore
+
+function cbCellKey(channel, verticalName) {
+  return `${channel || contentBuilderActiveTab || 'Instagram'}::${verticalName || '__all__'}`;
+}
+function cbActiveCellKey() {
+  return cbCellKey(contentBuilderActiveTab, cbActiveVertical);
+}
+function cbCaptureDefaultsOnce() {
+  if (cbCellDefaults) return;
+  cbCellDefaults = {};
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    cbCellDefaults[id] = el ? el.innerHTML : '';
+  }
+}
+function cbResetOutputsToDefault() {
+  cbCaptureDefaultsOnce();
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = cbCellDefaults[id] || '';
+  }
+}
+function cbApplyGlobals(g) {
+  lastBriefResult      = g?.brief          || null;
+  lastCaptionResult    = g?.caption        || null;
+  lastVisualResult     = g?.visual         || null;
+  lastUnifiedResult    = g?.unified        || null;
+  lastRenderedSlides   = g?.renderedSlides || [];
+  lastBuiltDraftId     = g?.draftId        || null;
+  lastGeneratedBriefId = g?.briefId        || null;
+  lastImageGenCtx      = g?.imageGenCtx    || null;
+  _cbCarouselState     = g?.carousel       || { slides: [], active: 0 };
+}
+function cbSnapshotActiveCell() {
+  cbCaptureDefaultsOnce();
+  const key = cbCurrentCellKey_ || cbActiveCellKey();
+  const html = {};
+  for (const id of CB_CELL_OUTPUT_IDS) {
+    const el = document.getElementById(id);
+    if (el) html[id] = el.innerHTML;
+  }
+  cbCellState[key] = {
+    ...(cbCellState[key] || {}),
+    html,
+    g: {
+      brief: lastBriefResult, caption: lastCaptionResult, visual: lastVisualResult,
+      unified: lastUnifiedResult, renderedSlides: lastRenderedSlides,
+      draftId: lastBuiltDraftId, briefId: lastGeneratedBriefId,
+      imageGenCtx: lastImageGenCtx, carousel: _cbCarouselState,
+    },
+  };
+}
+async function cbRestoreCell(key) {
+  cbCaptureDefaultsOnce();
+  const cell = cbCellState[key];
+  if (cell && cell.html) {
+    for (const id of CB_CELL_OUTPUT_IDS) {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = (id in cell.html) ? cell.html[id] : (cbCellDefaults[id] || '');
+    }
+    cbApplyGlobals(cell.g);
+  } else if (cell && cell.data) {
+    // Hydrated from Supabase (text + draft_id) but never rendered this session.
+    cbResetOutputsToDefault();
+    cbApplyGlobals({});
+    await cbRenderCellFromData(cell.data);
+  } else {
+    cbResetOutputsToDefault();
+    cbApplyGlobals({});
+  }
+  cbCurrentCellKey_ = key;
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  if (typeof updateAgentButtonsEnabled === 'function') updateAgentButtonsEnabled();
+}
+async function cbRenderCellFromData(data) {
+  try {
+    if (data.brief)   { lastBriefResult = data.brief;     if (typeof renderBrief === 'function') renderBrief(data.brief); }
+    if (data.caption) { lastCaptionResult = data.caption; if (typeof renderCaption === 'function') renderCaption(data.caption); }
+    if (data.visual)  {
+      lastVisualResult = data.visual; lastUnifiedResult = data.visual;
+      if (typeof renderVisual === 'function') renderVisual(data.visual);
+      if (typeof enableWf09ImageButton === 'function') enableWf09ImageButton(data.visual);
+      if (typeof enableVideoButton === 'function') enableVideoButton(data.visual);
+    }
+    lastBuiltDraftId = data.draftId || null;
+    if (data.draftId) await cbRehydrateImagesForDraft(data.draftId);
+  } catch (e) { console.warn('[cb-cell] render-from-data failed:', e); }
+}
+async function cbRehydrateImagesForDraft(draftId) {
+  try {
+    const rows = await supabaseGet(`creative_assets?draft_id=eq.${draftId}&asset_type=eq.image&order=created_at.asc&select=id,file_url,created_at`);
+    if (!Array.isArray(rows) || !rows.length) return;
+    const slides = rows.filter(r => r.file_url)
+      .map((r, i) => ({ index: i + 1, kind: 'photo', image_url: r.file_url, asset_id: r.id }));
+    if (!slides.length) return;
+    if (slides.length === 1) renderVisualBriefIntoView(null, slides[0].image_url);
+    else renderCarouselIntoView(slides);
+  } catch (e) { console.warn('[cb-cell] image rehydrate failed:', e); }
+}
+// Persist the active cell's LIGHT state (no base64) and mirror it in memory.
+async function cbPersistActiveCell() {
+  if (!brandKitData.brandId) return;
+  const channel = contentBuilderActiveTab || 'Instagram';
+  const verticalName = cbActiveVertical || '__all__';
+  const data = {
+    brief:   lastBriefResult   || null,
+    caption: lastCaptionResult || null,
+    visual:  lastVisualResult  || null,
+    draftId: lastBuiltDraftId  || null,
+  };
+  const key = cbCellKey(channel, cbActiveVertical);
+  cbCellState[key] = { ...(cbCellState[key] || {}), data };
+  try {
+    await supabaseUpsert('cb_cell_state', {
+      brand_id: brandKitData.brandId,
+      channel,
+      vertical_name: verticalName,
+      draft_id: data.draftId,
+      state_json: data,
+    }, 'brand_id,channel,vertical_name');
+  } catch (e) { console.warn('[cb-cell] persist failed:', e); }
+}
+// Call after any successful generation render: refresh the snapshot + persist.
+function cbCommitActiveCell() {
+  if (!cbCurrentCellKey_) cbCurrentCellKey_ = cbActiveCellKey();
+  try { cbSnapshotActiveCell(); } catch (_) {}
+  cbPersistActiveCell();
+}
+// Snapshot the current screen, run a key-changing mutation, restore the new cell.
+// Nested calls (e.g. toggleVerticalExpansion → setContentBuilderTab) just run.
+function cbWithCellSwitch(fn) {
+  if (_cbCellSwitching) return fn();
+  _cbCellSwitching = true;
+  cbSnapshotActiveCell();
+  let r;
+  try { r = fn(); }
+  finally {
+    const newKey = cbActiveCellKey();
+    Promise.resolve(cbRestoreCell(newKey)).finally(() => { _cbCellSwitching = false; });
+  }
+  return r;
+}
+// Pull every cell's durable state for this brand and render the active one.
+async function cbHydrateCellsFromSupabase() {
+  if (!brandKitData.brandId) return;
+  try {
+    const rows = await supabaseGet(`cb_cell_state?brand_id=eq.${brandKitData.brandId}&select=channel,vertical_name,draft_id,state_json`);
+    if (!Array.isArray(rows)) return;
+    for (const r of rows) {
+      const vName = (r.vertical_name && r.vertical_name !== '__all__') ? r.vertical_name : null;
+      const key = cbCellKey(r.channel, vName);
+      const data = (r.state_json && typeof r.state_json === 'object') ? r.state_json : {};
+      if (!data.draftId) data.draftId = r.draft_id || null;
+      cbCellState[key] = { ...(cbCellState[key] || {}), data };
+    }
+    const activeKey = cbActiveCellKey();
+    if (cbCellState[activeKey]?.data) await cbRestoreCell(activeKey);
+    else cbCurrentCellKey_ = activeKey;
+  } catch (e) { console.warn('[cb-cell] hydrate failed:', e); }
+}
+
 async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draftId }) {
+  // Forward the active vertical (with its WF15 content profile) so WF12 can
+  // write content SPECIFIC to that vertical instead of generic brand copy.
+  const activeV = cbActiveVertical
+    ? (brandKitData.verticals || []).find(v => v.name === cbActiveVertical) || null
+    : null;
   const payload = {
     brand_id: brandId,
     channel,
@@ -5143,6 +5532,9 @@ async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draf
     } : null,
     prior_brief: priorBrief || null,
     draft_id:    draftId    || null,
+    selected_vertical: activeV
+      ? { name: activeV.name, desc: activeV.desc || '', profile: activeV.profile || null }
+      : null,
   };
   console.log(`[WF12 mode=${mode}] sending payload:`, payload);
   const res = await fetch(WF12_URL, {
@@ -5195,6 +5587,7 @@ async function handleGenerateBrief() {
     }
     lastBriefResult = result;
     renderBrief(result);
+    cbCommitActiveCell();
     updateAgentButtonsEnabled();
     showToast('Brief listo — ahora generá el texto o el visual.');
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5313,6 +5706,7 @@ async function handleGenerateCaption() {
     // Keep lastUnifiedResult populated so downstream WF13/approval/publish keep working.
     lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
     renderCaption(result);
+    cbCommitActiveCell();
     updateAgentButtonsEnabled();
     showToast('Caption listo.');
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5374,7 +5768,9 @@ async function handleGenerateVisual() {
     lastVisualResult = result;
     lastUnifiedResult = { ...(lastUnifiedResult || {}), ...result };
     renderVisual(result);
+    cbCommitActiveCell();
     enableWf09ImageButton(lastUnifiedResult);
+    enableVideoButton(lastUnifiedResult);
     updateAgentButtonsEnabled();
     showToast(`Visual prompt listo${result.slide_count > 1 ? ` — ${result.slide_count} slides` : ''}.`);
     btn.innerHTML = '<i data-lucide="check" style="width:12px"></i> Listo · regenerar';
@@ -5599,14 +5995,144 @@ function openSlideLightbox(urls, startIndex = 0) {
 // also routed through OpenAI) is bypassed entirely — see the architectural
 // note in MEMORY.md → wf13-image-gen for why.
 const WF13_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf13-image-gen';
+const WF16_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf16-video-gen';
+
+function getVideoAspectRatio(channel) {
+  const c = (channel || '').toLowerCase();
+  if (c.includes('tiktok') || c.includes('reel') || c.includes('story')) return '9:16';
+  if (c.includes('youtube') || c.includes('linkedin'))                    return '16:9';
+  return '1:1';
+}
+
+// GenHQ Video Prompting Framework — "Burger Formula" + Kling 3.0 Five Layers
+// Source: CURSO - GENHQ.pdf
+// Formula: [Medium] + [Shot] + [Angle] + [Movement] + [Focus] + [Subject] + [Lighting] + [Color]
+// Kling layers: Scene → Characters → Action → Camera → Audio & Style
+function buildKlingPrompt(visualPrompt, channel, hookType) {
+  const c = (channel || '').toLowerCase();
+
+  let medium, shot, angle, movement, focus, lighting, color, audio;
+
+  if (c.includes('tiktok') || c.includes('reel') || c.includes('story')) {
+    // TikTok/Reels: authentic, energetic, vertical, handheld UGC feel
+    medium   = 'Smartphone camera footage, organic film texture, vertical frame 9:16';
+    shot     = 'MCU (Medium Close Up), subject fills frame';
+    angle    = 'Eye level, slight upward tilt for energy and presence';
+    movement = 'Handheld camera with natural slight tremor, occasional push in toward subject';
+    focus    = 'Shallow focus, subject razor sharp, background soft bokeh';
+    lighting = 'Natural warm light, practical ring light, authentic and unfiltered';
+    color    = 'Warm vibrant tones, high saturation, punchy contrast';
+    audio    = 'Upbeat energy, natural ambient sound, fast-paced rhythm';
+  } else if (c.includes('instagram')) {
+    // Instagram: aesthetic, polished, editorial, aspirational
+    medium   = 'Editorial photography quality, cinematic 1:1 format, film-inspired grain';
+    shot     = 'MID (Medium Shot) to MCU, elegant composition with breathing room';
+    angle    = 'Slight high angle, graceful and flattering';
+    movement = 'Smooth steadicam dolly, slow and deliberate 0.3x speed, cinematic glide';
+    focus    = 'Shallow focus with dreamy bokeh, selective deep focus on hero detail';
+    lighting = 'Golden hour natural light, soft diffused glow, warm and aspirational';
+    color    = 'Warm aesthetic tones, slightly desaturated film look, complementary palette';
+    audio    = 'Soft ambient, subtle lo-fi texture, elegant and emotional';
+  } else if (c.includes('linkedin')) {
+    // LinkedIn: authoritative, professional, B2B trust signals
+    medium   = 'Professional corporate video, clean production value, 16:9 widescreen';
+    shot     = 'MID (Medium Shot), confident framing with environment visible';
+    angle    = 'Eye level, slightly low angle to convey authority and trustworthiness';
+    movement = 'Slow deliberate dolly in, stable tripod or slider movement, no shake';
+    focus    = 'Deep focus throughout, everything sharp and clear';
+    lighting = 'Professional studio lighting, high key, clean shadows, neutral and trustworthy';
+    color    = 'Cool professional palette, neutral tones, slight blue-cool grade';
+    audio    = 'Subtle corporate ambient, clean and minimal background score';
+  } else if (c.includes('youtube')) {
+    // YouTube: cinematic, high production, storytelling-first
+    medium   = 'Cinematic film quality, wide 16:9 format, anamorphic lens character';
+    shot     = 'MLS (Medium Long Shot) establishing, cutting to CU for emphasis';
+    angle    = 'Dynamic varied angles: eye level then low angle for drama';
+    movement = 'Cinematic orbit (arc around subject) combined with slow dolly in';
+    focus    = 'Deep focus opening, rack focus (RF) to subject for dramatic emphasis';
+    lighting = 'Dramatic cinematic motivated lighting, high contrast, chiaroscuro depth';
+    color    = 'Rich cinematic color grade, lifted blacks, deep shadows, film LUT applied';
+    audio    = 'Cinematic score, layered SFX, dramatic build';
+  } else {
+    medium   = 'Cinematic quality footage';
+    shot     = 'MID (Medium Shot)';
+    angle    = 'Eye level';
+    movement = 'Smooth steadicam movement';
+    focus    = 'Shallow focus, subject sharp';
+    lighting = 'Natural cinematic lighting, motivated sources';
+    color    = 'Balanced warm-neutral color palette';
+    audio    = 'Subtle ambient background';
+  }
+
+  // Hook-type specific camera direction (from hook miner data)
+  let hookCamera = '';
+  const h = (hookType || '').toLowerCase();
+  if (h.includes('contrarian') || h.includes('stop') || h.includes('wrong')) {
+    hookCamera = 'Quick dramatic push in on subject face at moment of revelation. Dutch angle for tension.';
+  } else if (h.includes('number') || h.includes('specific')) {
+    hookCamera = 'Clean static shot then slow zoom in for emphasis on key information.';
+  } else if (h.includes('how') || h.includes('we do')) {
+    hookCamera = 'Tracking shot following subject through action, over-the-shoulder perspective.';
+  } else if (h.includes('open') || h.includes('loop') || h.includes('secret')) {
+    hookCamera = 'Slow orbit around subject, building anticipation. Rack focus from environment to face.';
+  } else if (h.includes('persona') || h.includes('every')) {
+    hookCamera = 'Dolly in combined with slight low angle, empowering and direct.';
+  }
+
+  // Assemble Kling 3.0 five-layer prompt
+  const prompt = [
+    // Layer 1: Scene
+    `Scene: ${medium}.`,
+    // Layer 2: Characters + Subject
+    `${shot}. ${angle}. ${visualPrompt}.`,
+    // Layer 3: Action + Movement
+    `Camera: ${movement}. ${hookCamera}`.trim(),
+    // Layer 4: Focus + Lighting + Color
+    `Focus: ${focus}. Lighting: ${lighting}. Color: ${color}.`,
+    // Layer 5: Audio & Style
+    `Style: ${audio}. Photorealistic, ultra high quality, no text overlay, no watermark, no subtitles, no UI elements.`,
+  ].join(' ');
+
+  return prompt;
+}
+
+async function generateVideoViaKling({ brandId, draftId, channel, videoPrompt, duration, smVideoId, conceptIndex }) {
+  const payload = {
+    brand_id:        brandId,
+    draft_id:        draftId,
+    channel,
+    video_prompt:    videoPrompt,
+    aspect_ratio:    getVideoAspectRatio(channel),
+    duration:        duration || '5',
+    negative_prompt: 'text overlay, watermark, logo, subtitle, low quality, blurry, distorted, flickering',
+  };
+  if (smVideoId)    payload.sm_video_id   = smVideoId;
+  if (conceptIndex) payload.concept_index = conceptIndex;
+  const res = await fetch(WF16_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`WF16 HTTP ${res.status}`);
+  const text = await res.text();
+  let result; try { result = JSON.parse(text); } catch (_) { result = {}; }
+  if (Array.isArray(result)) result = result[0];
+  return result?.video_url || result?.url || null;
+}
 
 function enableWf09ImageButton(unifiedResult) {
   const btn = document.getElementById('btn-generate-image-wf09');
   if (!btn) return;
   const ok = !!(unifiedResult && unifiedResult.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
   btn.disabled = !ok;
-  btn.title = ok ? 'Manda el visual prompt a WF09 para generar la imagen.'
+  btn.title = ok ? 'Genera el video con Kling AI (fal.ai) usando el visual prompt del agente.'
                  : 'Primero generá el contenido arriba para tener un visual prompt.';
+  if (ok) {
+    const channel = unifiedResult.channel || contentBuilderActiveTab || 'Instagram';
+    const ar = getVideoAspectRatio(channel);
+    const arBadge = document.getElementById('cb-video-ar-badge');
+    if (arBadge) arBadge.textContent = ar;
+  }
 }
 
 // Generate one image for ONE photo prompt via WF13. Returns the data/URL or null.
@@ -5790,6 +6316,7 @@ async function handleGenerateImageFromUnified() {
     showToast(`Carrusel listo — ${usable.length}/${totalSlides} slides.`);
     btn.innerHTML = `<i data-lucide="check" style="width:12px"></i> ${usable.length}/${totalSlides} listos`;
     btn.style.background = '#10B981';
+    cbCommitActiveCell();
   } catch (err) {
     console.error('[image-gen] error:', err);
     showToast(`Falló la generación: ${err.message || err}`, 'error');
@@ -5803,6 +6330,99 @@ async function handleGenerateImageFromUnified() {
       enableWf09ImageButton(lastVisualResult || lastUnifiedResult);
       lucide.createIcons();
     }, 2500);
+    lucide.createIcons();
+  }
+}
+
+// ── WF16 Video Generation (Kling AI via fal.ai) ──────────────────────────────
+
+function enableVideoButton(unifiedResult) {
+  const btn = document.getElementById('btn-generate-video-wf16');
+  if (!btn) return;
+  const ok = !!(unifiedResult?.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
+  btn.disabled = !ok;
+  if (!ok) return;
+
+  const channel  = unifiedResult.channel || contentBuilderActiveTab || 'Instagram';
+  const hookType = unifiedResult.hook_type || lastBriefResult?.hook_type || '';
+
+  // Update aspect ratio badge
+  const arBadge = document.getElementById('cb-video-ar-badge');
+  if (arBadge) arBadge.textContent = getVideoAspectRatio(channel);
+
+  // Build GenHQ-structured Kling prompt and show in editable textarea
+  const prompt = buildKlingPrompt(unifiedResult.visual_prompt, channel, hookType);
+  const promptWrap = document.getElementById('cb-video-prompt-wrap');
+  const promptText = document.getElementById('cb-video-prompt-text');
+  if (promptWrap) promptWrap.style.display = '';
+  if (promptText) promptText.value = prompt;
+}
+
+async function handleGenerateVideo() {
+  const btn  = document.getElementById('btn-generate-video-wf16');
+  const body = document.getElementById('cb-video-body');
+  const meta = document.getElementById('cb-video-meta');
+  if (!btn || !body) return;
+
+  if (!lastVisualResult?.visual_prompt) {
+    showToast('Falta el visual prompt — generá el Agente 3 (visual) primero.', 'error');
+    return;
+  }
+
+  const channel  = lastVisualResult.channel || contentBuilderActiveTab || 'Instagram';
+  const brandId  = brandKitData.brandId;
+  const draftId  = lastVisualResult.draft_id || lastCaptionResult?.draft_id || lastBuiltDraftId || null;
+  const duration = document.getElementById('cb-video-duration')?.value || '5';
+  const ar       = getVideoAspectRatio(channel);
+  const hookType = lastBriefResult?.hook_type || '';
+  // Use edited prompt from textarea if available, otherwise build fresh
+  const promptTextarea = document.getElementById('cb-video-prompt-text');
+  const prompt = (promptTextarea?.value?.trim()) || buildKlingPrompt(lastVisualResult.visual_prompt, channel, hookType);
+
+  const origLabel = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Generando…`;
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px;color:var(--text-muted);font-size:12px;">
+      <i data-lucide="loader-2" style="width:28px;animation:spin 1s linear infinite;color:#D97706;"></i>
+      <div style="text-align:center;">
+        <div style="font-weight:600;color:#92400E;margin-bottom:4px;">Generando video con Kling AI…</div>
+        <div>Aspect ratio: <strong>${ar}</strong> · Duración: <strong>${duration}s</strong> · Canal: <strong>${escapeHtml(channel)}</strong></div>
+        <div style="margin-top:6px;font-size:11px;color:#B45309;">⏱ Esto tarda entre 2 y 4 minutos — no cerrés la página</div>
+      </div>
+    </div>`;
+  lucide.createIcons();
+
+  try {
+    const videoUrl = await generateVideoViaKling({ brandId, draftId, channel, videoPrompt: prompt, duration });
+    if (!videoUrl) throw new Error('WF16 no devolvió una URL de video');
+
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <video src="${escapeHtml(videoUrl)}" controls playsinline
+          style="width:100%;max-width:${ar === '9:16' ? '280px' : '100%'};max-height:480px;border-radius:10px;border:1px solid #FDE68A;margin:0 auto;display:block;background:#000;">
+          Tu navegador no soporta video HTML5.
+        </video>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11px;color:#92400E;font-weight:600;">
+            <i data-lucide="video" style="width:11px;vertical-align:middle;margin-right:4px;"></i>
+            Kling AI · ${ar} · ${duration}s · ${escapeHtml(channel)}
+          </span>
+          <a href="${escapeHtml(videoUrl)}" download="video-${channel.toLowerCase()}.mp4"
+             style="padding:6px 14px;background:#D97706;color:white;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;">
+            <i data-lucide="download" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Descargar
+          </a>
+        </div>
+      </div>`;
+    lucide.createIcons();
+    if (meta) { meta.textContent = `Video generado · ${ar} · ${duration}s`; meta.style.display = ''; }
+    showToast('Video generado con Kling AI ✓');
+  } catch (e) {
+    body.innerHTML = `<div style="color:#991B1B;font-size:12px;padding:16px;text-align:center;">❌ Error generando video: ${escapeHtml(e.message)}<br><small>Revisá que PIAPI_KEY y ANTHROPIC_API_KEY estén configuradas en n8n y que WF16 esté activo.</small></div>`;
+    showToast('Error generando video: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = origLabel;
     lucide.createIcons();
   }
 }
@@ -5935,7 +6555,7 @@ async function generateDraft() {
     // hydrated by WF00 scraper and editable in the Verticales del cliente card.
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -6150,7 +6770,7 @@ async function generateVisualBrief(draftId, extra = {}) {
     const verticals = [...(slot.verticals || [])];
     const brandVerticals = (brandKitData.verticals || []).map(v => {
       ensureVerticalChannels(v);
-      return { name: v.name, desc: v.desc || '', channels: v.channels };
+      return { name: v.name, desc: v.desc || '', channels: v.channels, profile: v.profile || null };
     });
     const selectedVertical = cbActiveVertical
       ? brandVerticals.find(v => v.name === cbActiveVertical) || null
@@ -6304,6 +6924,7 @@ async function handleGenerateVisualLegacyWF09() {
     } else {
       renderCarouselIntoView(slides);
     }
+    cbCommitActiveCell();
     showToast(`Generated ${slides.length}/${totalSlides} slide(s).`);
     setTimeout(() => hydrateCreativeBrainView(), 500);
   }
@@ -6466,6 +7087,7 @@ async function fetchCarouselSlideSpecs(slideCount) {
         brand_handle:   smbChannel?.handle || '',
         vertical_name:  vertical?.name || '',
         vertical_desc:  vertical?.desc || '',
+        vertical_profile: vertical?.profile || null,
         channel,
         draft_text:     draftText,
         agent_prompt:   slot.agentPrompt || '',
@@ -7310,6 +7932,18 @@ function updateBrandListItem(list, idx, key, value) {
   if (brandKitData[list] && brandKitData[list][idx]) brandKitData[list][idx][key] = value;
 }
 
+function updateChannelName(idx, name) {
+  if (!brandKitData.channels?.[idx]) return;
+  brandKitData.channels[idx].name = name;
+  const detected = detectSocialIcon(name);
+  if (detected) {
+    brandKitData.channels[idx].icon  = detected.icon;
+    brandKitData.channels[idx].color = detected.color;
+    const iconEl = document.getElementById('bk-ch-icon-' + idx);
+    if (iconEl) iconEl.innerHTML = getSocialLogo(detected.icon, detected.color);
+  }
+}
+
 // Add / remove items in list sections
 function addBrandListItem(list, template) {
   brandKitData[list].push(template);
@@ -7329,39 +7963,55 @@ function toggleCompetitorSocials(idx) {
   switchView(state.currentView);
 }
 
-// Attempt to discover social URLs by scanning the competitor's website HTML via a CORS proxy.
-// Mirrors the approach already used by discoverInstagramFromUrl() — best-effort, non-blocking.
+// Discover social URLs for a competitor by calling WF00 (Website Scrapper) with their URL.
+// WF00 runs server-side so there are no CORS issues.
 async function discoverSocialsForCompetitor(idx) {
   const c = brandKitData.competitors?.[idx];
   if (!c?.url) { showToast('Add the website URL first.'); return; }
-  showToast(`Scanning ${c.name}'s website for social links…`);
-  const proxies = [
-    'https://corsproxy.io/?' + encodeURIComponent(c.url),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(c.url),
-  ];
-  let html = '';
-  for (const p of proxies) {
-    try {
-      const r = await fetch(p, { headers: { 'Accept': 'text/html' } });
-      if (r.ok) { html = await r.text(); break; }
-    } catch (_) { /* try next proxy */ }
+  showToast(`Scanning ${c.name}'s website via WF00…`);
+
+  try {
+    const res = await fetch(WF00_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: c.url }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    if (!text?.trim()) throw new Error('Empty response from WF00');
+    const data = JSON.parse(text);
+
+    // WF00 returns channels: [{ name, icon, handle, ... }]
+    // Map each channel name to the competitor's social URL field.
+    let found = 0;
+    for (const ch of (data.channels || [])) {
+      const mapping = _competitorChannelMapping(ch.name);
+      if (!mapping) continue;
+      if (c[mapping.field]) continue; // don't overwrite manual entries
+      const raw = (ch.handle || '').replace(/^@/, '').trim();
+      if (!raw) continue;
+      c[mapping.field] = raw.startsWith('http') ? raw : mapping.prefix + raw;
+      found++;
+    }
+
+    showToast(found
+      ? `Found ${found} social channel(s) for ${c.name}.`
+      : `No social channels found for ${c.name}'s website.`);
+  } catch (e) {
+    showToast(`Scan failed: ${e.message}`);
+    console.error('[WF00 competitor socials]', e);
   }
-  if (!html) { showToast('Could not read the website (CORS proxy blocked).'); return; }
-  const patterns = {
-    linkedin_url:  /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in|school)\/[a-zA-Z0-9_\-./]+/i,
-    instagram_url: /https?:\/\/(?:www\.)?instagram\.com\/[a-zA-Z0-9_.\-]+/i,
-    tiktok_url:    /https?:\/\/(?:www\.)?tiktok\.com\/@[a-zA-Z0-9_.\-]+/i,
-    youtube_url:   /https?:\/\/(?:www\.)?youtube\.com\/(?:@|c\/|channel\/|user\/)[a-zA-Z0-9_\-./]+/i,
-    x_url:         /https?:\/\/(?:www\.)?(?:twitter|x)\.com\/[a-zA-Z0-9_]+/i,
-  };
-  let found = 0;
-  for (const [field, re] of Object.entries(patterns)) {
-    if (c[field]) continue; // don't overwrite manual entries
-    const m = html.match(re);
-    if (m) { c[field] = m[0].replace(/[\/"<>?#].*$/, ''); found++; }
-  }
-  showToast(found ? `Found ${found} social URL(s) on ${c.name}'s website.` : `No social links found on ${c.name}'s website.`);
   switchView(state.currentView);
+}
+
+function _competitorChannelMapping(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('linkedin'))  return { field: 'linkedin_url',  prefix: 'https://linkedin.com/company/' };
+  if (n.includes('instagram')) return { field: 'instagram_url', prefix: 'https://instagram.com/' };
+  if (n.includes('tiktok'))    return { field: 'tiktok_url',    prefix: 'https://tiktok.com/@' };
+  if (n.includes('youtube'))   return { field: 'youtube_url',   prefix: 'https://youtube.com/@' };
+  if (n.includes('twitter') || n === 'x' || /\bx\b/.test(n)) return { field: 'x_url', prefix: 'https://x.com/' };
+  return null;
 }
 
 // ── Helpers shared across all modules ──
@@ -10535,17 +11185,18 @@ function generateViewHTML(view) {
               ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>'
               : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
             ${brandKitData.channels.map((c, i) => `
               <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
                 <button class="bk-row-action" onclick="removeBrandListItem('channels', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
-                <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
-                  <div style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                  <div id="bk-ch-icon-${i}" style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
                   <div style="flex:1; min-width:0;">
-                    <div style="font-size:13px; font-weight:700; color:var(--text-main);">${c.name}</div>
-                    <div style="font-size:12px; color:var(--text-muted); font-family:monospace;">${c.handle}</div>
+                    <input class="bk-input" type="text" value="${c.name}" oninput="updateChannelName(${i}, this.value)" placeholder="e.g. TikTok, YouTube…" style="font-size:13px; font-weight:700; padding:2px 6px;" />
+                    <input class="bk-input" type="text" value="${c.handle}" oninput="updateBrandListItem('channels', ${i}, 'handle', this.value)" placeholder="@handle o URL" style="font-size:12px; font-family:monospace; padding:2px 6px; margin-top:4px;" />
                   </div>
                 </div>
+                <input class="bk-input" type="text" value="${c.audience || ''}" oninput="updateBrandListItem('channels', ${i}, 'audience', this.value)" placeholder="Descripción de audiencia" style="font-size:11px; width:100%; box-sizing:border-box;" />
               </div>
             `).join('')}
           </div>
@@ -10614,17 +11265,17 @@ function generateViewHTML(view) {
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px;">
             <div class="smb-input-card">
-              <label><i data-lucide="linkedin" style="width:14px;color:#0A66C2"></i> LinkedIn company slug</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('linkedin','#0A66C2',16)}</span> LinkedIn company slug</label>
               <input type="text" value="${socialBiosData.inputs.LinkedIn.handle}" oninput="updateSocialBiosInput('LinkedIn','handle',this.value)" placeholder="swl-consulting" />
               <span class="smb-hint">linkedin.com/company/<b>&lt;slug&gt;</b></span>
             </div>
             <div class="smb-input-card">
-              <label><i data-lucide="instagram" style="width:14px;color:#E4405F"></i> Instagram handle</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('instagram','#E4405F',16)}</span> Instagram handle</label>
               <input type="text" value="${socialBiosData.inputs.Instagram.handle}" oninput="updateSocialBiosInput('Instagram','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">instagram.com/<b>&lt;handle&gt;</b></span>
             </div>
             <div class="smb-input-card">
-              <label><i data-lucide="music" style="width:14px;color:#010101"></i> TikTok handle</label>
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#010101',16)}</span> TikTok handle</label>
               <input type="text" value="${socialBiosData.inputs.TikTok.handle}" oninput="updateSocialBiosInput('TikTok','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">tiktok.com/@<b>&lt;handle&gt;</b></span>
             </div>
@@ -10643,9 +11294,9 @@ function generateViewHTML(view) {
         <!-- Channel selector pills -->
         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
           <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')"><i data-lucide="layout-grid" style="width:13px;vertical-align:middle;margin-right:5px;"></i>Compare all</div>
-          <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><i data-lucide="linkedin" style="width:13px;vertical-align:middle;margin-right:5px;color:#0A66C2"></i>LinkedIn</div>
-          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><i data-lucide="instagram" style="width:13px;vertical-align:middle;margin-right:5px;color:#E4405F"></i>Instagram</div>
-          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><i data-lucide="music" style="width:13px;vertical-align:middle;margin-right:5px;color:#000"></i>TikTok</div>
+          <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('linkedin','#0A66C2',14)}</span>LinkedIn</div>
+          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('instagram','#E4405F',14)}</span>Instagram</div>
+          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#000',14)}</span>TikTok</div>
         </div>
 
         <!-- ═══════ Comparison view (visible when "all" selected) ═══════ -->
@@ -11048,6 +11699,7 @@ function generateViewHTML(view) {
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
               <button id="cb-sync-brand" onclick="syncFromBrandingBio()" title="Pull desde brand_profiles — sobreescribe la copia local con lo último guardado en Branding Bio" style="display:inline-flex; align-items:center; padding:6px 12px; background:#6366F1; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:5px"></i>Sync Branding Bio</button>
+              <button id="cb-profile-verticals" onclick="profileBrandVerticals()" title="WF15 — Claude lee el website y escribe un perfil de contenido por vertical (audiencia, pain points, vocabulario, ángulos). Los agentes generadores lo consumen para producir contenido propio de cada vertical." style="display:inline-flex; align-items:center; padding:6px 12px; background:#7C3AED; color:white; border:none; border-radius:6px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;"><i data-lucide="sparkles" style="width:11px;vertical-align:middle;margin-right:5px"></i>Perfilar verticales</button>
               <label style="font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">Vertical activa</label>
               <select id="cb-active-vertical" style="font-size:12px; padding:6px 10px; border:1px solid #E9D5FF; border-radius:6px; background:white; color:#4C1D95; font-weight:600;">
                 <option value="__all__">Todas las verticales (mix)</option>
@@ -11244,6 +11896,43 @@ function generateViewHTML(view) {
                 Generá el contenido arriba primero. Cuando esté listo, este botón se habilita y WF13 va a usar el visual prompt generado por el agente.
               </div>
               <div id="cb-wf09-image-meta" style="margin-top:10px; font-size:11px; color:var(--text-muted); display:none;"></div>
+            </div>
+          </div>
+
+          <!-- Video generation step — WF16 Kling AI -->
+          <div class="cb-step" id="cb-step-video" style="border:1px solid #FDE68A; background:linear-gradient(180deg,#FFFBEB 0%,white 70%); margin-top:14px;">
+            <div class="cb-step-head">
+              <span class="cb-step-num" style="background:#D97706">🎬</span>
+              <div class="cb-step-title">
+                <strong>Video — Kling AI via fal.ai</strong>
+                <span class="cb-step-sub">webhook <code>wf16-video-gen</code> · aspect ratio auto según canal · tarda ~2–3 min · requiere FAL_API_KEY en n8n</span>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+                <span id="cb-video-ar-badge" style="font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:20px;white-space:nowrap;">—</span>
+                <select id="cb-video-duration" style="font-size:11px;border:1px solid #FDE68A;border-radius:6px;padding:3px 6px;background:white;color:#92400E;cursor:pointer;">
+                  <option value="5">5 seg</option>
+                  <option value="10">10 seg</option>
+                </select>
+                <button id="btn-generate-video-wf16" class="cb-step-btn" style="background:#D97706;color:white;" onclick="handleGenerateVideo()" disabled title="Primero generá el contenido arriba para tener un visual prompt.">
+                  <i data-lucide="video" style="width:12px"></i> Generar video
+                </button>
+              </div>
+            </div>
+            <div class="cb-step-body">
+              <!-- Kling prompt preview (editable) — shown after visual agent runs -->
+              <div id="cb-video-prompt-wrap" style="display:none; margin-bottom:10px;">
+                <div style="font-size:11px; font-weight:700; color:#92400E; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">
+                  <i data-lucide="film" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Kling Prompt — GenHQ Framework · editable antes de generar
+                </div>
+                <textarea id="cb-video-prompt-text"
+                  style="width:100%;box-sizing:border-box;min-height:90px;font-size:11px;line-height:1.6;padding:10px;border:1px solid #FDE68A;border-radius:8px;background:#FFFDF5;color:#78350F;resize:vertical;font-family:inherit;"
+                  placeholder="El prompt para Kling aparece acá cuando el Agente 3 (visual) esté listo…"></textarea>
+                <div style="font-size:10px;color:#B45309;margin-top:3px;">Medium · Shot · Angle · Movement · Focus · Subject · Lighting · Color · Audio — Kling 3.0 five-layer structure</div>
+              </div>
+              <div id="cb-video-body" style="min-height:140px; display:flex; align-items:center; justify-content:center; padding:24px; border:1px dashed #FDE68A; border-radius:8px; background:#FFFBEB; color:var(--text-muted); font-size:12px; font-style:italic; text-align:center;">
+                Generá la imagen primero (paso anterior). Cuando tengás el visual prompt listo, este botón se habilita y WF16 genera el video con Kling AI.
+              </div>
+              <div id="cb-video-meta" style="margin-top:10px; font-size:11px; color:var(--text-muted); display:none;"></div>
             </div>
           </div>
 
