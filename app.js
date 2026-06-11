@@ -405,7 +405,6 @@ async function saveBrandProfile() {
     socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
     socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
     socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
-    socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
     for (const c of (brandKitData.channels || [])) {
       if (!c.handle) continue;
       const _clean = c.handle.replace(/^@/, '').trim();
@@ -413,7 +412,6 @@ async function saveBrandProfile() {
       if (_n.includes('instagram')) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
       else if (_n.includes('tiktok')) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
       else if (_n.includes('linkedin')) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
-      else if (_n.includes('youtube')) socialBiosData.inputs.YouTube = { handle: _clean, profileUrl: `https://www.youtube.com/@${_clean}` };
     }
 
     const competitorCount = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
@@ -558,7 +556,6 @@ const socialBiosData = {
     Instagram: { handle: 'swl.consulting', profileUrl: 'https://www.instagram.com/swl.consulting/' },
     TikTok:    { handle: 'swl.consulting', profileUrl: 'https://www.tiktok.com/@swl.consulting' },
     LinkedIn:  { handle: 'swl-consulting-group', profileUrl: 'https://www.linkedin.com/company/swl-consulting-group/' },
-    YouTube:   { handle: '', profileUrl: '' },
     Facebook:  { handle: '', profileUrl: '' },
   },
   channels: [], // populated by mock or by WF02 scan
@@ -685,7 +682,7 @@ async function scanSocialMediaBios() {
       body: JSON.stringify({
         brand_id: brandKitData.brandId,
         channels,
-        maxPosts: 30,
+        maxPosts: 10,
         scoringWeights: socialBiosData.scoringWeights,
       }),
     });
@@ -793,7 +790,6 @@ function autofillHandlesFromBrandKit() {
   socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
   socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
   socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
-  socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
   socialBiosData.inputs.Facebook  = { handle: '', profileUrl: '' };
   let touched = 0;
   for (const c of channels) {
@@ -809,9 +805,6 @@ function autofillHandlesFromBrandKit() {
     } else if (/linkedin/i.test(name)) {
       socialBiosData.inputs.LinkedIn = { handle: clean, profileUrl: `https://www.linkedin.com/company/${clean}/` };
       touched++;
-    } else if (/youtube/i.test(name)) {
-      socialBiosData.inputs.YouTube = { handle: clean, profileUrl: `https://www.youtube.com/@${clean}` };
-      touched++;
     } else if (/facebook/i.test(name)) {
       socialBiosData.inputs.Facebook = { handle: clean, profileUrl: `https://www.facebook.com/${clean}` };
       touched++;
@@ -819,7 +812,7 @@ function autofillHandlesFromBrandKit() {
   }
   // Update DOM input values + hide cards for empty handles immediately,
   // without waiting for a full view re-render.
-  ['LinkedIn', 'Instagram', 'TikTok', 'YouTube', 'Facebook'].forEach(ch => {
+  ['LinkedIn', 'Instagram', 'TikTok', 'Facebook'].forEach(ch => {
     const inp = document.querySelector(`input[oninput*="'${ch}'"]`);
     if (!inp) return;
     inp.value = socialBiosData.inputs[ch].handle;
@@ -8620,7 +8613,6 @@ function switchView(viewId) {
     socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
     socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
     socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
-    socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
     socialBiosData.inputs.Facebook  = { handle: '', profileUrl: '' };
     (brandKitData.channels || []).forEach(c => {
       if (!c.handle) return;
@@ -8629,7 +8621,6 @@ function switchView(viewId) {
       if (_n.includes('instagram')) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
       else if (_n.includes('tiktok')) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
       else if (_n.includes('linkedin')) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
-      else if (_n.includes('youtube')) socialBiosData.inputs.YouTube = { handle: _clean, profileUrl: `https://www.youtube.com/@${_clean}` };
       else if (_n.includes('facebook')) socialBiosData.inputs.Facebook = { handle: _clean, profileUrl: `https://www.facebook.com/${_clean}` };
     });
     setTimeout(() => hydrateSocialBiosView(), 80);
@@ -11530,11 +11521,6 @@ function generateViewHTML(view) {
               <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#010101',16)}</span> TikTok handle</label>
               <input type="text" value="${socialBiosData.inputs.TikTok.handle}" oninput="updateSocialBiosInput('TikTok','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">tiktok.com/@<b>&lt;handle&gt;</b></span>
-            </div>
-            <div class="smb-input-card" style="${socialBiosData.inputs.YouTube.handle ? '' : 'display:none'}">
-              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('youtube','#FF0000',16)}</span> YouTube channel handle</label>
-              <input type="text" value="${socialBiosData.inputs.YouTube.handle}" oninput="updateSocialBiosInput('YouTube','handle',this.value)" placeholder="HealthTechBioActives" />
-              <span class="smb-hint">youtube.com/@<b>&lt;handle&gt;</b></span>
             </div>
             <div class="smb-input-card" style="${socialBiosData.inputs.Facebook?.handle ? '' : 'display:none'}">
               <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('facebook','#1877F2',16)}</span> Facebook page</label>
