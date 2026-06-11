@@ -4712,7 +4712,7 @@ async function runCompetitorPipeline() {
       body: JSON.stringify({
         brand_id:    brandKitData.brandId,
         config_name: configName,
-        max_videos:  30,
+        max_videos:  10,
         top_k:       5,
         n_days:      60,
         // Channel tone + voiceRules so WF11's Gemini analysis can generate
