@@ -399,6 +399,23 @@ async function saveBrandProfile() {
     }).catch(e => console.warn('[WF01] pipeline call failed (non-blocking):', e));
 
     if (btn) { btn.textContent = '✅ Saved'; }
+
+    // Sync SocialMediaBios inputs to match the saved brand's channels.
+    // Clear all first so channels this brand doesn't have show empty, not SWL defaults.
+    socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
+    for (const c of (brandKitData.channels || [])) {
+      if (!c.handle) continue;
+      const _clean = c.handle.replace(/^@/, '').trim();
+      const _n = (c.name || '').toLowerCase();
+      if (_n.includes('instagram')) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
+      else if (_n.includes('tiktok')) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
+      else if (_n.includes('linkedin')) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
+      else if (_n.includes('youtube')) socialBiosData.inputs.YouTube = { handle: _clean, profileUrl: `https://www.youtube.com/@${_clean}` };
+    }
+
     const competitorCount = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
     showToast(`"${brandKitData.name}" saved. ${competitorCount} competitor${competitorCount===1?'':'s'} now visible in CompetitorsViews.`);
     setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
@@ -505,6 +522,7 @@ function applyScrapedBrandData(data) {
         tiktok_url:    c.tiktok_url || c.tiktok || '',
         youtube_url:   c.youtube_url || c.youtube || '',
         x_url:         c.x_url || c.x || '',
+        facebook_url:  c.facebook_url || c.facebook || '',
         source:        'ai',
       }));
     // Keep only explicitly manual entries (source:'manual'); discard defaults + previous AI results
@@ -517,6 +535,8 @@ function applyScrapedBrandData(data) {
   const _websiteChanged = data.websiteUrl && _prevWebsite && data.websiteUrl !== _prevWebsite;
   if (!_prevBrandId || _websiteChanged) {
     brandKitData.brandId = crypto.randomUUID();
+    // Persist immediately so reloads and downstream fetches use this brand, not the previous one.
+    try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
     console.log('[brand_id] rolled new UUID:', brandKitData.brandId, '(prev=', _prevBrandId, ', websiteChanged=', _websiteChanged, ')');
   } else {
     console.log('[brand_id] keeping existing:', _prevBrandId);
@@ -538,6 +558,8 @@ const socialBiosData = {
     Instagram: { handle: 'swl.consulting', profileUrl: 'https://www.instagram.com/swl.consulting/' },
     TikTok:    { handle: 'swl.consulting', profileUrl: 'https://www.tiktok.com/@swl.consulting' },
     LinkedIn:  { handle: 'swl-consulting-group', profileUrl: 'https://www.linkedin.com/company/swl-consulting-group/' },
+    YouTube:   { handle: '', profileUrl: '' },
+    Facebook:  { handle: '', profileUrl: '' },
   },
   channels: [], // populated by mock or by WF02 scan
 };
@@ -647,6 +669,12 @@ async function scanSocialMediaBios() {
     return;
   }
 
+  // Ensure we always scan under a stable brand_id so results are scoped to this company.
+  if (!brandKitData.brandId) {
+    brandKitData.brandId = crypto.randomUUID();
+    try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
+  }
+
   if (btn) { btn.textContent = 'Scanning…'; btn.disabled = true; }
   if (statusEl) statusEl.innerHTML = '<span style="color:#9333EA">⟳ Scraping channels via Apify — this may take 30–90 seconds…</span>';
 
@@ -667,6 +695,8 @@ async function scanSocialMediaBios() {
     const data = JSON.parse(text);
     if (!Array.isArray(data.channels) || !data.channels.length) throw new Error('No channels returned from scan.');
     applySocialBiosData(data);
+    // Persist brand_id so subsequent page reloads still fetch this brand's data.
+    try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
     if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Channels scanned — voice rules updated below.</span>';
     showToast('SocialMediaBios scan complete.');
   } catch (e) {
@@ -707,15 +737,38 @@ function applySocialBiosData(data, opts = {}) {
   }
 }
 
+// Returns a compact SocialMediaBios snapshot suitable for including in n8n webhook payloads.
+// Pass channel (e.g. 'Instagram') to narrow to one channel, or omit for all channels.
+// Returns null when no real data is available (mock data is not forwarded to n8n).
+function getSocialBiosForPayload(channel) {
+  if (!socialBiosData.channels || !socialBiosData.channels.length) return null;
+  const channels = channel
+    ? socialBiosData.channels.filter(c => c.name.toLowerCase() === (channel || '').toLowerCase())
+    : socialBiosData.channels;
+  if (!channels.length) return null;
+  return channels.map(c => ({
+    channel:       c.name,
+    tone:          c.tone          || null,
+    toneSummary:   c.toneSummary   || null,
+    voiceRules:    c.voiceRules    || null,
+    primaryFormat: c.primaryFormat || null,
+    avgEngagementRate: c.avgEngagementRate || null,
+    topHookSnippets: (c.topPosts || []).slice(0, 3).map(p => ({
+      snippet:      p.snippet,
+      whyItWorked:  p.whyItWorked || null,
+      engagementRate: p.engagementRate || null,
+    })),
+  }));
+}
+
 async function fetchSocialBios(brandId) {
   // Reads the latest scan from public.social_media_analyses (one row per channel)
   // and rebuilds the shape that applySocialBiosData expects.
-  // Demo fallback: if no brand_id (Branding Bio not saved yet), pull the latest scan
-  // regardless of brand so the view still shows real Claude Haiku analysis.
+  // Requires a brandId — without one we can't scope the query and would pull all brands' data.
+  if (!brandId) return null;
   try {
-    const filter = brandId ? `brand_id=eq.${brandId}&` : '';
     const rows = await supabaseGet(
-      `social_media_analyses?${filter}select=channel,handle,url,analysis_json,updated_at&order=updated_at.desc&limit=20`
+      `social_media_analyses?brand_id=eq.${brandId}&select=channel,handle,url,analysis_json,updated_at&order=updated_at.desc&limit=20`
     );
     if (!Array.isArray(rows) || !rows.length) return null;
     // Dedupe by channel keeping the most recent.
@@ -736,6 +789,12 @@ async function fetchSocialBios(brandId) {
 function autofillHandlesFromBrandKit() {
   // READ-ONLY against brandKitData — never mutates it.
   const channels = (brandKitData && brandKitData.channels) || [];
+  // Clear all handles first — channels not in this brand must not show SWL defaults
+  socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
+  socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
+  socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
+  socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
+  socialBiosData.inputs.Facebook  = { handle: '', profileUrl: '' };
   let touched = 0;
   for (const c of channels) {
     if (!c.handle) continue;
@@ -750,8 +809,23 @@ function autofillHandlesFromBrandKit() {
     } else if (/linkedin/i.test(name)) {
       socialBiosData.inputs.LinkedIn = { handle: clean, profileUrl: `https://www.linkedin.com/company/${clean}/` };
       touched++;
+    } else if (/youtube/i.test(name)) {
+      socialBiosData.inputs.YouTube = { handle: clean, profileUrl: `https://www.youtube.com/@${clean}` };
+      touched++;
+    } else if (/facebook/i.test(name)) {
+      socialBiosData.inputs.Facebook = { handle: clean, profileUrl: `https://www.facebook.com/${clean}` };
+      touched++;
     }
   }
+  // Update DOM input values + hide cards for empty handles immediately,
+  // without waiting for a full view re-render.
+  ['LinkedIn', 'Instagram', 'TikTok', 'YouTube', 'Facebook'].forEach(ch => {
+    const inp = document.querySelector(`input[oninput*="'${ch}'"]`);
+    if (!inp) return;
+    inp.value = socialBiosData.inputs[ch].handle;
+    const card = inp.closest('.smb-input-card');
+    if (card) card.style.display = socialBiosData.inputs[ch].handle ? '' : 'none';
+  });
   hydrateSocialBiosView();
   showToast(touched ? `Auto-filled ${touched} handle(s) from Branding Bio.` : 'No matching channels in Branding Bio yet.');
 }
@@ -765,6 +839,8 @@ function updateSocialBiosInput(channelName, field, value) {
     if (channelName === 'Instagram') slot.profileUrl = clean ? `https://www.instagram.com/${clean}/` : '';
     if (channelName === 'TikTok')    slot.profileUrl = clean ? `https://www.tiktok.com/@${clean}`     : '';
     if (channelName === 'LinkedIn')  slot.profileUrl = clean ? `https://www.linkedin.com/company/${clean}/` : '';
+    if (channelName === 'YouTube')   slot.profileUrl = clean ? `https://www.youtube.com/@${clean}` : '';
+    if (channelName === 'Facebook')  slot.profileUrl = clean ? `https://www.facebook.com/${clean}` : '';
   }
 }
 
@@ -792,7 +868,7 @@ function renderSocialBiosComparison(channels) {
   setHTML('smb-channel-cards', channels.map(c => {
     const top = (c.topPosts || [])[0];
     const isTop = c.name === topErChannel;
-    const smbIconKey = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music' };
+    const smbIconKey = { LinkedIn: 'linkedin', Instagram: 'instagram', TikTok: 'music', YouTube: 'youtube', Facebook: 'facebook' };
     return `
       <div class="smb-channel-card" style="border-top:3px solid ${c.color};">
         ${isTop ? `<div class="smb-channel-card-ribbon"><i data-lucide="star" style="width:11px;vertical-align:middle;margin-right:3px;"></i>Top performer</div>` : ''}
@@ -937,8 +1013,22 @@ async function hydrateSocialBiosView() {
   const banner = document.getElementById('smb-mock-banner');
   if (banner) banner.style.display = socialBiosData.isMock ? '' : 'none';
 
-  const sel = socialBiosData.selectedChannel;
-  const channels = socialBiosData.channels;
+  // Only show channels for which the user provided an input handle
+  const activeInputs = Object.entries(socialBiosData.inputs)
+    .filter(([_, v]) => v.handle && v.handle.trim())
+    .map(([name]) => name);
+  const allChannels = socialBiosData.channels;
+  const channels = activeInputs.length > 0
+    ? allChannels.filter(c => activeInputs.includes(c.name))
+    : allChannels;
+
+  let sel = socialBiosData.selectedChannel;
+  // Reset to 'all' if the selected channel no longer has a handle
+  if (sel !== 'all' && !activeInputs.includes(sel)) {
+    socialBiosData.selectedChannel = 'all';
+    sel = 'all';
+  }
+
   const visible = sel === 'all' ? channels : channels.filter(c => c.name === sel);
   const focus = visible.length === 1 ? visible[0] : null;
 
@@ -955,11 +1045,24 @@ async function hydrateSocialBiosView() {
   setText('smb-stat-variance', focus ? `${Math.round((Math.abs(50 - focus.tone.formal_vs_casual) + Math.abs(50 - focus.tone.serious_vs_playful)) / 2)}%` : '—');
   setText('smb-last-scan', socialBiosData.lastScannedAt ? new Date(socialBiosData.lastScannedAt).toLocaleString() : '—');
 
-  // ── Channel pills active state ──
-  document.querySelectorAll('.smb-channel-tab').forEach(el => {
-    const isActive = el.dataset.channel === sel;
-    el.classList.toggle('active', isActive);
-  });
+  // ── Render channel tabs dynamically (only for platforms with handles) ──
+  const CHANNEL_TAB_META = {
+    LinkedIn:  { logoArgs: ['linkedin',  '#0A66C2', 14] },
+    Instagram: { logoArgs: ['instagram', '#E4405F', 14] },
+    TikTok:    { logoArgs: ['music',     '#010101', 14] },
+    YouTube:   { logoArgs: ['youtube',   '#FF0000', 14] },
+    Facebook:  { logoArgs: ['facebook',  '#1877F2', 14] },
+  };
+  const tabsContainer = document.getElementById('smb-channel-tabs-container');
+  if (tabsContainer) {
+    tabsContainer.innerHTML =
+      `<div class="smb-channel-tab ${sel === 'all' ? 'active' : ''}" data-channel="all" onclick="selectSocialBiosChannel('all')"><i data-lucide="layout-grid" style="width:13px;vertical-align:middle;margin-right:5px;"></i>Compare all</div>` +
+      activeInputs.map(name => {
+        const m = CHANNEL_TAB_META[name];
+        if (!m) return '';
+        return `<div class="smb-channel-tab ${sel === name ? 'active' : ''}" data-channel="${name}" onclick="selectSocialBiosChannel('${name}')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo(...m.logoArgs)}</span>${name}</div>`;
+      }).join('');
+  }
 
   // ── Toggle comparison vs single-channel view ──
   const comparisonRoot = document.getElementById('smb-comparison-view');
@@ -1120,6 +1223,7 @@ async function syncResearchSources() {
       { channel: 'TikTok',    field: 'tiktok_url'    },
       { channel: 'YouTube',   field: 'youtube_url'   },
       { channel: 'X/Twitter', field: 'x_url'         },
+      { channel: 'Facebook',  field: 'facebook_url'  },
     ];
 
     const sources = [];
@@ -1481,6 +1585,7 @@ function inferSourceUrl(competitor, channelName) {
   if (/tiktok/i.test(channelName)    && competitor.tiktok_url)    return competitor.tiktok_url;
   if (/youtube/i.test(channelName)   && competitor.youtube_url)   return competitor.youtube_url;
   if (/twitter|x\b/i.test(channelName) && competitor.x_url)       return competitor.x_url;
+  if (/facebook/i.test(channelName)  && competitor.facebook_url)  return competitor.facebook_url;
   if (/blog|newsletter|email|substack/i.test(channelName) && competitor.blog_url) return competitor.blog_url;
   const slug = String(competitor.name || 'competitor').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   if (/linkedin/i.test(channelName))  return `https://www.linkedin.com/company/${slug}/`;
@@ -1488,6 +1593,7 @@ function inferSourceUrl(competitor, channelName) {
   if (/tiktok/i.test(channelName))    return `https://www.tiktok.com/@${slug}`;
   if (/youtube/i.test(channelName))   return `https://www.youtube.com/@${slug}`;
   if (/twitter|x\b/i.test(channelName)) return `https://x.com/${slug}`;
+  if (/facebook/i.test(channelName))  return `https://www.facebook.com/${slug}`;
   if (/blog|newsletter|email|substack/i.test(channelName)) return `https://${slug}.com/blog`;
   return competitor.source_url || competitor.url || `https://${slug}.com`;
 }
@@ -1501,7 +1607,7 @@ function deriveCompetitorsViewFromProfile(profileData, profileUpdatedAt) {
   const now = new Date().toISOString();
   const minutesAgo = m => new Date(Date.now() - m * 60000).toISOString();
 
-  const SOCIAL_POOL = ['LinkedIn', 'Instagram', 'TikTok', 'YouTube', 'X/Twitter'];
+  const SOCIAL_POOL = ['LinkedIn', 'Instagram', 'TikTok', 'YouTube', 'X/Twitter', 'Facebook'];
   const competitorChannels = (competitor, idx) => {
     const explicit = [
       competitor.linkedin_url  && 'LinkedIn',
@@ -1509,6 +1615,7 @@ function deriveCompetitorsViewFromProfile(profileData, profileUpdatedAt) {
       competitor.tiktok_url    && 'TikTok',
       competitor.youtube_url   && 'YouTube',
       competitor.x_url         && 'X/Twitter',
+      competitor.facebook_url  && 'Facebook',
     ].filter(Boolean);
     if (explicit.length) return explicit;
     const start = idx % SOCIAL_POOL.length;
@@ -1684,13 +1791,19 @@ async function hydrateCompetitorsView() {
 
     const data = normalizeProfileData(profileRow?.data_json);
     const derived = deriveCompetitorsViewFromProfile(data, profileRow?.updated_at);
-    // Prefer real scraped/analyzed data when Supabase has rows; fall back to synthetic.
-    const topPieces = dbTopPieces.length ? dbTopPieces : derived.topPieces;
-    const sources   = dbSources.length   ? dbSources   : derived.sources;
-    const snapshots = derived.snapshots || [];
-    const latestRun = derived.latestRun || dbLatestRun;
     const competitors = Array.isArray(data.competitors) ? data.competitors.filter(c => c?.name && !/^new competitor$/i.test(c.name)) : [];
     const brandName   = data.identity?.company_name || profileRow?.brand?.name || 'Brand';
+
+    // Only show DB data for competitors currently defined in Branding Bio — ignore stale scraped data.
+    const currentNames = new Set(competitors.map(c => c.name));
+    const filteredDbTop = currentNames.size ? dbTopPieces.filter(p => currentNames.has(p.competitor_name)) : dbTopPieces;
+    const filteredDbSrc = currentNames.size ? dbSources.filter(s => currentNames.has(s.competitor_name)) : dbSources;
+
+    // Prefer real scraped/analyzed data when Supabase has rows; fall back to synthetic.
+    const topPieces = filteredDbTop.length ? filteredDbTop : derived.topPieces;
+    const sources   = filteredDbSrc.length ? filteredDbSrc : derived.sources;
+    const snapshots = derived.snapshots || [];
+    const latestRun = derived.latestRun || dbLatestRun;
 
     // Header tag — "<N> competitors tracked"
     setText('cv-brand-tag', competitors.length
@@ -2625,7 +2738,11 @@ async function runContentAnalysis() {
     // fire-and-forget — WF04 takes ~2.5 min, don't await response
     fetch(WF04_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: brandKitData.brandId }),
+      body: JSON.stringify({
+        brand_id:    brandKitData.brandId,
+        // Own-channel tone + voice rules so WF04 can contrast competitor style vs our style
+        social_bios: getSocialBiosForPayload(),
+      }),
     }).catch(e => console.error('[WF04] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Content analysis queued — runs in background.');
@@ -2677,7 +2794,12 @@ async function runHookMiner() {
     // fire-and-forget — WF05 runs multi-batch AI processing, don't await response
     fetch(WF05_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_id: brandKitData.brandId }),
+      body: JSON.stringify({
+        brand_id:    brandKitData.brandId,
+        // Own-channel tone/voiceRules so WF05 can adapt competitor hooks to our style
+        // when generating new_concepts for each video analysis
+        social_bios: getSocialBiosForPayload(),
+      }),
     }).catch(e => console.error('[WF05] webhook error:', e));
     if (btn) { btn.textContent = '✅ Queued'; }
     showToast('Hook mining queued — runs in background.');
@@ -4420,10 +4542,14 @@ async function syncCompetitorCreators() {
   const category = (brandKitData.name || 'BRAND').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 20).toLowerCase();
 
   try {
-    // Get existing creator usernames from Supabase
-    const existing = await supabaseGet('sm_creators?select=username');
-    const existingUsernames = new Set(existing.map(c => (c.username || '').toLowerCase()));
+    // Wipe creators for this category first so removed BrandingBio competitors
+    // don't keep getting scraped on the next pipeline run.
+    await fetch(`${SUPABASE_URL}/rest/v1/sm_creators?category=eq.${encodeURIComponent(category)}`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+    });
 
+    const existingUsernames = new Set();
     let added = 0, skipped = 0, discovered = 0, notFound = 0;
     for (const competitor of competitors) {
       // 1. Try explicit instagram_url first
@@ -4566,6 +4692,19 @@ async function runCompetitorPipeline() {
   }
 
   if (btn) { btn.disabled = true; btn.innerHTML = '<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite;vertical-align:middle;margin-right:4px"></i>Running…'; lucide.createIcons({ nodes: [btn] }); }
+  if (statusEl) statusEl.textContent = 'Limpiando videos anteriores…';
+
+  // Delete non-starred videos for this brand so HookMiner only shows the current
+  // BrandingBio competitors after the run, not accumulated stale data.
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/sm_videos?brand_id=eq.${encodeURIComponent(brandKitData.brandId)}&starred=eq.false`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+    });
+  } catch (e) {
+    console.warn('[sm-pipeline] could not clear old videos:', e);
+  }
+
   if (statusEl) statusEl.textContent = 'Pipeline iniciado — scrapeando y analizando videos…';
 
   try {
@@ -4578,11 +4717,14 @@ async function runCompetitorPipeline() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        brand_id: brandKitData.brandId,
+        brand_id:    brandKitData.brandId,
         config_name: configName,
-        max_videos: 30,
-        top_k: 5,
-        n_days: 60,
+        max_videos:  30,
+        top_k:       5,
+        n_days:      60,
+        // Channel tone + voiceRules so WF11's Gemini analysis can generate
+        // new_concepts adapted to our own channel voice, not generic ideas
+        social_bios: getSocialBiosForPayload(),
       }),
     }).catch(e => console.error('[sm-pipeline] webhook error:', e));
 
@@ -4642,6 +4784,10 @@ async function runCompetitorPipeline() {
           btn.innerHTML = '<i data-lucide="play" style="width:12px;vertical-align:middle;margin-right:4px"></i>Run Pipeline';
           lucide.createIcons({ nodes: [btn] });
         }
+        // Always refresh the grid on completion — upserts don't change row count
+        // so the poll may have seen 0 "new" rows even though data arrived.
+        try { await initSwipeFile(); } catch (_) {}
+        try { await hydrateHookMinerView(); } catch (_) {}
         return;
       }
       setTimeout(tick, POLL_MS);
@@ -5054,17 +5200,19 @@ async function buildInspirationPayload(brandId, channel) {
     engagement:      totalEngagement(p.metrics_json),
     analysis:        p.analysis_json,
   }));
-  // Note: this is intentionally a flat structure so the n8n prompt template can read
-  // each field by name. The `anti_plagiarism` flag tells the brief/draft node to
-  // INSTRUCT the LLM to rewrite in the brand voice, never paraphrase verbatim.
-  // `exclude_visual_hooks` is a hint for downstream prompts: video generation is not
-  // wired yet, so favor written/spoken hook frameworks over visual-only mechanics.
+  // Own-channel tone snapshot — narrows inspiration to what resonates on this specific channel.
+  const channelBios = getSocialBiosForPayload(channel);
+  // Note: flat structure so n8n prompt templates can read each field by name.
+  // `anti_plagiarism` tells the brief/draft node to rewrite in brand voice, never paraphrase verbatim.
+  // `exclude_visual_hooks` is false — WF16/Kling video generation is active, visual hook
+  // frameworks (camera directions, pattern-interrupts) are now meaningful and should be used.
   return {
     top_hooks:              topHooks.length ? topHooks : null,
     competitor_inspiration: competitor_inspiration.length ? competitor_inspiration : null,
+    channel_bios:           channelBios || null,
     anti_plagiarism:        true,
-    exclude_visual_hooks:   true,
-    inspiration_disclaimer: 'Use top_hooks and competitor_inspiration as STRUCTURAL inspiration only (frameworks, pacing, angle, opening phrasing patterns). Preserve the brand voice, mission and value-prop from business_verticals/brand_profile. Never paraphrase a competitor post verbatim. Video is not generated yet — prefer written/spoken hook frameworks; do not rely on visual-only mechanics.',
+    exclude_visual_hooks:   false,
+    inspiration_disclaimer: 'Use top_hooks and competitor_inspiration as STRUCTURAL inspiration only (frameworks, pacing, angle, opening phrasing patterns). Adapt to the brand voice, mission and value-prop from business_verticals/brand_profile. Never paraphrase a competitor post verbatim. Video generation is active via WF16/Kling — include visual hook frameworks, pattern-interrupts and camera directions appropriate to each channel (channel_bios.voiceRules is the authoritative source for channel-specific rules).',
   };
 }
 
@@ -5522,6 +5670,10 @@ async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draf
   const activeV = cbActiveVertical
     ? (brandKitData.verticals || []).find(v => v.name === cbActiveVertical) || null
     : null;
+  // Compact SocialMediaBios for this channel so WF12 agents can use real tone/voiceRules
+  // instead of falling back to generic brand defaults.
+  const channelBiosArr = getSocialBiosForPayload(channel);
+  const channelBio = channelBiosArr?.[0] || null;
   const payload = {
     brand_id: brandId,
     channel,
@@ -5535,6 +5687,9 @@ async function callWf12({ brandId, channel, mode, userBriefing, priorBrief, draf
     selected_vertical: activeV
       ? { name: activeV.name, desc: activeV.desc || '', profile: activeV.profile || null }
       : null,
+    // Own-channel tone profile: tone sliders, toneSummary, voiceRules (always/never),
+    // primaryFormat, topHookSnippets — gives WF12 the same context as SocialMediaBios
+    channel_bio: channelBio,
   };
   console.log(`[WF12 mode=${mode}] sending payload:`, payload);
   const res = await fetch(WF12_URL, {
@@ -5995,6 +6150,7 @@ function openSlideLightbox(urls, startIndex = 0) {
 // also routed through OpenAI) is bypassed entirely — see the architectural
 // note in MEMORY.md → wf13-image-gen for why.
 const WF13_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf13-image-gen';
+const WF14_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf14-visual-style';
 const WF16_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/wf16-video-gen';
 
 function getVideoAspectRatio(channel) {
@@ -6004,11 +6160,33 @@ function getVideoAspectRatio(channel) {
   return '1:1';
 }
 
+// Fetches the highest-scoring hook from hook_library for the given brand+channel,
+// optionally filtered by the active vertical name. Returns the hook_text string or null.
+async function fetchTopHookForVideo(brandId, channel) {
+  if (!brandId) return null;
+  try {
+    const params = new URLSearchParams({
+      brand_id: `eq.${brandId}`,
+      order:    'score.desc',
+      limit:    '1',
+      select:   'hook_text,framework,channel',
+    });
+    if (channel) params.set('channel', `eq.${channel}`);
+    const rows = await supabaseGet(`hook_library?${params}`);
+    return rows?.[0]?.hook_text || null;
+  } catch (e) {
+    console.warn('[video] fetchTopHookForVideo failed:', e);
+    return null;
+  }
+}
+
 // GenHQ Video Prompting Framework — "Burger Formula" + Kling 3.0 Five Layers
 // Source: CURSO - GENHQ.pdf
 // Formula: [Medium] + [Shot] + [Angle] + [Movement] + [Focus] + [Subject] + [Lighting] + [Color]
 // Kling layers: Scene → Characters → Action → Camera → Audio & Style
-function buildKlingPrompt(visualPrompt, channel, hookType) {
+// hookText (optional): top hook concept from HookMiner's hook_library — used to guide
+// the opening visual narrative without overriding the core visual composition.
+function buildKlingPrompt(visualPrompt, channel, hookType, hookText) {
   const c = (channel || '').toLowerCase();
 
   let medium, shot, angle, movement, focus, lighting, color, audio;
@@ -6079,12 +6257,18 @@ function buildKlingPrompt(visualPrompt, channel, hookType) {
     hookCamera = 'Dolly in combined with slight low angle, empowering and direct.';
   }
 
+  // Hook-concept opening direction (from HookMiner's hook_library) — brief narrative
+  // anchor that aligns the visual with the content angle without constraining composition.
+  const hookConceptLine = hookText
+    ? `Opening concept anchored on: "${hookText.slice(0, 120).replace(/"/g, '\'')}".`
+    : '';
+
   // Assemble Kling 3.0 five-layer prompt
   const prompt = [
     // Layer 1: Scene
     `Scene: ${medium}.`,
-    // Layer 2: Characters + Subject
-    `${shot}. ${angle}. ${visualPrompt}.`,
+    // Layer 2: Characters + Subject (+ HookMiner concept anchor when available)
+    `${shot}. ${angle}. ${visualPrompt}. ${hookConceptLine}`.trim(),
     // Layer 3: Action + Movement
     `Camera: ${movement}. ${hookCamera}`.trim(),
     // Layer 4: Focus + Lighting + Color
@@ -6094,6 +6278,27 @@ function buildKlingPrompt(visualPrompt, channel, hookType) {
   ].join(' ');
 
   return prompt;
+}
+
+// Checks if WF14 visual style profiling already ran for this brand+channel.
+// If not, triggers WF14 and waits. Returns true if WF14 actually ran, false if already cached.
+async function ensureVisualStyleProfiled(brandId, channel) {
+  try {
+    const rows = await supabaseGet(
+      `social_media_analyses?brand_id=eq.${brandId}&channel=eq.${encodeURIComponent(channel)}&select=analysis_json&limit=1`
+    );
+    const aj = rows?.[0]?.analysis_json;
+    const parsed = typeof aj === 'string' ? JSON.parse(aj) : (aj || {});
+    if (parsed?.visualStyle?.style_vibe_fragment) return false; // already profiled
+  } catch(_) { /* check failed — run WF14 anyway to be safe */ }
+
+  const res = await fetch(WF14_URL, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ brand_id: brandId, channel, max_images: 5 }),
+  });
+  if (!res.ok) throw new Error(`WF14 falló (HTTP ${res.status}) — verificá que el workflow esté activo en n8n`);
+  return true;
 }
 
 async function generateVideoViaKling({ brandId, draftId, channel, videoPrompt, duration, smVideoId, conceptIndex }) {
@@ -6336,7 +6541,7 @@ async function handleGenerateImageFromUnified() {
 
 // ── WF16 Video Generation (Kling AI via fal.ai) ──────────────────────────────
 
-function enableVideoButton(unifiedResult) {
+async function enableVideoButton(unifiedResult) {
   const btn = document.getElementById('btn-generate-video-wf16');
   if (!btn) return;
   const ok = !!(unifiedResult?.visual_prompt && unifiedResult.visual_prompt !== '(no visual_prompt parsed)');
@@ -6350,8 +6555,12 @@ function enableVideoButton(unifiedResult) {
   const arBadge = document.getElementById('cb-video-ar-badge');
   if (arBadge) arBadge.textContent = getVideoAspectRatio(channel);
 
+  // Pull top hook from HookMiner's hook_library for this channel so the Kling prompt
+  // is anchored to a proven competitor hook concept adapted for our brand.
+  const topHookText = await fetchTopHookForVideo(brandKitData.brandId, channel).catch(() => null);
+
   // Build GenHQ-structured Kling prompt and show in editable textarea
-  const prompt = buildKlingPrompt(unifiedResult.visual_prompt, channel, hookType);
+  const prompt = buildKlingPrompt(unifiedResult.visual_prompt, channel, hookType, topHookText);
   const promptWrap = document.getElementById('cb-video-prompt-wrap');
   const promptText = document.getElementById('cb-video-prompt-text');
   if (promptWrap) promptWrap.style.display = '';
@@ -6375,25 +6584,47 @@ async function handleGenerateVideo() {
   const duration = document.getElementById('cb-video-duration')?.value || '5';
   const ar       = getVideoAspectRatio(channel);
   const hookType = lastBriefResult?.hook_type || '';
-  // Use edited prompt from textarea if available, otherwise build fresh
+  // Use edited prompt from textarea if available, otherwise build fresh with top hook
   const promptTextarea = document.getElementById('cb-video-prompt-text');
-  const prompt = (promptTextarea?.value?.trim()) || buildKlingPrompt(lastVisualResult.visual_prompt, channel, hookType);
+  let prompt = promptTextarea?.value?.trim();
+  if (!prompt) {
+    const topHookText = await fetchTopHookForVideo(brandId, channel).catch(() => null);
+    prompt = buildKlingPrompt(lastVisualResult.visual_prompt, channel, hookType, topHookText);
+  }
 
   const origLabel = btn.innerHTML;
   btn.disabled = true;
-  btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Generando…`;
+
+  // Phase 1 — Visual style check (WF14)
+  btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Preparando…`;
   body.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px;color:var(--text-muted);font-size:12px;">
-      <i data-lucide="loader-2" style="width:28px;animation:spin 1s linear infinite;color:#D97706;"></i>
+      <i data-lucide="scan-eye" style="width:28px;color:#7C3AED;"></i>
       <div style="text-align:center;">
-        <div style="font-weight:600;color:#92400E;margin-bottom:4px;">Generando video con Kling AI…</div>
-        <div>Aspect ratio: <strong>${ar}</strong> · Duración: <strong>${duration}s</strong> · Canal: <strong>${escapeHtml(channel)}</strong></div>
-        <div style="margin-top:6px;font-size:11px;color:#B45309;">⏱ Esto tarda entre 2 y 4 minutos — no cerrés la página</div>
+        <div style="font-weight:600;color:#5B21B6;margin-bottom:4px;">Verificando estilo visual del canal…</div>
+        <div style="font-size:11px;color:#7C3AED;margin-top:2px;">WF14 analiza las imágenes reales del perfil para que Kling use los colores y estética correctos</div>
+        <div style="margin-top:6px;font-size:10px;color:#A78BFA;">Solo corre la primera vez por canal — después usa el caché</div>
       </div>
     </div>`;
   lucide.createIcons();
 
   try {
+    const ranWF14 = await ensureVisualStyleProfiled(brandId, channel);
+    if (ranWF14) showToast('Estilo visual del canal perfilado ✓', 'success');
+
+    // Phase 2 — Kling video generation
+    btn.innerHTML = `<i data-lucide="loader-2" style="width:12px;animation:spin 1s linear infinite"></i> Generando…`;
+    body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:32px;color:var(--text-muted);font-size:12px;">
+        <i data-lucide="loader-2" style="width:28px;animation:spin 1s linear infinite;color:#D97706;"></i>
+        <div style="text-align:center;">
+          <div style="font-weight:600;color:#92400E;margin-bottom:4px;">Generando video con Kling AI…</div>
+          <div>Aspect ratio: <strong>${ar}</strong> · Duración: <strong>${duration}s</strong> · Canal: <strong>${escapeHtml(channel)}</strong></div>
+          <div style="margin-top:6px;font-size:11px;color:#B45309;">⏱ Esto tarda entre 2 y 4 minutos — no cerrés la página</div>
+        </div>
+      </div>`;
+    lucide.createIcons();
+
     const videoUrl = await generateVideoViaKling({ brandId, draftId, channel, videoPrompt: prompt, duration });
     if (!videoUrl) throw new Error('WF16 no devolvió una URL de video');
 
@@ -8384,6 +8615,23 @@ function switchView(viewId) {
   }
 
   if (viewId === 'social-media-bios') {
+    // Silently sync handles from brandKitData so SMB always starts with the latest brand channels.
+    // Always clear first — channels not in this brand must not show SWL defaults.
+    socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.Facebook  = { handle: '', profileUrl: '' };
+    (brandKitData.channels || []).forEach(c => {
+      if (!c.handle) return;
+      const _clean = c.handle.replace(/^@/, '').trim();
+      const _n = (c.name || '').toLowerCase();
+      if (_n.includes('instagram')) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
+      else if (_n.includes('tiktok')) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
+      else if (_n.includes('linkedin')) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
+      else if (_n.includes('youtube')) socialBiosData.inputs.YouTube = { handle: _clean, profileUrl: `https://www.youtube.com/@${_clean}` };
+      else if (_n.includes('facebook')) socialBiosData.inputs.Facebook = { handle: _clean, profileUrl: `https://www.facebook.com/${_clean}` };
+    });
     setTimeout(() => hydrateSocialBiosView(), 80);
   }
 
@@ -11080,7 +11328,7 @@ function generateViewHTML(view) {
             <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:90px;">Socials</th><th style="width:40px;"></th></tr></thead>
             <tbody>
               ${brandKitData.competitors.map((c, i) => {
-                const socialCount = ['linkedin_url','instagram_url','tiktok_url','youtube_url','x_url'].filter(k => c[k]).length;
+                const socialCount = ['linkedin_url','instagram_url','tiktok_url','youtube_url','x_url','facebook_url'].filter(k => c[k]).length;
                 const isOpen = !!c._socialsOpen;
                 const aiBadge = c.source === 'ai'
                   ? `<span title="Auto-detected by AI" style="display:inline-block;margin-left:5px;font-size:9px;font-weight:700;background:#EEF2FF;color:#4338CA;border-radius:4px;padding:1px 4px;vertical-align:middle;">AI</span>`
@@ -11101,7 +11349,7 @@ function generateViewHTML(view) {
                   <td>
                     <button class="bk-socials-toggle ${isOpen?'open':''} ${socialCount?'has-data':''}" onclick="toggleCompetitorSocials(${i})" title="Edit social media URLs">
                       <i data-lucide="${isOpen?'chevron-up':'chevron-down'}" style="width:11px;vertical-align:middle;"></i>
-                      ${socialCount ? `${socialCount}/5` : '+ add'}
+                      ${socialCount ? `${socialCount}/6` : '+ add'}
                     </button>
                   </td>
                   <td><button class="bk-row-action" onclick="removeBrandListItem('competitors', ${i})" title="Remove">✕</button></td>
@@ -11136,13 +11384,17 @@ function generateViewHTML(view) {
                         <label><i data-lucide="twitter" style="width:12px;color:#1DA1F2"></i> X / Twitter</label>
                         <input class="bk-input" type="text" value="${c.x_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'x_url', this.value)" placeholder="x.com/…" />
                       </div>
+                      <div class="bk-social-input">
+                        <label>${getSocialLogo('facebook','#1877F2',12)} Facebook</label>
+                        <input class="bk-input" type="text" value="${c.facebook_url||''}" oninput="updateBrandListItem('competitors', ${i}, 'facebook_url', this.value)" placeholder="facebook.com/…" />
+                      </div>
                     </div>
                   </td>
                 </tr>` : ''}
               `;}).join('')}
             </tbody>
           </table>
-          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'', source:'manual' })" style="margin-top:12px;">+ Add competitor manually</button>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'', facebook_url:'', source:'manual' })" style="margin-top:12px;">+ Add competitor manually</button>
         </div>
 
         <!-- 7. Logos -->
@@ -11235,7 +11487,7 @@ function generateViewHTML(view) {
           <div class="agent-bigicon">📱</div>
           <div class="agent-header-text">
             <h2>SocialMediaBios</h2>
-            <p>Analyzes your owned social channels (Instagram · TikTok) to surface tone by channel, top-performing posts, and channel-specific voice rules — then hands off to CompetitorsViews to benchmark against the brands you compete with.</p>
+            <p>Analyzes your owned social channels (LinkedIn · Instagram · TikTok · Facebook · YouTube) to surface tone by channel, top-performing posts, and channel-specific voice rules — then hands off to CompetitorsViews to benchmark against the brands you compete with.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Ready</div><br>
@@ -11279,6 +11531,16 @@ function generateViewHTML(view) {
               <input type="text" value="${socialBiosData.inputs.TikTok.handle}" oninput="updateSocialBiosInput('TikTok','handle',this.value)" placeholder="swl.consulting" />
               <span class="smb-hint">tiktok.com/@<b>&lt;handle&gt;</b></span>
             </div>
+            <div class="smb-input-card" style="${socialBiosData.inputs.YouTube.handle ? '' : 'display:none'}">
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('youtube','#FF0000',16)}</span> YouTube channel handle</label>
+              <input type="text" value="${socialBiosData.inputs.YouTube.handle}" oninput="updateSocialBiosInput('YouTube','handle',this.value)" placeholder="HealthTechBioActives" />
+              <span class="smb-hint">youtube.com/@<b>&lt;handle&gt;</b></span>
+            </div>
+            <div class="smb-input-card" style="${socialBiosData.inputs.Facebook?.handle ? '' : 'display:none'}">
+              <label><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('facebook','#1877F2',16)}</span> Facebook page</label>
+              <input type="text" value="${socialBiosData.inputs.Facebook?.handle || ''}" oninput="updateSocialBiosInput('Facebook','handle',this.value)" placeholder="swlconsulting" />
+              <span class="smb-hint">facebook.com/<b>&lt;page&gt;</b></span>
+            </div>
           </div>
           <div id="smb-scan-status" style="margin-top:12px; font-size:12px;"></div>
         </div>
@@ -11291,13 +11553,8 @@ function generateViewHTML(view) {
           <div class="agent-stat"><div class="agent-stat-label">Tone divergence</div><div class="agent-stat-value" id="smb-stat-variance">—</div></div>
         </div>
 
-        <!-- Channel selector pills -->
-        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;">
-          <div class="smb-channel-tab active" data-channel="all" onclick="selectSocialBiosChannel('all')"><i data-lucide="layout-grid" style="width:13px;vertical-align:middle;margin-right:5px;"></i>Compare all</div>
-          <div class="smb-channel-tab" data-channel="LinkedIn" onclick="selectSocialBiosChannel('LinkedIn')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('linkedin','#0A66C2',14)}</span>LinkedIn</div>
-          <div class="smb-channel-tab" data-channel="Instagram" onclick="selectSocialBiosChannel('Instagram')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('instagram','#E4405F',14)}</span>Instagram</div>
-          <div class="smb-channel-tab" data-channel="TikTok" onclick="selectSocialBiosChannel('TikTok')"><span style="display:inline-flex;align-items:center;vertical-align:middle;margin-right:5px;">${getSocialLogo('music','#000',14)}</span>TikTok</div>
-        </div>
+        <!-- Channel selector pills — rendered dynamically by hydrateSocialBiosView() based on which handles are filled -->
+        <div id="smb-channel-tabs-container" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:18px;"></div>
 
         <!-- ═══════ Comparison view (visible when "all" selected) ═══════ -->
         <div id="smb-comparison-view">
