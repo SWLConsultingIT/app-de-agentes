@@ -10,7 +10,25 @@
       "mcp__claude_ai_Supabase__apply_migration",
       "mcp__n8n__search_templates",
       "Bash(python *)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=100&cursor=100\")",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=100\")",
+      "Bash(curl -s -H 'X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8' https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=50)",
+      "Bash(curl -s -H 'X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8' https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=100)",
+      "Bash(python3 -c \"import sys,json; wfs=json.load\\(sys.stdin\\).get\\('data',[]\\); [print\\(w['id'], w['name'], 'active:'+str\\(w['active']\\)\\) for w in wfs]\")",
+      "Bash(python3 -c \"import sys,json; wfs=json.load\\(sys.stdin\\).get\\('data',[]\\); [print\\(w['id'], w['name'], 'active:'+str\\(w['active']\\)\\) for w in wfs if 'WF' in w['name'] or 'Growth' in w['name'] or 'research' in w['name'].lower\\(\\) or 'hook' in w['name'].lower\\(\\) or 'content' in w['name'].lower\\(\\) or 'social' in w['name'].lower\\(\\) or 'brand' in w['name'].lower\\(\\)]\")",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/workflows?limit=100&cursor=eyJsaW1pdCI6MTAwLCJvZmZzZXQiOjEwMH0=\")",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/executions?workflowId=PlR7tdBIt7Kbx4qx&limit=5\")",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/executions/486477?includeData=true\")",
+      "Bash(python3 -c \"import sys; sys.stdout.buffer.write\\(sys.stdin.buffer.read\\(\\)\\)\")",
+      "PowerShell(python \"C:\\\\Users\\\\catal\\\\AppData\\\\Local\\\\Temp\\\\update_wf03.py\")",
+      "PowerShell(python \"C:\\\\Users\\\\catal\\\\AppData\\\\Local\\\\Temp\\\\add_facebook_wf02.py\" 2>&1)",
+      "WebFetch(domain:n8n.srv949269.hstgr.cloud)",
+      "Bash(curl *)",
+      "Bash(curl -s -H \"X-N8N-API-KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2ZDNkNDE2YS04YmFlLTQ5MjItOTE4My01OTlmNDY0ZGM4NWQiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwianRpIjoiNjFkODdkY2EtZTYxZS00MDI4LTgyMjctOWZjZWNmYmNjMjVlIiwiaWF0IjoxNzc3OTA0MzE0fQ.Z9OEIW9rHerKLm1A8kYTfwWM-vAnl-SHAlMxepJx7L8\" \"https://n8n.srv949269.hstgr.cloud/api/v1/workflows/BPXhrLnwEUwPVKTv\")",
+      "Read(//tmp/**)",
+      "Bash(python3 *)",
+      "PowerShell(python \"C:\\\\Users\\\\catal\\\\AppData\\\\Local\\\\Temp\\\\get_wf00_nodes.py\" 2>&1)"
     ]
   }
 }
