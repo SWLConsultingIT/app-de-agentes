@@ -2661,6 +2661,14 @@ async function hydrateAutoPublisherView() {
         }).join('');
       }
     }
+
+    // ─── Metricool Publishing Stats ───
+    const readyToPublish = upcoming.length;
+    const uniqueChannels = new Set(upcoming.map(d => d.channel).filter(Boolean)).size;
+    const lastMetricoolPublish = published.find(d => d.metricool_published_at);
+    setText('metricool-ready-count', readyToPublish ? String(readyToPublish) : '0');
+    setText('metricool-channels-count', uniqueChannels ? String(uniqueChannels) : '0');
+    setText('metricool-last-publish', lastMetricoolPublish ? fmtRelativeFuture(lastMetricoolPublish.metricool_published_at) : 'Never');
   } catch (err) {
     console.error('[AP hydrate] error:', err);
   }
@@ -8061,6 +8069,98 @@ async function handleDiscardDraft() {
   }, 4000);
 }
 
+// Publish all approved/scheduled content with Metricool
+async function publishAllWithMetricool() {
+  const statusEl = document.getElementById('metricool-status');
+  const statusText = document.getElementById('metricool-status-text');
+
+  if (!statusEl || !statusText) {
+    console.error('[Metricool] UI elements not found');
+    return;
+  }
+
+  try {
+    statusEl.style.display = 'block';
+    statusText.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Fetching approved content...';
+    lucide.createIcons();
+
+    // Fetch all approved drafts ready to publish
+    const allDrafts = await fetchPublishingDrafts(brandKitData?.brandId || 'swl-consulting');
+    const readyToPublish = Array.isArray(allDrafts)
+      ? allDrafts.filter(d => d.status === 'approved')
+      : [];
+
+    if (!readyToPublish.length) {
+      statusText.innerHTML = '⚠️ No approved content to publish. Approve drafts in ContentBuilder first.';
+      statusEl.style.background = '#FEF3C7';
+      statusEl.style.borderColor = '#FBBF24';
+      statusText.style.color = '#92400E';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+      return;
+    }
+
+    statusText.innerHTML = `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Preparing ${readyToPublish.length} post(s) for Metricool...`;
+    lucide.createIcons();
+
+    // Prepare payload for Metricool
+    const payload = {
+      posts: readyToPublish.map(d => ({
+        id: d.id,
+        title: d.title || 'Untitled',
+        content: d.caption || d.brief || '',
+        image_url: d.visual_url || '',
+        channels: [d.channel || 'linkedin'],
+        scheduled_time: d.scheduled_at,
+        metadata: {
+          source: 'ContentBuilder',
+          brand: brandKitData?.name || 'SWL Consulting',
+          draft_id: d.id
+        }
+      }))
+    };
+
+    statusText.innerHTML = `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Sending ${readyToPublish.length} post(s) to Metricool...`;
+    lucide.createIcons();
+
+    // Send to Metricool via backend endpoint
+    const response = await fetch('http://localhost:3000/api/metricool/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.ok) {
+      const publishedCount = result.published_count || readyToPublish.length;
+      statusText.innerHTML = `<i data-lucide="check-circle" style="width:12px; color:#10B981; vertical-align:middle; margin-right:6px;"></i><strong>${publishedCount} post(s)</strong> sent to Metricool successfully!`;
+      statusEl.style.background = '#ECFDF5';
+      statusEl.style.borderColor = '#6EE7B7';
+      statusText.style.color = '#047857';
+
+      // Update counters
+      setTimeout(() => hydrateAutoPublisherView(), 500);
+
+      showToast(`✓ ${publishedCount} post(s) published via Metricool (using SWL Consulting account).`);
+      lucide.createIcons();
+    } else {
+      const errorMsg = result.error || result.message || 'Unknown error';
+      throw new Error(errorMsg);
+    }
+  } catch (err) {
+    console.error('[Metricool] publish error:', err);
+    const errMsg = err.message || 'Failed to publish';
+    statusText.innerHTML = `<i data-lucide="alert-circle" style="width:12px; color:#EF4444; vertical-align:middle; margin-right:6px;"></i><strong>Error:</strong> ${errMsg}`;
+    statusEl.style.background = '#FEE2E2';
+    statusEl.style.borderColor = '#FECACA';
+    statusText.style.color = '#DC2626';
+    showToast(`Metricool publish error: ${errMsg}`, 'error');
+    lucide.createIcons();
+  }
+
+  setTimeout(() => { statusEl.style.display = 'none'; }, 8000);
+}
+
 // Mark a pipeline step as done/active visually
 function markCbStep(num, state /* 'done' | 'active' | 'idle' */) {
   const el = document.getElementById(`cb-step-${num}`);
@@ -12387,6 +12487,40 @@ function generateViewHTML(view) {
               <strong style="font-size:13px;">🔥 Re-publish top post on X</strong>
               <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">"We killed 40% of dashboards" got 18.4K on LinkedIn but never went to X. Recommended: thread it Wednesday 2pm.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Metricool Publishing -->
+        <div class="card" style="margin-top:24px; border:2px solid #6366F1; background:#EEF2FF;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 class="card-title" style="margin:0; color:#4F46E5;"><i data-lucide="send" style="color:#6366F1;"></i> Publish All with Metricool</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0 0;">Send all approved & scheduled content to Metricool for unified cross-platform publishing (using SWL Consulting API key)</p>
+            </div>
+            <button onclick="publishAllWithMetricool()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; display:flex; gap:8px; align-items:center;"><i data-lucide="zap" style="width:14px;"></i>Publish Queue</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:12px;">
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Ready to Publish</div>
+              <div style="font-size:20px; font-weight:700; color:#6366F1;" id="metricool-ready-count">—</div>
+            </div>
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Channels</div>
+              <div style="font-size:20px; font-weight:700; color:#6366F1;" id="metricool-channels-count">—</div>
+            </div>
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Last Publish</div>
+              <div style="font-size:12px; font-weight:600; color:#6366F1;" id="metricool-last-publish">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; padding:12px; background:white; border-radius:6px; border-left:3px solid #6366F1;">
+            <div style="font-size:12px; color:var(--text-muted);"><strong>ℹ️ How it works:</strong> Click "Publish Queue" to send all approved & scheduled posts to Metricool. Posts will be distributed across connected channels using optimal timing and Metricool's engagement algorithms.</div>
+          </div>
+
+          <div id="metricool-status" style="margin-top:12px; display:none; padding:12px; background:#F0F9FF; border:1px solid #0EA5E9; border-radius:6px;">
+            <div style="font-size:12px; color:#0369A1;"><i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i><span id="metricool-status-text">Publishing to Metricool...</span></div>
           </div>
         </div>
       </div>
