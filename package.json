@@ -1,0 +1,17 @@
+{
+  "name": "growth-ai-app",
+  "version": "1.0.0",
+  "description": "GrowthAI - App de Agentes",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.0.3",
+    "cors": "^2.8.5",
+    "axios": "^1.4.0"
+  }
+}

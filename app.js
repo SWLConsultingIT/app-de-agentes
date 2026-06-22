@@ -147,9 +147,7 @@ const brandKitData = {
   industry: 'AI Agents · Automation Consulting · B2B Services',
   tagline: 'Boutique AI agents for revenue operations.',
   mission: 'Diseñamos y operamos agentes de IA hechos a medida para equipos de revenue, automatizando outbound, prospecting, lead intelligence y CRM hygiene con stack propio sobre n8n + Supabase + OpenAI/Claude. Resolvemos en semanas lo que las big consulting cobran en trimestres.',
-  // Language all 3 agents (brief / caption / visual) MUST output in. Hard
-  // overrides anything detected from top posts — useful when scraped posts
-  // are in English but the brand wants to publish in Spanish (or any other).
+  vision: 'Ser el partner de confianza en automatización de revenue para equipos LATAM que quieren escalar sin headcount.',
   language: 'es',
   palette: [
     { hex: '#20316D', name: 'Blue Lebane',        role: 'Primary' },
@@ -160,9 +158,10 @@ const brandKitData = {
     { hex: '#FBFBFE', name: 'White Off',          role: 'Background' },
   ],
   typography: {
-    heading: 'Plus Jakarta Sans',
-    body: 'Inter',
-    mono: 'JetBrains Mono',
+    heading: { name: 'Plus Jakarta Sans', size: '28px' },
+    subtitle: { name: 'Plus Jakarta Sans', size: '20px' },
+    body: { name: 'Inter', size: '16px' },
+    mono: { name: 'JetBrains Mono', size: '14px' },
   },
   values: [
     { title: 'Experto sin ser condescendiente', desc: 'Dominamos el sector pero empoderamos al usuario. Hablamos como colega que ya resolvió el problema, no como vendedor genérico de software.', color: '#20316D' },
@@ -574,7 +573,7 @@ function loadMockSocialBios() {
         handle: '@swl.consulting',
         profileUrl: 'https://www.instagram.com/swl.consulting/',
         enabled: true,
-        followers: 880, postingCadence: 1.6, avgEngagementRate: 5.1, primaryFormat: 'reel',
+        followers: 880, following: 246, totalPosts: 124, totalViews: 245800, reach: 198400, totalInteractions: 12842, postingCadence: 1.6, avgEngagementRate: 5.1, primaryFormat: 'reel',
         tone: { formal_vs_casual: 75, technical_vs_accessible: 80, serious_vs_playful: 65, humble_vs_bold: 60, short_vs_expansive: 30 },
         toneSummary: 'Conversational and visual — accessible AI explainers, behind-the-scenes of agent builds.',
         voiceRules: {
@@ -582,11 +581,11 @@ function loadMockSocialBios() {
           never:  ['Talking head with no visuals', 'Jargon-only captions', 'Posts longer than 90s'],
         },
         topPosts: [
-          { id: 'ig-1', channel: 'Instagram', snippet: '¿Cómo construir tu primer agente IA en 5 minutos? 🤖 Reel completo.', text: '', format: 'reel', publishedAt: '2026-04-26T19:00:00Z', url: '', metrics: { likes: 412, comments: 38, shares: 22, impressions: 14200 }, engagementRate: 3.3, score: 0.94, whyItWorked: 'Question hook + emoji + practical promise in 6 seconds' },
-          { id: 'ig-2', channel: 'Instagram', snippet: 'POV: estás escalando un equipo de ventas pero el CRM te frena. Mirá lo que armamos con n8n.', text: '', format: 'reel', publishedAt: '2026-04-19T20:30:00Z', url: '', metrics: { likes: 318, comments: 26, shares: 18, impressions: 9800 }, engagementRate: 3.7, score: 0.86, whyItWorked: 'POV format + relatable pain + tool reveal' },
+          { id: 'ig-1', channel: 'Instagram', snippet: '¿Cómo construir tu primer agente IA en 5 minutos? 🤖 Reel completo.', text: '', format: 'reel', publishedAt: '2026-04-26T19:00:00Z', url: '', metrics: { likes: 412, comments: 38, shares: 22, impressions: 14200, views: 14200 }, engagementRate: 3.3, score: 0.94, whyItWorked: 'Question hook + emoji + practical promise in 6 seconds' },
+          { id: 'ig-2', channel: 'Instagram', snippet: 'POV: estás escalando un equipo de ventas pero el CRM te frena. Mirá lo que armamos con n8n.', text: '', format: 'reel', publishedAt: '2026-04-19T20:30:00Z', url: '', metrics: { likes: 318, comments: 26, shares: 18, impressions: 9800, views: 9800 }, engagementRate: 3.7, score: 0.86, whyItWorked: 'POV format + relatable pain + tool reveal' },
         ],
         bottomPosts: [
-          { id: 'ig-9', channel: 'Instagram', snippet: 'Foto del equipo en evento corporativo.', text: '', format: 'image', publishedAt: '2026-03-11T15:00:00Z', url: '', metrics: { likes: 24, comments: 1, shares: 0, impressions: 1100 }, engagementRate: 2.3, score: 0.18 },
+          { id: 'ig-9', channel: 'Instagram', snippet: 'Foto del equipo en evento corporativo.', text: '', format: 'image', publishedAt: '2026-03-11T15:00:00Z', url: '', metrics: { likes: 24, comments: 1, shares: 0, impressions: 1100, views: 1100 }, engagementRate: 2.3, score: 0.18 },
         ],
         cadenceHeatmap: buildMockHeatmap('Instagram'),
       },
@@ -595,7 +594,7 @@ function loadMockSocialBios() {
         handle: '@swl.consulting',
         profileUrl: 'https://www.tiktok.com/@swl.consulting',
         enabled: true,
-        followers: 540, postingCadence: 3.2, avgEngagementRate: 7.4, primaryFormat: 'video',
+        followers: 540, following: 185, totalPosts: 89, totalViews: 425600, reach: 378400, totalInteractions: 28947, postingCadence: 3.2, avgEngagementRate: 7.4, primaryFormat: 'video',
         tone: { formal_vs_casual: 90, technical_vs_accessible: 85, serious_vs_playful: 80, humble_vs_bold: 75, short_vs_expansive: 20 },
         toneSummary: 'Casual, fast-paced, native to TikTok — pattern interrupts, screen recordings, plain Spanish.',
         voiceRules: {
@@ -603,11 +602,11 @@ function loadMockSocialBios() {
           never:  ['Corporate intro screens', 'Voice-only', 'Posts over 60s for educational content'],
         },
         topPosts: [
-          { id: 'tt-1', channel: 'TikTok', snippet: '3 herramientas que reemplazan a 5 SDRs (probadas con clientes reales)', text: '', format: 'video', publishedAt: '2026-04-29T22:00:00Z', url: '', metrics: { likes: 1820, comments: 142, shares: 312, impressions: 38400 }, engagementRate: 5.9, score: 0.96, whyItWorked: 'Specific number + bold claim + receipts in description' },
-          { id: 'tt-2', channel: 'TikTok', snippet: 'Probé Make vs n8n para un caso real. Acá los resultados 👇', text: '', format: 'video', publishedAt: '2026-04-22T21:30:00Z', url: '', metrics: { likes: 1240, comments: 88, shares: 145, impressions: 24800 }, engagementRate: 5.9, score: 0.89, whyItWorked: 'Comparison hook + tool name recognition + receipts framing' },
+          { id: 'tt-1', channel: 'TikTok', snippet: '3 herramientas que reemplazan a 5 SDRs (probadas con clientes reales)', text: '', format: 'video', publishedAt: '2026-04-29T22:00:00Z', url: '', metrics: { likes: 1820, comments: 142, shares: 312, impressions: 38400, views: 38400 }, engagementRate: 5.9, score: 0.96, whyItWorked: 'Specific number + bold claim + receipts in description' },
+          { id: 'tt-2', channel: 'TikTok', snippet: 'Probé Make vs n8n para un caso real. Acá los resultados 👇', text: '', format: 'video', publishedAt: '2026-04-22T21:30:00Z', url: '', metrics: { likes: 1240, comments: 88, shares: 145, impressions: 24800, views: 24800 }, engagementRate: 5.9, score: 0.89, whyItWorked: 'Comparison hook + tool name recognition + receipts framing' },
         ],
         bottomPosts: [
-          { id: 'tt-9', channel: 'TikTok', snippet: 'Felicitaciones a todo el equipo por el cierre de año.', text: '', format: 'video', publishedAt: '2026-03-02T18:00:00Z', url: '', metrics: { likes: 38, comments: 2, shares: 0, impressions: 1400 }, engagementRate: 2.9, score: 0.11 },
+          { id: 'tt-9', channel: 'TikTok', snippet: 'Felicitaciones a todo el equipo por el cierre de año.', text: '', format: 'video', publishedAt: '2026-03-02T18:00:00Z', url: '', metrics: { likes: 38, comments: 2, shares: 0, impressions: 1400, views: 1400 }, engagementRate: 2.9, score: 0.11 },
         ],
         cadenceHeatmap: buildMockHeatmap('TikTok'),
       },
@@ -616,7 +615,7 @@ function loadMockSocialBios() {
         handle: 'swl-consulting',
         profileUrl: 'https://www.linkedin.com/company/swl-consulting/',
         enabled: true,
-        followers: 1240, postingCadence: 2.4, avgEngagementRate: 3.8, primaryFormat: 'carousel',
+        followers: 1240, following: 312, totalPosts: 98, totalViews: 156200, reach: 868000, totalInteractions: 5936, postingCadence: 2.4, avgEngagementRate: 3.8, primaryFormat: 'carousel',
         tone: { formal_vs_casual: 35, technical_vs_accessible: 60, serious_vs_playful: 40, humble_vs_bold: 70, short_vs_expansive: 70 },
         toneSummary: 'Professional B2B — contrarian hooks, real metrics, founder-led storytelling with numbered insights.',
         voiceRules: {
@@ -624,11 +623,11 @@ function loadMockSocialBios() {
           never:  ['Hype words ("game-changing", "revolutionary")', 'Posts sin métricas', 'Emojis al inicio del título'],
         },
         topPosts: [
-          { id: 'li-1', channel: 'LinkedIn', snippet: 'Matamos 40% de nuestros dashboards. Nadie se quejó. Acá las 3 cosas que aprendimos →', text: '', format: 'carousel', publishedAt: '2026-05-02T13:00:00Z', url: '', metrics: { likes: 312, comments: 48, shares: 27, impressions: 12400 }, engagementRate: 3.1, score: 0.93, whyItWorked: 'Contrarian hook + carousel 10-slide breakdown + ending CTA' },
-          { id: 'li-2', channel: 'LinkedIn', snippet: 'Caso real: bajamos el ciclo de ventas de 47 a 19 días con 2 agentes IA. Te muestro el stack.', text: '', format: 'carousel', publishedAt: '2026-04-25T14:30:00Z', url: '', metrics: { likes: 246, comments: 33, shares: 19, impressions: 9800 }, engagementRate: 3.0, score: 0.88, whyItWorked: 'Specific metric in hook + carousel architecture diagram' },
+          { id: 'li-1', channel: 'LinkedIn', snippet: 'Matamos 40% de nuestros dashboards. Nadie se quejó. Acá las 3 cosas que aprendimos →', text: '', format: 'carousel', publishedAt: '2026-05-02T13:00:00Z', url: '', metrics: { likes: 312, comments: 48, shares: 27, impressions: 12400, views: 12400 }, engagementRate: 3.1, score: 0.93, whyItWorked: 'Contrarian hook + carousel 10-slide breakdown + ending CTA' },
+          { id: 'li-2', channel: 'LinkedIn', snippet: 'Caso real: bajamos el ciclo de ventas de 47 a 19 días con 2 agentes IA. Te muestro el stack.', text: '', format: 'carousel', publishedAt: '2026-04-25T14:30:00Z', url: '', metrics: { likes: 246, comments: 33, shares: 19, impressions: 9800, views: 9800 }, engagementRate: 3.0, score: 0.88, whyItWorked: 'Specific metric in hook + carousel architecture diagram' },
         ],
         bottomPosts: [
-          { id: 'li-9', channel: 'LinkedIn', snippet: 'Excited to share our new milestone! 🚀', text: '', format: 'image', publishedAt: '2026-03-15T16:00:00Z', url: '', metrics: { likes: 18, comments: 0, shares: 0, impressions: 980 }, engagementRate: 1.8, score: 0.12 },
+          { id: 'li-9', channel: 'LinkedIn', snippet: 'Excited to share our new milestone! 🚀', text: '', format: 'image', publishedAt: '2026-03-15T16:00:00Z', url: '', metrics: { likes: 18, comments: 0, shares: 0, impressions: 980, views: 980 }, engagementRate: 1.8, score: 0.12 },
         ],
         cadenceHeatmap: buildMockHeatmap('LinkedIn'),
       },
@@ -703,10 +702,13 @@ async function scanSocialMediaBios() {
     // there's nothing else to show.
     const hasRealData = !socialBiosData.isMock && Array.isArray(socialBiosData.channels) && socialBiosData.channels.length > 0;
     if (hasRealData) {
-      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Tus datos guardados siguen a la vista — no se gastaron créditos.</span>`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Tus datos guardados siguen a la vista.</span>`;
       showToast('Scan failed — pero los datos reales del último scan se mantuvieron.', 'error');
     } else {
-      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed: ${e.message}. Loading demo data so you can preview the view.</span>`;
+      const errorMsg = e.message.includes('404')
+        ? '❌ Webhook error 404 — el workflow en n8n no está activado. Verifica que "SocialMediaBios" esté ACTIVO (toggle verde) en n8n.'
+        : `❌ Scan failed: ${e.message}`;
+      if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">${errorMsg} Mostrando datos de demo.</span>`;
       applySocialBiosData(loadMockSocialBios(), { isMock: true });
     }
   } finally {
@@ -842,6 +844,21 @@ function selectSocialBiosChannel(name) {
   hydrateSocialBiosView();
 }
 
+function selectSocialBiosSubtab(subtab, btn) {
+  // Hide all subtab content
+  document.querySelectorAll('[id^="smb-subtab-"]').forEach(el => el.style.display = 'none');
+  // Show selected subtab
+  document.getElementById('smb-subtab-' + subtab).style.display = '';
+
+  // Update button styles
+  document.querySelectorAll('.smb-subtab').forEach(b => {
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = 'var(--text-muted)';
+  });
+  btn.style.borderBottomColor = '#9333EA';
+  btn.style.color = '#9333EA';
+}
+
 // ── Cross-channel comparison renderer (shown when "Compare all" is active) ──
 function renderSocialBiosComparison(channels) {
   const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
@@ -892,7 +909,7 @@ function renderSocialBiosComparison(channels) {
     `;
   }).join(''));
 
-  // ── 2. Tone fingerprint matrix ──
+  // ── 2. Tone Voice matrix ──
   // One row per tone dimension; each row plots all channels on the same 0-100 axis.
   const toneDims = [
     { key: 'formal_vs_casual',         left: 'Formal',    right: 'Casual'     },
@@ -984,6 +1001,190 @@ function renderSocialBiosComparison(channels) {
   `);
 }
 
+function selectSocialChannel(channelName) {
+  // Hide all channel sections
+  document.querySelectorAll('.smb-channel-section').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('.smb-channel-pill').forEach(el => {
+    el.style.borderBottomColor = 'transparent';
+    el.style.color = 'var(--text-muted)';
+  });
+
+  // Show selected channel
+  const selected = document.querySelector(`[data-channel="${channelName}"].smb-channel-section`);
+  if (selected) {
+    selected.style.display = 'block';
+    document.querySelector(`[data-channel="${channelName}"].smb-channel-pill`).style.borderBottomColor = '#6366F1';
+    document.querySelector(`[data-channel="${channelName}"].smb-channel-pill`).style.color = '#6366F1';
+
+    // Reset to COMUNIDAD subtab when switching channels
+    selectSocialSubtab(channelName, 'community');
+  }
+}
+
+function selectSocialSubtab(channelName, subtabName) {
+  const section = document.querySelector(`[data-channel="${channelName}"].smb-channel-section`);
+  if (!section) return;
+
+  // Hide all subtabs
+  section.querySelectorAll('.smb-subtab-content').forEach(el => el.style.display = 'none');
+  section.querySelectorAll('.smb-subtab').forEach(el => {
+    el.style.borderBottomColor = 'transparent';
+    el.style.color = 'var(--text-muted)';
+  });
+
+  // Show selected subtab
+  section.querySelectorAll(`[data-subtab="${subtabName}"]`).forEach(el => {
+    if (el.classList.contains('smb-subtab-content')) {
+      el.style.display = 'grid';
+    } else {
+      el.style.borderBottomColor = '#6366F1';
+      el.style.color = '#6366F1';
+    }
+  });
+}
+
+function renderSocialChannelsTabs() {
+  const tabsPillsContainer = document.getElementById('smb-channel-tabs-pills');
+  const contentsContainer = document.getElementById('smb-channel-contents');
+
+  if (!tabsPillsContainer || !contentsContainer) {
+    console.error('Containers not found');
+    return;
+  }
+
+  // Get channels that have handles in socialBiosData.inputs
+  const inputChannels = Object.entries(socialBiosData.inputs || {})
+    .filter(([_, v]) => v.handle && v.handle.trim())
+    .map(([name]) => name);
+
+  console.log('Input channels with handles:', inputChannels);
+
+  // Get the full channel data for these inputs
+  const channels = (socialBiosData.channels || [])
+    .filter(c => inputChannels.includes(c.name));
+
+  console.log('Matching channels with data:', channels);
+
+  if (!channels.length) {
+    tabsPillsContainer.innerHTML = '<p style="padding:16px; color:var(--text-muted); font-size:13px;">📱 <strong>Presiona "Scan Channels"</strong> para traer datos de tus redes sociales</p>';
+    contentsContainer.innerHTML = '';
+    return;
+  }
+
+  // Render tabs
+  tabsPillsContainer.innerHTML = channels.map(ch => `
+    <button class="smb-channel-pill" data-channel="${ch.name}"
+      onclick="selectSocialChannel('${ch.name}')"
+      style="padding:10px 18px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-weight:600; font-size:14px; border-bottom:3px solid transparent; transition:all .15s; display:flex; align-items:center; gap:6px;">
+      <span style="display:inline-flex; align-items:center;">${getSocialLogo(ch.icon, ch.color, 14)}</span>
+      ${ch.name}
+    </button>
+  `).join('');
+
+  // Render channel content sections
+  contentsContainer.innerHTML = channels.map(ch => `
+    <div class="smb-channel-section" data-channel="${ch.name}" style="display:none; margin-top:24px;">
+      <!-- Sub-tabs -->
+      <div style="display:flex; gap:16px; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <button class="smb-subtab active" data-subtab="community" onclick="selectSocialSubtab('${ch.name}', 'community')"
+          style="padding:8px 12px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-weight:600; font-size:13px; border-bottom:2px solid transparent; transition:all .15s;">COMUNIDAD</button>
+        <button class="smb-subtab" data-subtab="account" onclick="selectSocialSubtab('${ch.name}', 'account')"
+          style="padding:8px 12px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-weight:600; font-size:13px; border-bottom:2px solid transparent; transition:all .15s;">CUENTA</button>
+        <button class="smb-subtab" data-subtab="posts" onclick="selectSocialSubtab('${ch.name}', 'posts')"
+          style="padding:8px 12px; border:none; background:transparent; color:var(--text-muted); cursor:pointer; font-weight:600; font-size:13px; border-bottom:2px solid transparent; transition:all .15s;">PUBLICACIONES</button>
+      </div>
+
+      <!-- COMUNIDAD -->
+      <div class="smb-subtab-content community" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px;">
+        <div style="padding:20px; border:1px solid #E5CCFF; background:linear-gradient(135deg,#F3E8FF 0%,#F5F3FF 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#6366F1; line-height:1;">${ch.followers || '—'}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Followers</div>
+        </div>
+        <div style="padding:20px; border:1px solid #CCF0E9; background:linear-gradient(135deg,#E8F9F5 0%,#F0FDF9 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#10B981; line-height:1;">${ch.following || '—'}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Following</div>
+        </div>
+        <div style="padding:20px; border:1px solid #FDD7E8; background:linear-gradient(135deg,#FEF3F7 0%,#FEF9FB 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#EC4899; line-height:1;">${ch.totalPosts || '—'}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Total Posts</div>
+        </div>
+      </div>
+
+      <!-- CUENTA -->
+      <div class="smb-subtab-content account" style="display:none; grid-template-columns:repeat(3, 1fr); gap:16px;">
+        <div style="padding:20px; border:1px solid #BFDBFE; background:linear-gradient(135deg,#EFF6FF 0%,#F0F9FF 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#3B82F6; line-height:1;">${(ch.totalViews || 0).toLocaleString('en-US')}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Total Views</div>
+        </div>
+        <div style="padding:20px; border:1px solid #A7F3D0; background:linear-gradient(135deg,#F0FDF4 0%,#F5FBEF 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#22C55E; line-height:1;">${(ch.reach || 0).toLocaleString('en-US')}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Reach</div>
+        </div>
+        <div style="padding:20px; border:1px solid #FDBCB4; background:linear-gradient(135deg,#FEF5F1 0%,#FDF9F7 100%); border-radius:8px; text-align:center;">
+          <div style="font-size:32px; font-weight:800; color:#F97316; line-height:1;">${(ch.totalInteractions || 0).toLocaleString('en-US')}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Total Interactions</div>
+        </div>
+      </div>
+
+      <!-- PUBLICACIONES -->
+      <div class="smb-subtab-content posts" style="display:none;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+          ${(ch.topPosts || [])
+            .sort((a, b) => (b.metrics?.likes || 0) - (a.metrics?.likes || 0))
+            .slice(0, 6)
+            .map((post, i) => `
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px; background:white;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div style="font-size:10px; color:var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Post ${i+1}</div>
+                <div style="font-size:13px; font-weight:700; color:#6366F1;">${post.engagementRate}% ER</div>
+              </div>
+              <p style="font-size:13px; color:var(--text-main); margin:0 0 12px 0; line-height:1.5; font-weight:500;">${post.snippet}</p>
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+                <div style="padding:10px; background:#F3F4F6; border-radius:6px; text-align:center;">
+                  <div style="font-size:16px; font-weight:800; color:#EC4899;">${post.metrics?.likes || 0}</div>
+                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-weight:600;">Likes</div>
+                </div>
+                <div style="padding:10px; background:#F3F4F6; border-radius:6px; text-align:center;">
+                  <div style="font-size:16px; font-weight:800; color:#3B82F6;">${post.metrics?.views || post.metrics?.impressions || 0}</div>
+                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-weight:600;">Views</div>
+                </div>
+                <div style="padding:10px; background:#F3F4F6; border-radius:6px; text-align:center;">
+                  <div style="font-size:16px; font-weight:800; color:#10B981;">${post.metrics?.comments || 0}</div>
+                  <div style="font-size:10px; color:var(--text-muted); margin-top:2px; font-weight:600;">Comments</div>
+                </div>
+              </div>
+              <div style="font-size:11px; color:var(--text-muted); padding-top:8px; border-top:1px solid var(--border);">
+                ${new Date(post.publishedAt).toLocaleDateString('en-US')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Voice Rules -->
+      <div style="margin-top:24px; padding:20px; border:1px solid var(--border); border-radius:8px; background:white;">
+        <h3 style="margin:0 0 16px 0; font-size:14px; font-weight:700; color:var(--text-main);"><i data-lucide="volume-2" style="width:16px; vertical-align:middle; margin-right:8px;"></i>Voice Rules for ${ch.name}</h3>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:10px; text-transform:uppercase;">✓ Always</div>
+            <ul style="margin:0; padding-left:16px; font-size:12px; line-height:1.8; color:var(--text-muted);">
+              ${(ch.voiceRules?.always || []).map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:10px; text-transform:uppercase;">✕ Never</div>
+            <ul style="margin:0; padding-left:16px; font-size:12px; line-height:1.8; color:var(--text-muted);">
+              ${(ch.voiceRules?.never || []).map(r => `<li>${r}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 async function hydrateSocialBiosView() {
   // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
   if (!document.getElementById('smb-root')) return;
@@ -1070,8 +1271,9 @@ async function hydrateSocialBiosView() {
     return;
   }
 
-  // ── Per-channel focus card ──
+  // ── Per-channel focus card (Metricool style) ──
   if (focus) {
+    // Focus card header
     setHTML('smb-focus-card', `
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div style="width:40px;height:40px;border-radius:10px;background:${focus.color};color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">${focus.name.charAt(0)}</div>
@@ -1079,105 +1281,94 @@ async function hydrateSocialBiosView() {
           <div style="font-size:16px;font-weight:700;color:var(--text-main);">${focus.name} · ${focus.handle}</div>
           <a href="${focus.profileUrl}" target="_blank" style="font-size:12px;color:var(--text-muted);text-decoration:none;">${focus.profileUrl}</a>
         </div>
-        <div class="smb-kpi-mini"><div class="lbl">Followers</div><div class="val">${focus.followers ?? '—'}</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Posts/week</div><div class="val">${focus.postingCadence ?? '—'}</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Avg ER</div><div class="val">${focus.avgEngagementRate ?? '—'}%</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Primary format</div><div class="val" style="text-transform:capitalize;">${focus.primaryFormat || '—'}</div></div>
       </div>
-      <div style="margin-top:14px;padding:12px;background:#FAF5FF;border-left:3px solid #9333EA;border-radius:8px;font-size:13px;color:#581C87;">${focus.toneSummary || 'Run a scan to populate tone summary.'}</div>
     `);
 
-    // Tone bars (5 dimensions)
-    const tone = focus.tone || {};
-    const dims = [
-      ['Formal', 'Casual', tone.formal_vs_casual],
-      ['Technical', 'Accessible', tone.technical_vs_accessible],
-      ['Serious', 'Playful', tone.serious_vs_playful],
-      ['Humble', 'Bold', tone.humble_vs_bold],
-      ['Short', 'Expansive', tone.short_vs_expansive],
+    // COMUNIDAD metrics
+    setText('smb-comunidad-followers', (focus.followers ?? 0).toLocaleString());
+    setText('smb-comunidad-following', (focus.following ?? 0).toLocaleString());
+    setText('smb-comunidad-posts', (focus.totalPosts ?? 0).toLocaleString());
+
+    // CUENTA metrics
+    setText('smb-cuenta-views', (focus.totalViews ?? 0).toLocaleString());
+    setText('smb-cuenta-reach', (focus.reach ?? 0).toLocaleString());
+    setText('smb-cuenta-interactions', (focus.totalInteractions ?? 0).toLocaleString());
+
+    // PUBLICACIONES - all posts ordered by engagement (highest to lowest)
+    const allPosts = [
+      ...(focus.topPosts || []),
+      ...(focus.posts || []).filter(p => !(focus.topPosts || []).find(tp => tp.id === p.id) && !(focus.bottomPosts || []).find(bp => bp.id === p.id)),
+      ...(focus.bottomPosts || [])
     ];
-    setHTML('smb-tone-bars', dims.map(([a, b, v]) => `
-      <div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><span>${a}</span><span>${b}</span></div>
-        <div style="position:relative;height:8px;background:#F3E8FF;border-radius:99px;overflow:hidden;">
-          <div style="position:absolute;left:0;top:0;height:100%;width:${v ?? 50}%;background:linear-gradient(90deg,#A855F7,#D946EF);"></div>
-        </div>
-        <div style="font-size:11px;color:var(--text-main);margin-top:2px;font-weight:700;">${v ?? 50}/100</div>
-      </div>
-    `).join(''));
+    const sortedByEngagement = [...allPosts].sort((a, b) => (b.engagementRate ?? 0) - (a.engagementRate ?? 0));
 
-    // Top posts table
-    setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
-      <tr class="smb-post-row">
-        <td style="max-width:340px;">
-          ${p.url
-            ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${p.snippet}<i data-lucide="external-link" style="width:11px;flex-shrink:0;color:${focus.color};"></i></a>`
-            : `<div style="color:var(--text-main);">${p.snippet}</div>`}
-          ${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}
-        </td>
-        <td style="text-transform:capitalize;">${p.format}</td>
-        <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
-        <td>${p.metrics?.likes ?? 0}</td>
-        <td>${p.metrics?.comments ?? 0}</td>
-        <td>${p.metrics?.shares ?? 0}</td>
-        <td style="font-weight:700;color:#10B981;">${p.engagementRate ?? 0}%</td>
-      </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No posts yet — run a scan.</td></tr>');
-
-    // Voice rules
-    setHTML('smb-voice-always', (focus.voiceRules?.always || []).map(r => `<li>✓ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
-    setHTML('smb-voice-never',  (focus.voiceRules?.never  || []).map(r => `<li>✗ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
-
-    // Voice Rules in Action — best vs worst
-    const best = (focus.topPosts || [])[0];
-    const worst = (focus.bottomPosts || [])[0];
-    setHTML('smb-rules-action', `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            <span>✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</span>
-            ${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#047857;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+    setHTML('smb-publicaciones-list', sortedByEngagement.length ? sortedByEngagement.map(p => `
+      <div style="padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-secondary);">
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:600; color:var(--text-main); margin-bottom:6px; line-height:1.4;">
+              ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${p.snippet}</a>` : p.snippet}
+            </div>
+            <div style="display:flex; gap:12px; font-size:11px; color:var(--text-muted); flex-wrap:wrap;">
+              <span style="text-transform:capitalize;">📌 ${p.format || 'post'}</span>
+              <span>📅 ${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString('es-ES') : '—'}</span>
+            </div>
           </div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
-          <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
-        </div>
-        <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            <span>✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</span>
-            ${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#B91C1C;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          <div style="text-align:right; min-width:max-content;">
+            <div style="font-size:28px; font-weight:800; color:${focus.color}; line-height:1;">${p.engagementRate ?? 0}%</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">ER</div>
           </div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
-          <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
+        </div>
+        <div style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit, minmax(60px, 1fr)); gap:8px; font-size:11px;">
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.likes ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">❤️ Likes</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.comments ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">💬 Comments</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.shares ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">↗️ Shares</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.impressions ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">👁️ Views</div>
+          </div>
         </div>
       </div>
-    `);
-
-    // Cadence heatmap
-    const heat = focus.cadenceHeatmap || [];
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:9px;">';
-    html += '<div></div>' + Array.from({ length: 24 }, (_, h) => `<div style="text-align:center;color:var(--text-muted);">${h}</div>`).join('');
-    for (let d = 0; d < 7; d++) {
-      html += `<div style="font-weight:600;color:var(--text-muted);text-align:right;padding-right:4px;">${days[d]}</div>`;
-      for (let h = 0; h < 24; h++) {
-        const cell = heat[d]?.[h] || { count: 0, avgEr: 0 };
-        const intensity = Math.min(1, cell.avgEr / 6);
-        const bg = cell.count ? `rgba(168,85,247,${0.15 + intensity * 0.85})` : '#F9FAFB';
-        const title = cell.count ? `${days[d]} ${h}:00 · ${cell.count} posts · ER ${cell.avgEr}%` : `${days[d]} ${h}:00 · no posts`;
-        html += `<div class="smb-heatmap-cell" style="background:${bg};" title="${title}"></div>`;
-      }
-    }
-    html += '</div>';
-    setHTML('smb-heatmap', html);
+    `).join('') : '<div style="text-align:center; color:var(--text-muted); padding:24px;">No publications yet — run a scan.</div>');
   } else {
     setHTML('smb-focus-card', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel above to see its profile.</div>');
-    setHTML('smb-tone-bars', '');
-    setHTML('smb-top-posts-tbody', '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to see top posts.</td></tr>');
-    setHTML('smb-voice-always', '<li style="color:var(--text-muted);">Select a channel</li>');
-    setHTML('smb-voice-never',  '<li style="color:var(--text-muted);">Select a channel</li>');
-    setHTML('smb-rules-action', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to compare best vs flopped posts.</div>');
-    setHTML('smb-heatmap', '');
+    setText('smb-comunidad-followers', '—');
+    setText('smb-comunidad-following', '—');
+    setText('smb-comunidad-posts', '—');
+    setText('smb-cuenta-views', '—');
+    setText('smb-cuenta-reach', '—');
+    setText('smb-cuenta-interactions', '—');
+    setHTML('smb-publicaciones-list', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to see publications.</div>');
   }
+
+  // Reset subtabs to COMUNIDAD by default
+  setTimeout(() => {
+    document.querySelectorAll('[id^="smb-subtab-"]').forEach(el => el.style.display = 'none');
+    const comunidadTab = document.getElementById('smb-subtab-comunidad');
+    if (comunidadTab) comunidadTab.style.display = '';
+
+    document.querySelectorAll('.smb-subtab').forEach(b => {
+      b.style.borderBottomColor = 'transparent';
+      b.style.color = 'var(--text-muted)';
+    });
+    const firstSubtab = document.querySelector('[data-subtab="comunidad"]');
+    if (firstSubtab) {
+      firstSubtab.style.borderBottomColor = '#9333EA';
+      firstSubtab.style.color = '#9333EA';
+    }
+  }, 0);
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -2654,6 +2845,14 @@ async function hydrateAutoPublisherView() {
         }).join('');
       }
     }
+
+    // ─── Metricool Publishing Stats ───
+    const readyToPublish = upcoming.length;
+    const uniqueChannels = new Set(upcoming.map(d => d.channel).filter(Boolean)).size;
+    const lastMetricoolPublish = published.find(d => d.metricool_published_at);
+    setText('metricool-ready-count', readyToPublish ? String(readyToPublish) : '0');
+    setText('metricool-channels-count', uniqueChannels ? String(uniqueChannels) : '0');
+    setText('metricool-last-publish', lastMetricoolPublish ? fmtRelativeFuture(lastMetricoolPublish.metricool_published_at) : 'Never');
   } catch (err) {
     console.error('[AP hydrate] error:', err);
   }
@@ -8054,6 +8253,98 @@ async function handleDiscardDraft() {
   }, 4000);
 }
 
+// Publish all approved/scheduled content with Metricool
+async function publishAllWithMetricool() {
+  const statusEl = document.getElementById('metricool-status');
+  const statusText = document.getElementById('metricool-status-text');
+
+  if (!statusEl || !statusText) {
+    console.error('[Metricool] UI elements not found');
+    return;
+  }
+
+  try {
+    statusEl.style.display = 'block';
+    statusText.innerHTML = '<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Fetching approved content...';
+    lucide.createIcons();
+
+    // Fetch all approved drafts ready to publish
+    const allDrafts = await fetchPublishingDrafts(brandKitData?.brandId || 'swl-consulting');
+    const readyToPublish = Array.isArray(allDrafts)
+      ? allDrafts.filter(d => d.status === 'approved')
+      : [];
+
+    if (!readyToPublish.length) {
+      statusText.innerHTML = '⚠️ No approved content to publish. Approve drafts in ContentBuilder first.';
+      statusEl.style.background = '#FEF3C7';
+      statusEl.style.borderColor = '#FBBF24';
+      statusText.style.color = '#92400E';
+      setTimeout(() => { statusEl.style.display = 'none'; }, 5000);
+      return;
+    }
+
+    statusText.innerHTML = `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Preparing ${readyToPublish.length} post(s) for Metricool...`;
+    lucide.createIcons();
+
+    // Prepare payload for Metricool
+    const payload = {
+      posts: readyToPublish.map(d => ({
+        id: d.id,
+        title: d.title || 'Untitled',
+        content: d.caption || d.brief || '',
+        image_url: d.visual_url || '',
+        channels: [d.channel || 'linkedin'],
+        scheduled_time: d.scheduled_at,
+        metadata: {
+          source: 'ContentBuilder',
+          brand: brandKitData?.name || 'SWL Consulting',
+          draft_id: d.id
+        }
+      }))
+    };
+
+    statusText.innerHTML = `<i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i>Sending ${readyToPublish.length} post(s) to Metricool...`;
+    lucide.createIcons();
+
+    // Send to Metricool via backend endpoint
+    const response = await fetch('http://localhost:3000/api/metricool/publish', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.ok) {
+      const publishedCount = result.published_count || readyToPublish.length;
+      statusText.innerHTML = `<i data-lucide="check-circle" style="width:12px; color:#10B981; vertical-align:middle; margin-right:6px;"></i><strong>${publishedCount} post(s)</strong> sent to Metricool successfully!`;
+      statusEl.style.background = '#ECFDF5';
+      statusEl.style.borderColor = '#6EE7B7';
+      statusText.style.color = '#047857';
+
+      // Update counters
+      setTimeout(() => hydrateAutoPublisherView(), 500);
+
+      showToast(`✓ ${publishedCount} post(s) published via Metricool (using SWL Consulting account).`);
+      lucide.createIcons();
+    } else {
+      const errorMsg = result.error || result.message || 'Unknown error';
+      throw new Error(errorMsg);
+    }
+  } catch (err) {
+    console.error('[Metricool] publish error:', err);
+    const errMsg = err.message || 'Failed to publish';
+    statusText.innerHTML = `<i data-lucide="alert-circle" style="width:12px; color:#EF4444; vertical-align:middle; margin-right:6px;"></i><strong>Error:</strong> ${errMsg}`;
+    statusEl.style.background = '#FEE2E2';
+    statusEl.style.borderColor = '#FECACA';
+    statusText.style.color = '#DC2626';
+    showToast(`Metricool publish error: ${errMsg}`, 'error');
+    lucide.createIcons();
+  }
+
+  setTimeout(() => { statusEl.style.display = 'none'; }, 8000);
+}
+
 // Mark a pipeline step as done/active visually
 function markCbStep(num, state /* 'done' | 'active' | 'idle' */) {
   const el = document.getElementById(`cb-step-${num}`);
@@ -8105,7 +8396,24 @@ function showToast(message, type = 'success') {
 // Update a top-level brandKitData text field silently
 function updateBrandField(key, value) { brandKitData[key] = value; }
 
-function updateBrandTypography(key, value) { brandKitData.typography[key] = value; }
+function updateBrandTypography(key, value) {
+  // Handle both new (object) and old (string) formats
+  if (typeof brandKitData.typography[key] === 'object') {
+    brandKitData.typography[key].name = value;
+  } else {
+    brandKitData.typography[key] = value;
+  }
+}
+
+function updateBrandFontSize(kind, size) {
+  // Ensure typography[kind] is an object with name and size
+  if (typeof brandKitData.typography[kind] === 'string') {
+    const name = brandKitData.typography[kind];
+    brandKitData.typography[kind] = { name, size: size || '16px' };
+  } else if (typeof brandKitData.typography[kind] === 'object') {
+    brandKitData.typography[kind].size = size;
+  }
+}
 
 // ── Font picker (Branding Bio Typography) ───────────────
 // All fonts here must also be imported in index.html
@@ -11078,70 +11386,56 @@ function generateViewHTML(view) {
           .bk-row-action:hover { background:#FEE2E2; }
           .bk-add-btn { padding:6px 12px; border:1px dashed var(--border); background:transparent; border-radius:6px; font-size:12px; color:var(--text-muted); cursor:pointer; width:100%; transition:all 0.15s; }
           .bk-add-btn:hover { border-color:#6366F1; color:#6366F1; background:#EEF2FF; }
+          .section-divider { margin:40px 0; padding:24px 0; border-top:2px solid var(--border); }
+          .section-header { font-size:18px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:10px; }
         </style>
 
         <div class="agent-header" style="background: linear-gradient(135deg, #6366F1 0%, #4338CA 100%)">
           <div class="agent-bigicon">🎯</div>
           <div class="agent-header-text">
             <h2>Branding Bio</h2>
-            <p>Foundation input for the entire Marketing Pilot flow. Fill in your brand fingerprint — colors, typography, voice by channel, audience, competitors — and every downstream agent (SocialMediaBios, CompetitorsViews, HookMiner, ContentBuilder, CreativeBrain) will use it as the single source of truth.</p>
+            <p>Foundation input del Marketing Pilot. Primero tu empresa: identidad, misión, visión, valores, colores, tipografía, redes. Abajo los competidores. Todo lo que agregues acá alimenta a SocialMediaBios, CompetitorsViews, ContentBuilder y CreativeBrain.</p>
           </div>
           <div class="agent-header-meta">
             <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Editing live</div><br>
-            <span class="agent-tag">v3.1 · auto-saves as you type</span>
+            <span class="agent-tag">Auto-saves</span>
           </div>
         </div>
 
-        ${(() => {
-          const warn = [];
-          const validCompetitors = brandKitData.competitors.filter(c => c?.name && !/^new competitor$/i.test(c.name));
-          if (!validCompetitors.length) warn.push({ icon: 'swords', msg: 'Competitors — ninguno agregado. Hacé Scan Website o agregá al menos uno manualmente.' });
-          else if (validCompetitors.length < 5) warn.push({ icon: 'swords', msg: `Competitors — solo ${validCompetitors.length} de 5 mínimos. Hacé Scan Website para auto-detectar más.` });
-          else { const noUrl = validCompetitors.filter(c => !c.url).length; if (noUrl) warn.push({ icon: 'swords', msg: `Competitors — ${noUrl} entr${noUrl===1?'y':'ies'} missing website URL.` }); }
-          if (!brandKitData.marketingPrompt) warn.push({ icon: 'sparkles', msg: 'Marketing Prompt — add your custom AI content instructions.' });
-          if (!warn.length) return '';
-          return `<div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; padding:12px 16px; margin-top:12px;">
-            <div style="font-size:12px; font-weight:700; color:#92400E; margin-bottom:8px; display:flex; align-items:center; gap:6px;"><i data-lucide="alert-triangle" style="width:13px;color:#F59E0B"></i> Complete before saving</div>
-            ${warn.map(w => `<div style="display:flex; gap:8px; align-items:center; font-size:12px; color:#78350F; margin-top:4px;"><i data-lucide="${w.icon}" style="width:12px;flex-shrink:0;color:#F59E0B"></i>${w.msg}</div>`).join('')}
-          </div>`;
-        })()}
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
-          <div style="display:flex; gap:12px; align-items:center;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="arrow-right" style="width:11px;vertical-align:middle;margin-right:4px"></i>Feeds: SocialMediaBios · CompetitorsViews · ContentBuilder · CreativeBrain</span>
-          </div>
-          <button
-            id="bk-save-btn"
-            onclick="saveBrandProfile()"
-            style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer;">
-            Save & Sync
-          </button>
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION 1: COMPANY PROFILE (OUR BRAND) -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION 1: YOUR COMPANY -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <div style="margin-top:32px; margin-bottom:24px;">
+          <h2 style="margin:0; font-size:28px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:12px;">
+            <i data-lucide="building-2" style="width:32px; height:32px; color:#6366F1;"></i>
+            YOUR COMPANY
+          </h2>
+          <p style="margin:8px 0 0 0; font-size:14px; color:var(--text-muted); max-width:600px;">Fill in all your company information: brand identity, values, visual branding, and social channels. This powers every agent in the Marketing Pilot.</p>
         </div>
 
-        <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981">100%</div><div class="agent-stat-lbl">Kit Completion</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">10</div><div class="agent-stat-lbl">Sections Filled</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">4</div><div class="agent-stat-lbl">Active Channels</div></div>
-          <div class="agent-stat"><div class="agent-stat-val">12</div><div class="agent-stat-lbl">Content Samples Linked</div></div>
-        </div>
-
-        <!-- 0. Website Scrapper -->
+        <!-- Website Scrapper -->
         <div class="card" style="margin-top:24px; border:1px solid #C7D2FE; background:linear-gradient(135deg,#EEF2FF 0%,#F5F3FF 100%);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="globe"></i> Website Scrapper</h3>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="globe"></i> Scan Your Website</h3>
             <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">AI auto-fill</span>
           </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Enter your website URL and the AI will automatically extract company bio, mission, vision, core values, color palette and target audience — then pre-fill all fields below.</p>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Enter your website URL and AI will automatically extract your company name, industry, mission, vision, values, colors, typography, and social channels.</p>
           <div style="display:flex; gap:10px; align-items:center;">
             <input type="text" id="bk-scrape-url" value="${brandKitData.websiteUrl}" oninput="updateBrandField('websiteUrl', this.value)" placeholder="https://www.yourcompany.com" style="flex:1; padding:10px 12px; border:1px solid #C7D2FE; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
-            <button id="bk-scrape-btn" onclick="scanBrandingBio()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;"><i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan Website</button>
+            <button id="bk-scrape-btn" onclick="scanBrandingBio()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;"><i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan</button>
           </div>
           <div id="bk-scrape-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
         </div>
 
-        <!-- 1. Brand Identity -->
-        <div class="card" style="margin-top:16px;">
+        <!-- 1. About Us -->
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="award"></i> 1. Brand Identity</h3>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="award"></i> 1. About Us</h3>
             ${brandKitData.websiteUrl ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>' : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
@@ -11157,18 +11451,40 @@ function generateViewHTML(view) {
               <label class="bk-label">Tagline</label>
               <input class="bk-input" type="text" value="${brandKitData.tagline}" oninput="updateBrandField('tagline', this.value)" placeholder="Short phrase that captures your value prop">
             </div>
-            <div style="grid-column:span 3;">
-              <label class="bk-label">Mission / What we do</label>
-              <textarea class="bk-input area" oninput="updateBrandField('mission', this.value)" placeholder="1-3 sentences describing what you do and who for">${brandKitData.mission}</textarea>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+            <div>
+              <label class="bk-label">Mission / What We Do</label>
+              <textarea class="bk-input area" oninput="updateBrandField('mission', this.value)" placeholder="1-3 sentences about what you do and who you serve">${brandKitData.mission}</textarea>
+            </div>
+            <div>
+              <label class="bk-label">Vision</label>
+              <textarea class="bk-input area" oninput="updateBrandField('vision', this.value)" placeholder="Where you want to be in the future">${brandKitData.vision || ''}</textarea>
             </div>
           </div>
-          <p style="margin:10px 0 0 0; font-size:11px; color:var(--text-muted);"><i data-lucide="info" style="width:11px;vertical-align:middle;margin-right:3px"></i>El <strong>idioma de publicación se elige por canal</strong> en ContentBuilder (Instagram, TikTok, LinkedIn pueden tener idiomas distintos).</p>
         </div>
 
-        <!-- 2. Colorimetría -->
-        <div class="card" style="margin-top:16px;">
+        <!-- 2. Core Values -->
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="palette"></i> 2. Colorimetry</h3>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="heart"></i> 2. Core Values</h3>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+            ${brandKitData.values.map((v, i) => `
+              <div style="padding:14px; border-left:3px solid ${v.color}; background:${v.color}11; border-radius:6px; position:relative;">
+                <button class="bk-row-action" onclick="removeBrandListItem('values', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
+                <input class="bk-input" type="text" value="${v.title}" oninput="updateBrandListItem('values', ${i}, 'title', this.value)" style="background:transparent; border:none; padding:0; font-size:14px; font-weight:700;">
+                <textarea class="bk-input area" oninput="updateBrandListItem('values', ${i}, 'desc', this.value)" style="background:transparent; border:none; padding:4px 0 0 0; font-size:12px; color:var(--text-muted); min-height:44px; font-weight:400;">${v.desc}</textarea>
+              </div>
+            `).join('')}
+          </div>
+          <button class="bk-add-btn" onclick="addBrandListItem('values', { title:'New value', desc:'What does this value mean in practice?', color:'#6366F1' })" style="margin-top:12px;">+ Add value</button>
+        </div>
+
+        <!-- 3. Color Palette -->
+        <div class="card" style="margin-top:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="palette"></i> 3. Color Palette</h3>
             <div style="display:flex; gap:8px; align-items:center;">
               ${brandKitData.websiteUrl ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>' : ''}
               <button onclick="toggleBkColor()" style="padding:4px 12px; background:${state.bkColorExpanded ? '#6366F1' : 'transparent'}; color:${state.bkColorExpanded ? 'white' : '#6366F1'}; border:1px solid #6366F1; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">${state.bkColorExpanded ? '✓ Done' : '✎ Customize'}</button>
@@ -11200,7 +11516,7 @@ function generateViewHTML(view) {
                 `).join('')}
               </div>
             </div>
-            <label class="bk-label">Fine-tune — click any swatch para cambiar · × para borrar · + Add color para sumar</label>
+            <label class="bk-label">Fine-tune — click any swatch to change · × to delete · + Add color to add more</label>
             <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:14px;">
               ${brandKitData.palette.map((c, i) => `
                 <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative;">
@@ -11214,7 +11530,7 @@ function generateViewHTML(view) {
                   </div>
                 </div>
               `).join('')}
-              <button type="button" onclick="addPaletteColor()" title="Agregar un color a la paleta" style="border:2px dashed var(--border); border-radius:8px; background:#FAFBFC; cursor:pointer; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:115px; color:var(--text-muted); font-family:var(--font-main); transition:border-color .15s, color .15s;" onmouseover="this.style.borderColor='#6366F1';this.style.color='#6366F1'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
+              <button type="button" onclick="addPaletteColor()" title="Add a color to the palette" style="border:2px dashed var(--border); border-radius:8px; background:#FAFBFC; cursor:pointer; padding:0; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:115px; color:var(--text-muted); font-family:var(--font-main); transition:border-color .15s, color .15s;" onmouseover="this.style.borderColor='#6366F1';this.style.color='#6366F1'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-muted)'">
                 <div style="font-size:28px; font-weight:300; line-height:1;">+</div>
                 <div style="font-size:11px; font-weight:600; margin-top:6px; letter-spacing:0.3px;">Add color</div>
               </button>
@@ -11222,101 +11538,131 @@ function generateViewHTML(view) {
           ` : ''}
         </div>
 
-        <!-- 3. Typography -->
-        <div class="card" style="margin-top:16px;">
+        <!-- 4. Typography -->
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="type"></i> 3. Typography</h3>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="type"></i> 4. Typography</h3>
             ${brandKitData.websiteUrl ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>' : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
           </div>
           <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
-              <label class="bk-label">Headings</label>
-              <input class="bk-input bk-font-input" data-kind="heading" type="text" value="${brandKitData.typography.heading}" oninput="updateBrandFontInput(this, 'heading')" list="bk-fonts" style="font-family:'${brandKitData.typography.heading}', sans-serif; font-size:20px; font-weight:700;">
-              <div class="font-preview" data-kind="heading" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.heading}', sans-serif; font-weight:700;">Ship faster. Debug less.</div>
-              ${renderFontChips('heading', brandKitData.typography.heading)}
+              <label class="bk-label">Título</label>
+              <input class="bk-input bk-font-input" data-kind="heading" type="text" value="${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}" oninput="updateBrandFontInput(this, 'heading')" list="bk-fonts" style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}', sans-serif; font-size:20px; font-weight:700;">
+              <div style="display:flex; gap:8px; align-items:center; margin-top:10px; font-size:11px;">
+                <label style="flex:0;">Size:</label>
+                <input type="text" value="${typeof brandKitData.typography.heading === 'string' ? '28px' : brandKitData.typography.heading.size}" oninput="updateBrandFontSize('heading', this.value)" placeholder="28px" style="flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              </div>
+              <div class="font-preview" data-kind="heading" style="font-size:20px; margin-top:10px; font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}', sans-serif; font-weight:700;">Sample headline</div>
+            </div>
+            <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
+              <label class="bk-label">Subtítulo</label>
+              <input class="bk-input bk-font-input" data-kind="subtitle" type="text" value="${typeof brandKitData.typography.subtitle === 'string' ? brandKitData.typography.subtitle : (brandKitData.typography.subtitle?.name || 'Plus Jakarta Sans')}" oninput="updateBrandFontInput(this, 'subtitle')" list="bk-fonts" style="font-family:'${typeof brandKitData.typography.subtitle === 'string' ? brandKitData.typography.subtitle : (brandKitData.typography.subtitle?.name || 'Plus Jakarta Sans')}', sans-serif; font-size:16px; font-weight:700;">
+              <div style="display:flex; gap:8px; align-items:center; margin-top:10px; font-size:11px;">
+                <label style="flex:0;">Size:</label>
+                <input type="text" value="${typeof brandKitData.typography.subtitle === 'string' ? '20px' : (brandKitData.typography.subtitle?.size || '20px')}" oninput="updateBrandFontSize('subtitle', this.value)" placeholder="20px" style="flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              </div>
+              <div class="font-preview" data-kind="subtitle" style="font-size:16px; margin-top:10px; font-family:'${typeof brandKitData.typography.subtitle === 'string' ? brandKitData.typography.subtitle : (brandKitData.typography.subtitle?.name || 'Plus Jakarta Sans')}', sans-serif; font-weight:700;">Sample subheading</div>
             </div>
             <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
               <label class="bk-label">Body</label>
-              <input class="bk-input bk-font-input" data-kind="body" type="text" value="${brandKitData.typography.body}" oninput="updateBrandFontInput(this, 'body')" list="bk-fonts" style="font-family:'${brandKitData.typography.body}', sans-serif; font-size:20px; font-weight:600;">
-              <div class="font-preview" data-kind="body" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.body}', sans-serif;">Fix production issues before your customers do.</div>
-              ${renderFontChips('body', brandKitData.typography.body)}
-            </div>
-            <div style="padding:16px; border:1px solid var(--border); border-radius:8px;">
-              <label class="bk-label">Mono / Code</label>
-              <input class="bk-input bk-font-input" data-kind="mono" type="text" value="${brandKitData.typography.mono}" oninput="updateBrandFontInput(this, 'mono')" list="bk-fonts-mono" style="font-family:'${brandKitData.typography.mono}', monospace; font-size:20px; font-weight:600;">
-              <div class="font-preview" data-kind="mono" style="font-size:13px; margin-top:10px; font-family:'${brandKitData.typography.mono}', monospace; background:#0F172A; color:#A5F3FC; padding:6px 8px; border-radius:4px;">${brandKitData.name.toLowerCase().replace(/[^a-z0-9]/g,'')}.trace()</div>
-              ${renderFontChips('mono', brandKitData.typography.mono)}
+              <input class="bk-input bk-font-input" data-kind="body" type="text" value="${typeof brandKitData.typography.body === 'string' ? brandKitData.typography.body : brandKitData.typography.body.name}" oninput="updateBrandFontInput(this, 'body')" list="bk-fonts" style="font-family:'${typeof brandKitData.typography.body === 'string' ? brandKitData.typography.body : brandKitData.typography.body.name}', sans-serif; font-size:20px; font-weight:600;">
+              <div style="display:flex; gap:8px; align-items:center; margin-top:10px; font-size:11px;">
+                <label style="flex:0;">Size:</label>
+                <input type="text" value="${typeof brandKitData.typography.body === 'string' ? '16px' : brandKitData.typography.body.size}" oninput="updateBrandFontSize('body', this.value)" placeholder="16px" style="flex:1; padding:6px 8px; border:1px solid var(--border); border-radius:4px; font-size:12px;">
+              </div>
+              <div class="font-preview" data-kind="body" style="font-size:13px; margin-top:10px; font-family:'${typeof brandKitData.typography.body === 'string' ? brandKitData.typography.body : brandKitData.typography.body.name}', sans-serif;">Regular paragraph body text.</div>
             </div>
           </div>
           <datalist id="bk-fonts">${BRAND_FONTS_SANS.concat(BRAND_FONTS_SERIF, BRAND_FONTS_DISPLAY).map(f => `<option value="${f}">`).join('')}</datalist>
-          <datalist id="bk-fonts-mono">${BRAND_FONTS_MONO.map(f => `<option value="${f}">`).join('')}</datalist>
         </div>
 
-        <!-- 4. Values -->
-        <div class="card" style="margin-top:16px;">
+        <!-- 5. Logos & Assets -->
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="heart"></i> 4. Core Values</h3>
-            ${brandKitData.websiteUrl ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>' : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
+            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> 5. Logos & Assets</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Auto-generated preview</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
-            ${brandKitData.values.map((v, i) => `
-              <div style="padding:14px; border-left:3px solid ${v.color}; background:${v.color}11; border-radius:6px; position:relative;">
-                <button class="bk-row-action" onclick="removeBrandListItem('values', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
-                <input class="bk-input" type="text" value="${v.title}" oninput="updateBrandListItem('values', ${i}, 'title', this.value)" style="background:transparent; border:none; padding:0; font-size:14px; font-weight:700;">
-                <textarea class="bk-input area" oninput="updateBrandListItem('values', ${i}, 'desc', this.value)" style="background:transparent; border:none; padding:4px 0 0 0; font-size:12px; color:var(--text-muted); min-height:44px; font-weight:400;">${v.desc}</textarea>
-              </div>
-            `).join('')}
+          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:28px; color:${brandKitData.palette[1]?.hex || '#0F172A'};"><span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">SWL</span></span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · auto-generated</div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[1]?.hex || '#0F172A'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:28px; color:white;">SWL</span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · auto-generated</div>
+            </div>
+            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:42px; color:white;">S</span></div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon</div>
+            </div>
+            ${brandKitData.logoSvg
+              ? `<div style="border:2px solid #6366F1; border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:12px; overflow:hidden;">${brandKitData.logoSvg}</div>
+              <div style="padding:8px 10px; font-size:11px; color:#6366F1; font-weight:600;">✓ Extracted</div>
+            </div>`
+              : `<div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+              <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload</div>
+              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Custom logo</div>
+            </div>`}
           </div>
-          <button class="bk-add-btn" onclick="addBrandListItem('values', { title:'New value', desc:'Describe what this value means in practice.', color:'#6366F1' })" style="margin-top:12px;">+ Add value</button>
         </div>
 
-        <!-- 5. Target Audience -->
-        <div class="card" style="margin-top:16px;">
+
+        <!-- 6. Social Channels -->
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="users"></i> 5. Target Audience</h3>
-            ${brandKitData.websiteUrl ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>' : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
+            <h3 class="card-title" style="margin:0;"><i data-lucide="share-2"></i> 6. Social Channels</h3>
+            ${brandKitData.websiteUrl && brandKitData.channels.some(c => c.handle && c.handle !== '@yourhandle')
+              ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>'
+              : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
           </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;">
-            ${brandKitData.personas.map((p, i) => `
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+            ${brandKitData.channels.map((c, i) => `
               <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
-                <button class="bk-row-action" onclick="removeBrandListItem('personas', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
-                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-                  <div style="width:40px; height:40px; border-radius:50%; background:#EEF2FF; color:#4338CA; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${p.code}</div>
-                  <div style="flex:1;">
-                    <input class="bk-input" type="text" value="${p.role}" oninput="updateBrandListItem('personas', ${i}, 'role', this.value)" placeholder="Role" style="padding:4px 8px; font-size:14px;">
-                    <input class="bk-input" type="text" value="${p.label}" oninput="updateBrandListItem('personas', ${i}, 'label', this.value)" placeholder="Label (e.g. Primary buyer)" style="padding:4px 8px; font-size:11px; margin-top:4px; font-weight:400; color:var(--text-muted);">
+                <button class="bk-row-action" onclick="removeBrandListItem('channels', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+                  <div id="bk-ch-icon-${i}" style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
+                  <div style="flex:1; min-width:0;">
+                    <input class="bk-input" type="text" value="${c.name}" oninput="updateChannelName(${i}, this.value)" placeholder="E.g. TikTok" style="font-size:13px; font-weight:700; padding:2px 6px;" />
+                    <input class="bk-input" type="text" value="${c.handle}" oninput="updateBrandListItem('channels', ${i}, 'handle', this.value)" placeholder="@handle or URL" style="font-size:12px; font-family:monospace; padding:2px 6px; margin-top:4px;" />
                   </div>
                 </div>
-                <label class="bk-label" style="margin-top:8px;">Company size / context</label>
-                <input class="bk-input" type="text" value="${p.size}" oninput="updateBrandListItem('personas', ${i}, 'size', this.value)" style="font-size:12px; font-weight:400;">
-                <label class="bk-label" style="margin-top:8px;">Pain points</label>
-                <textarea class="bk-input area" oninput="updateBrandListItem('personas', ${i}, 'pains', this.value)" style="font-size:12px; font-weight:400; min-height:48px;">${p.pains}</textarea>
-                <label class="bk-label" style="margin-top:8px;">Buying triggers</label>
-                <textarea class="bk-input area" oninput="updateBrandListItem('personas', ${i}, 'triggers', this.value)" style="font-size:12px; font-weight:400; min-height:48px;">${p.triggers}</textarea>
+                <input class="bk-input" type="text" value="${c.audience || ''}" oninput="updateBrandListItem('channels', ${i}, 'audience', this.value)" placeholder="Audience description" style="font-size:11px; width:100%; box-sizing:border-box;" />
               </div>
             `).join('')}
           </div>
-          <button class="bk-add-btn" onclick="addBrandListItem('personas', { code:'P'+(brandKitData.personas.length+1), role:'New persona', label:'Role context', size:'', pains:'', triggers:'' })" style="margin-top:12px;">+ Add persona</button>
+          <button class="bk-add-btn" onclick="addBrandListItem('channels', { name:'New channel', icon:'globe', color:'#6366F1', handle:'@handle', audience:'' })" style="margin-top:12px;">+ Add channel</button>
         </div>
 
-        <!-- 6. Competitors -->
-        <div class="card" style="margin-top:16px;">
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION 2: COMPETITORS -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <div style="margin-top:48px; margin-bottom:24px; padding-bottom:20px; border-bottom:3px solid #DC2626;">
+          <h2 style="margin:0; font-size:28px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:12px;">
+            <i data-lucide="swords" style="width:32px; height:32px; color:#DC2626;"></i>
+            COMPETITORS
+          </h2>
+          <p style="margin:8px 0 0 0; font-size:14px; color:var(--text-muted); max-width:600px;">Add and analyze your competitors. The system will scrape their websites, social media, and positioning so you can see what's working in your space.</p>
+        </div>
+
+        <div class="card" style="margin-top:24px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="swords"></i> 6. Competitors Tracked</h3>
+            <h3 class="card-title" style="margin:0;">Competitors Tracked</h3>
             ${(() => {
               const aiCount = brandKitData.competitors.filter(c => c.source === 'ai').length;
               const total   = brandKitData.competitors.filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
               if (aiCount >= 5)  return `<span class="lm-tag" style="background:#D1FAE5;color:#065F46">🤖 ${aiCount} auto-detected · ${total} total</span>`;
               if (aiCount > 0)   return `<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">🤖 ${aiCount} auto-detected · ${total} total</span>`;
-              return `<span class="lm-tag" style="background:#FEF3C7;color:#92400E">⚠ Sin scan — manual</span>`;
+              return `<span class="lm-tag" style="background:#FEF3C7;color:#92400E">⚠ Sin scan — agregar manual</span>`;
             })()}
           </div>
           <div style="background:#EEF2FF; border:1px solid #C7D2FE; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; color:#3730A3; display:flex; gap:8px; align-items:flex-start;">
             <i data-lucide="info" style="width:13px; flex-shrink:0; margin-top:1px; color:#6366F1;"></i>
-            <span>Hacé clic en <strong>Scan Website</strong> (arriba) para que el AI detecte 5+ competidores de tu industria automáticamente. Después podés eliminar los que no correspondan o agregar más con el botón de abajo. Completá las <strong>URLs de redes sociales</strong> para que <strong>Sync Accounts</strong> pueda scrapear cada canal.</span>
+            <span>Click <strong>Scan Your Website</strong> (in YOUR COMPANY) for AI to auto-detect 5+ competitors. Then you can remove ones that don't fit or add more manually. Fill in social media URLs so the system can scrape each channel.</span>
           </div>
           <table class="lm-table">
-            <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Price Tier</th><th>Differentiator vs Us</th><th style="width:90px;">Socials</th><th style="width:40px;"></th></tr></thead>
+            <thead><tr><th style="width:18%;">Competitor</th><th style="width:20%;">Website URL</th><th style="width:24%;">Positioning</th><th style="width:12%;">Tier</th><th>Differentiator</th><th style="width:90px;">Socials</th><th style="width:40px;"></th></tr></thead>
             <tbody>
               ${brandKitData.competitors.map((c, i) => {
                 const socialCount = ['linkedin_url','instagram_url','tiktok_url','youtube_url','x_url','facebook_url'].filter(k => c[k]).length;
@@ -11338,7 +11684,7 @@ function generateViewHTML(view) {
                   </td>
                   <td><input class="bk-input" type="text" value="${c.diff}" oninput="updateBrandListItem('competitors', ${i}, 'diff', this.value)" style="padding:6px 8px; font-size:12px; font-weight:400; color:var(--text-muted);"></td>
                   <td>
-                    <button class="bk-socials-toggle ${isOpen?'open':''} ${socialCount?'has-data':''}" onclick="toggleCompetitorSocials(${i})" title="Edit social media URLs">
+                    <button class="bk-socials-toggle ${isOpen?'open':''} ${socialCount?'has-data':''}" onclick="toggleCompetitorSocials(${i})" title="Edit social URLs">
                       <i data-lucide="${isOpen?'chevron-up':'chevron-down'}" style="width:11px;vertical-align:middle;"></i>
                       ${socialCount ? `${socialCount}/6` : '+ add'}
                     </button>
@@ -11349,9 +11695,9 @@ function generateViewHTML(view) {
                 <tr class="bk-socials-subrow">
                   <td colspan="7" style="background:#FAFBFC; padding:14px 18px;">
                     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-                      <div style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.4px; text-transform:uppercase;">Redes sociales de ${escapeHtml(c.name)}</div>
+                      <div style="font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:0.4px; text-transform:uppercase;">Social channels for ${escapeHtml(c.name)}</div>
                       <button class="bk-socials-discover" onclick="discoverSocialsForCompetitor(${i})" ${!c.url?'disabled':''} title="${c.url?'Scan website to discover socials':'Add website URL first'}">
-                        <i data-lucide="search" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Discover from website
+                        <i data-lucide="search" style="width:11px;vertical-align:middle;margin-right:4px;"></i>Discover
                       </button>
                     </div>
                     <div class="bk-socials-grid">
@@ -11385,89 +11731,7 @@ function generateViewHTML(view) {
               `;}).join('')}
             </tbody>
           </table>
-          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position themselves', tier:'Mid', diff:'What makes them different', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'', facebook_url:'', source:'manual' })" style="margin-top:12px;">+ Add competitor manually</button>
-        </div>
-
-        <!-- 7. Logos -->
-        <div class="card" style="margin-top:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> 7. Logos & Assets</h3>
-            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Preview generated from brand</span>
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:28px; color:${brandKitData.palette[1]?.hex || '#0F172A'};">${brandKitData.name.toLowerCase().split(' ')[0]}<span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">.</span></span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · auto-generated</div>
-            </div>
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[1]?.hex || '#0F172A'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:28px; color:white;">${brandKitData.name.toLowerCase().split(' ')[0]}<span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">.</span></span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · auto-generated</div>
-            </div>
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${brandKitData.typography.heading}',sans-serif; font-weight:800; font-size:42px; color:white;">${(brandKitData.name[0] || 'A').toUpperCase()}.</span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon · App</div>
-            </div>
-            ${brandKitData.logoSvg
-              ? `<div style="border:2px solid #6366F1; border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:12px; overflow:hidden;">${brandKitData.logoSvg}</div>
-              <div style="padding:8px 10px; font-size:11px; color:#6366F1; font-weight:600;">✓ Extracted from website</div>
-            </div>`
-              : `<div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload variant</div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Social avatar · 512×512</div>
-            </div>`}
-          </div>
-          <p style="margin-top:12px; font-size:11px; color:var(--text-muted);">💡 These previews update automatically as you change brand name, colors and typography.</p>
-        </div>
-
-        <!-- 8. Social Channels -->
-        <div class="card" style="margin-top:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="share-2"></i> 8. Social Channels</h3>
-            ${brandKitData.websiteUrl && brandKitData.channels.some(c => c.handle && c.handle !== '@yourhandle')
-              ? '<span class="lm-tag" style="background:#D1FAE5;color:#065F46">✓ Auto-filled</span>'
-              : '<span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Editable</span>'}
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
-            ${brandKitData.channels.map((c, i) => `
-              <div style="padding:14px; border:1px solid var(--border); border-radius:8px; position:relative;">
-                <button class="bk-row-action" onclick="removeBrandListItem('channels', ${i})" style="position:absolute; top:8px; right:8px;" title="Remove">✕</button>
-                <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
-                  <div id="bk-ch-icon-${i}" style="width:34px; height:34px; border-radius:8px; background:#F3F4F6; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${getSocialLogo(c.icon, c.color)}</div>
-                  <div style="flex:1; min-width:0;">
-                    <input class="bk-input" type="text" value="${c.name}" oninput="updateChannelName(${i}, this.value)" placeholder="e.g. TikTok, YouTube…" style="font-size:13px; font-weight:700; padding:2px 6px;" />
-                    <input class="bk-input" type="text" value="${c.handle}" oninput="updateBrandListItem('channels', ${i}, 'handle', this.value)" placeholder="@handle o URL" style="font-size:12px; font-family:monospace; padding:2px 6px; margin-top:4px;" />
-                  </div>
-                </div>
-                <input class="bk-input" type="text" value="${c.audience || ''}" oninput="updateBrandListItem('channels', ${i}, 'audience', this.value)" placeholder="Descripción de audiencia" style="font-size:11px; width:100%; box-sizing:border-box;" />
-              </div>
-            `).join('')}
-          </div>
-          <button class="bk-add-btn" onclick="addBrandListItem('channels', { name:'New channel', icon:'globe', color:'#6366F1', handle:'@handle', audience:'' })" style="margin-top:12px;">+ Add channel</button>
-        </div>
-
-        <!-- 9. Marketing Content Prompt -->
-        <div class="card" style="margin-top:16px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="sparkles"></i> 11. Marketing Content Prompt</h3>
-            <span class="lm-tag" style="background:#FEF3C7;color:#92400E">⚠ Manual entry</span>
-          </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px 0;">Custom instructions injected into every Marketing Pilot agent. Define tone rules, forbidden words, format preferences, campaign focus, and language constraints. All downstream AI (CompetitorsViews, HookMiner, ContentBuilder, CreativeBrain) will follow these instructions.</p>
-          <textarea class="bk-input area"
-            oninput="updateBrandField('marketingPrompt', this.value)"
-            placeholder="E.g.: Always write in Spanish using voseo. Never use corporate buzzwords like 'sinergia', 'disruptivo' or 'innovador'. Focus on pain points of construction directors. Each LinkedIn post must start with a provocative hook in the first line. Format posts with a line break every 2 sentences. Always end with one concrete CTA..."
-            style="min-height:130px; font-size:13px; font-weight:400; line-height:1.6;">${brandKitData.marketingPrompt || ''}</textarea>
-        </div>
-
-        <!-- Next step CTA -->
-        <div class="card" style="margin-top:24px; background:linear-gradient(135deg, #EEF2FF 0%, #FDF2F8 100%); border:1px solid #E0E7FF;">
-          <div style="display:flex; align-items:center; gap:16px;">
-            <div style="flex:1;">
-              <strong style="font-size:15px;">Your kit feeds SocialMediaBios →</strong>
-              <p style="font-size:13px; color:var(--text-muted); margin-top:6px;">Every update here auto-propagates: SocialMediaBios picks up your handles, CompetitorsViews tracks the brands you listed, ContentBuilder gets new constraints, CreativeBrain re-checks compliance. One source of truth for the whole Marketing Pilot stack.</p>
-            </div>
-            <button class="btn-sm btn-primary" onclick="switchView('social-media-bios')"><i data-lucide="arrow-right" style="width:14px"></i> Open SocialMediaBios</button>
-          </div>
+          <button class="bk-add-btn" onclick="addBrandListItem('competitors', { name:'New competitor', url:'', positioning:'How they position', tier:'Mid', diff:'What sets them apart', linkedin_url:'', instagram_url:'', tiktok_url:'', youtube_url:'', x_url:'', facebook_url:'', source:'manual' })" style="margin-top:12px;">+ Add competitor manually</button>
         </div>
       </div>
     `,
@@ -11576,46 +11840,58 @@ function generateViewHTML(view) {
             <div id="smb-focus-card"></div>
           </div>
 
-          <!-- Two columns: tone + voice rules -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
-            <div class="card" style="padding:20px 24px;">
-              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="sliders"></i> Tone snapshot</h3>
-              <div id="smb-tone-bars"></div>
-            </div>
-            <div class="card" style="padding:20px 24px;">
-              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="check-circle"></i> Voice rules</h3>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div>
-                  <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:6px;">ALWAYS</div>
-                  <ul id="smb-voice-always" class="smb-rules-list"></ul>
-                </div>
-                <div>
-                  <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:6px;">NEVER</div>
-                  <ul id="smb-voice-never" class="smb-rules-list"></ul>
-                </div>
+          <!-- Metricool subtabs -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:24px; border-bottom:2px solid var(--border); padding-bottom:12px;">
+            <button class="smb-subtab active" data-subtab="comunidad" onclick="selectSocialBiosSubtab('comunidad', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="users" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Comunidad
+            </button>
+            <button class="smb-subtab" data-subtab="cuenta" onclick="selectSocialBiosSubtab('cuenta', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="bar-chart-2" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Cuenta
+            </button>
+            <button class="smb-subtab" data-subtab="publicaciones" onclick="selectSocialBiosSubtab('publicaciones', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="trending-up" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Publicaciones
+            </button>
+          </div>
+
+          <!-- COMUNIDAD tab -->
+          <div id="smb-subtab-comunidad" class="card" style="margin-top:16px; padding:40px 24px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:24px;">
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#9333EA; line-height:1; margin-bottom:8px;" id="smb-comunidad-followers">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Seguidores</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#06B6D4; line-height:1; margin-bottom:8px;" id="smb-comunidad-following">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Siguiendo</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#10B981; line-height:1; margin-bottom:8px;" id="smb-comunidad-posts">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Publicaciones</div>
               </div>
             </div>
           </div>
 
-          <!-- Voice rules in action -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="zap"></i> Voice rules in action — best vs flopped</h3>
-            <div id="smb-rules-action"></div>
+          <!-- CUENTA tab -->
+          <div id="smb-subtab-cuenta" class="card" style="margin-top:16px; padding:40px 24px; display:none;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:24px;">
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#F59E0B; line-height:1; margin-bottom:8px;" id="smb-cuenta-views">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Visualizaciones</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#EC4899; line-height:1; margin-bottom:8px;" id="smb-cuenta-reach">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Alcance</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#8B5CF6; line-height:1; margin-bottom:8px;" id="smb-cuenta-interactions">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Interacciones</div>
+              </div>
+            </div>
           </div>
 
-          <!-- Top posts -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trending-up"></i> Top-performing posts</h3>
-            <table class="lm-table">
-              <thead><tr><th>Post snippet</th><th>Format</th><th>Date</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Engagement</th></tr></thead>
-              <tbody id="smb-top-posts-tbody"></tbody>
-            </table>
-          </div>
-
-          <!-- Cadence heatmap -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="calendar"></i> Posting cadence (avg engagement by day × hour, UTC)</h3>
-            <div id="smb-heatmap"></div>
+          <!-- PUBLICACIONES tab -->
+          <div id="smb-subtab-publicaciones" class="card" style="margin-top:16px; padding:20px 24px; display:none;">
+            <div id="smb-publicaciones-list" style="display:grid; gap:16px;"></div>
           </div>
         </div>
       </div>
@@ -12373,6 +12649,40 @@ function generateViewHTML(view) {
               <strong style="font-size:13px;">🔥 Re-publish top post on X</strong>
               <p style="font-size:12px; color:var(--text-muted); margin-top:6px;">"We killed 40% of dashboards" got 18.4K on LinkedIn but never went to X. Recommended: thread it Wednesday 2pm.</p>
             </div>
+          </div>
+        </div>
+
+        <!-- Metricool Publishing -->
+        <div class="card" style="margin-top:24px; border:2px solid #6366F1; background:#EEF2FF;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+              <h3 class="card-title" style="margin:0; color:#4F46E5;"><i data-lucide="send" style="color:#6366F1;"></i> Publish All with Metricool</h3>
+              <p style="font-size:12px; color:var(--text-muted); margin:6px 0 0 0;">Send all approved & scheduled content to Metricool for unified cross-platform publishing (using SWL Consulting API key)</p>
+            </div>
+            <button onclick="publishAllWithMetricool()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; display:flex; gap:8px; align-items:center;"><i data-lucide="zap" style="width:14px;"></i>Publish Queue</button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-top:12px;">
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Ready to Publish</div>
+              <div style="font-size:20px; font-weight:700; color:#6366F1;" id="metricool-ready-count">—</div>
+            </div>
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Channels</div>
+              <div style="font-size:20px; font-weight:700; color:#6366F1;" id="metricool-channels-count">—</div>
+            </div>
+            <div style="padding:12px; background:white; border-radius:6px; border:1px solid #E5E7EB;">
+              <div style="font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Last Publish</div>
+              <div style="font-size:12px; font-weight:600; color:#6366F1;" id="metricool-last-publish">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top:12px; padding:12px; background:white; border-radius:6px; border-left:3px solid #6366F1;">
+            <div style="font-size:12px; color:var(--text-muted);"><strong>ℹ️ How it works:</strong> Click "Publish Queue" to send all approved & scheduled posts to Metricool. Posts will be distributed across connected channels using optimal timing and Metricool's engagement algorithms.</div>
+          </div>
+
+          <div id="metricool-status" style="margin-top:12px; display:none; padding:12px; background:#F0F9FF; border:1px solid #0EA5E9; border-radius:6px;">
+            <div style="font-size:12px; color:#0369A1;"><i data-lucide="loader-2" style="width:12px; animation: spin 1s linear infinite; vertical-align:middle; margin-right:6px;"></i><span id="metricool-status-text">Publishing to Metricool...</span></div>
           </div>
         </div>
       </div>
