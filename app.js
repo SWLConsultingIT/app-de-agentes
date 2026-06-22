@@ -844,6 +844,21 @@ function selectSocialBiosChannel(name) {
   hydrateSocialBiosView();
 }
 
+function selectSocialBiosSubtab(subtab, btn) {
+  // Hide all subtab content
+  document.querySelectorAll('[id^="smb-subtab-"]').forEach(el => el.style.display = 'none');
+  // Show selected subtab
+  document.getElementById('smb-subtab-' + subtab).style.display = '';
+
+  // Update button styles
+  document.querySelectorAll('.smb-subtab').forEach(b => {
+    b.style.borderBottomColor = 'transparent';
+    b.style.color = 'var(--text-muted)';
+  });
+  btn.style.borderBottomColor = '#9333EA';
+  btn.style.color = '#9333EA';
+}
+
 // ── Cross-channel comparison renderer (shown when "Compare all" is active) ──
 function renderSocialBiosComparison(channels) {
   const setHTML = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
@@ -1256,8 +1271,9 @@ async function hydrateSocialBiosView() {
     return;
   }
 
-  // ── Per-channel focus card ──
+  // ── Per-channel focus card (Metricool style) ──
   if (focus) {
+    // Focus card header
     setHTML('smb-focus-card', `
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
         <div style="width:40px;height:40px;border-radius:10px;background:${focus.color};color:white;display:flex;align-items:center;justify-content:center;font-weight:700;">${focus.name.charAt(0)}</div>
@@ -1265,114 +1281,94 @@ async function hydrateSocialBiosView() {
           <div style="font-size:16px;font-weight:700;color:var(--text-main);">${focus.name} · ${focus.handle}</div>
           <a href="${focus.profileUrl}" target="_blank" style="font-size:12px;color:var(--text-muted);text-decoration:none;">${focus.profileUrl}</a>
         </div>
-        <div class="smb-kpi-mini"><div class="lbl">Followers</div><div class="val">${focus.followers ?? '—'}</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Posts/week</div><div class="val">${focus.postingCadence ?? '—'}</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Avg ER</div><div class="val">${focus.avgEngagementRate ?? '—'}%</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Primary format</div><div class="val" style="text-transform:capitalize;">${focus.primaryFormat || '—'}</div></div>
       </div>
-      <div style="margin-top:14px;padding:12px;background:#FAF5FF;border-left:3px solid #9333EA;border-radius:8px;font-size:13px;color:#581C87;">${focus.toneSummary || 'Run a scan to populate tone summary.'}</div>
     `);
 
-    // Tone bars (5 dimensions)
-    const tone = focus.tone || {};
-    const dims = [
-      ['Formal', 'Casual', tone.formal_vs_casual],
-      ['Technical', 'Accessible', tone.technical_vs_accessible],
-      ['Serious', 'Playful', tone.serious_vs_playful],
-      ['Humble', 'Bold', tone.humble_vs_bold],
-      ['Short', 'Expansive', tone.short_vs_expansive],
+    // COMUNIDAD metrics
+    setText('smb-comunidad-followers', (focus.followers ?? 0).toLocaleString());
+    setText('smb-comunidad-following', (focus.following ?? 0).toLocaleString());
+    setText('smb-comunidad-posts', (focus.totalPosts ?? 0).toLocaleString());
+
+    // CUENTA metrics
+    setText('smb-cuenta-views', (focus.totalViews ?? 0).toLocaleString());
+    setText('smb-cuenta-reach', (focus.reach ?? 0).toLocaleString());
+    setText('smb-cuenta-interactions', (focus.totalInteractions ?? 0).toLocaleString());
+
+    // PUBLICACIONES - all posts ordered by engagement (highest to lowest)
+    const allPosts = [
+      ...(focus.topPosts || []),
+      ...(focus.posts || []).filter(p => !(focus.topPosts || []).find(tp => tp.id === p.id) && !(focus.bottomPosts || []).find(bp => bp.id === p.id)),
+      ...(focus.bottomPosts || [])
     ];
-    setHTML('smb-tone-bars', dims.map(([a, b, v]) => `
-      <div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;"><span>${a}</span><span>${b}</span></div>
-        <div style="position:relative;height:8px;background:#F3E8FF;border-radius:99px;overflow:hidden;">
-          <div style="position:absolute;left:0;top:0;height:100%;width:${v ?? 50}%;background:linear-gradient(90deg,#A855F7,#D946EF);"></div>
-        </div>
-        <div style="font-size:11px;color:var(--text-main);margin-top:2px;font-weight:700;">${v ?? 50}/100</div>
-      </div>
-    `).join(''));
+    const sortedByEngagement = [...allPosts].sort((a, b) => (b.engagementRate ?? 0) - (a.engagementRate ?? 0));
 
-    // Top posts table
-    setHTML('smb-top-posts-tbody', (focus.topPosts || []).map(p => `
-      <tr class="smb-post-row">
-        <td style="max-width:340px;">
-          ${p.url
-            ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main);text-decoration:none;display:inline-flex;align-items:center;gap:4px;">${p.snippet}<i data-lucide="external-link" style="width:11px;flex-shrink:0;color:${focus.color};"></i></a>`
-            : `<div style="color:var(--text-main);">${p.snippet}</div>`}
-          ${p.whyItWorked ? `<div style="font-size:11px;color:#9333EA;margin-top:4px;">↳ ${p.whyItWorked}</div>` : ''}
-        </td>
-        <td style="text-transform:capitalize;">${p.format}</td>
-        <td>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString() : '—'}</td>
-        <td>${p.metrics?.likes ?? 0}</td>
-        <td>${p.metrics?.comments ?? 0}</td>
-        <td>${p.metrics?.shares ?? 0}</td>
-        <td style="font-weight:700;color:#10B981;">${p.engagementRate ?? 0}%</td>
-      </tr>
-    `).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No posts yet — run a scan.</td></tr>');
-
-    // Voice rules
-    setHTML('smb-voice-always', (focus.voiceRules?.always || []).map(r => `<li>✓ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
-    setHTML('smb-voice-never',  (focus.voiceRules?.never  || []).map(r => `<li>✗ ${r}</li>`).join('') || '<li style="color:var(--text-muted);">No rules yet</li>');
-
-    // Voice Rules in Action — best vs worst
-    const best = (focus.topPosts || [])[0];
-    const worst = (focus.bottomPosts || [])[0];
-    setHTML('smb-rules-action', `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div style="padding:14px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#065F46;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            <span>✓ THIS WORKED · ER ${best?.engagementRate ?? 0}%</span>
-            ${best?.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#047857;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+    setHTML('smb-publicaciones-list', sortedByEngagement.length ? sortedByEngagement.map(p => `
+      <div style="padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-secondary);">
+        <div style="display:flex; gap:12px;">
+          <div style="flex:1; min-width:0;">
+            <div style="font-size:13px; font-weight:600; color:var(--text-main); margin-bottom:6px; line-height:1.4;">
+              ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" style="color:var(--text-main); text-decoration:none;">${p.snippet}</a>` : p.snippet}
+            </div>
+            <div style="display:flex; gap:12px; font-size:11px; color:var(--text-muted); flex-wrap:wrap;">
+              <span style="text-transform:capitalize;">📌 ${p.format || 'post'}</span>
+              <span>📅 ${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString('es-ES') : '—'}</span>
+            </div>
           </div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${best?.snippet || '—'}</div>
-          <div style="font-size:11px;color:#047857;">${best?.whyItWorked || ''}</div>
-        </div>
-        <div style="padding:14px;background:#FEF2F2;border:1px solid #FECACA;border-radius:10px;">
-          <div style="font-size:11px;font-weight:700;color:#991B1B;letter-spacing:0.5px;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
-            <span>✗ THIS FLOPPED · ER ${worst?.engagementRate ?? 0}%</span>
-            ${worst?.url ? `<a href="${worst.url}" target="_blank" rel="noopener" style="margin-left:auto;color:#B91C1C;text-decoration:none;display:inline-flex;align-items:center;gap:2px;">Ver<i data-lucide="external-link" style="width:10px;"></i></a>` : ''}
+          <div style="text-align:right; min-width:max-content;">
+            <div style="font-size:28px; font-weight:800; color:${focus.color}; line-height:1;">${p.engagementRate ?? 0}%</div>
+            <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">ER</div>
           </div>
-          <div style="font-size:13px;color:var(--text-main);margin-bottom:8px;">${worst?.snippet || '—'}</div>
-          <div style="font-size:11px;color:#B91C1C;">${worst ? 'Avoid this pattern — see voice rules above.' : ''}</div>
+        </div>
+        <div style="margin-top:10px; display:grid; grid-template-columns:repeat(auto-fit, minmax(60px, 1fr)); gap:8px; font-size:11px;">
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.likes ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">❤️ Likes</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.comments ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">💬 Comments</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.shares ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">↗️ Shares</div>
+          </div>
+          <div style="text-align:center; padding:8px; background:var(--bg-main); border-radius:6px;">
+            <div style="font-weight:600; color:var(--text-main);">${p.metrics?.impressions ?? 0}</div>
+            <div style="color:var(--text-muted); font-size:10px;">👁️ Views</div>
+          </div>
         </div>
       </div>
-    `);
-
-    // Cadence heatmap
-    const heat = focus.cadenceHeatmap || [];
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    let html = '<div style="display:grid;grid-template-columns:40px repeat(24,1fr);gap:2px;font-size:9px;">';
-    html += '<div></div>' + Array.from({ length: 24 }, (_, h) => `<div style="text-align:center;color:var(--text-muted);">${h}</div>`).join('');
-    for (let d = 0; d < 7; d++) {
-      html += `<div style="font-weight:600;color:var(--text-muted);text-align:right;padding-right:4px;">${days[d]}</div>`;
-      for (let h = 0; h < 24; h++) {
-        const cell = heat[d]?.[h] || { count: 0, avgEr: 0 };
-        const intensity = Math.min(1, cell.avgEr / 6);
-        const bg = cell.count ? `rgba(168,85,247,${0.15 + intensity * 0.85})` : '#F9FAFB';
-        const title = cell.count ? `${days[d]} ${h}:00 · ${cell.count} posts · ER ${cell.avgEr}%` : `${days[d]} ${h}:00 · no posts`;
-        html += `<div class="smb-heatmap-cell" style="background:${bg};" title="${title}"></div>`;
-      }
-    }
-    html += '</div>';
-    setHTML('smb-heatmap', html);
+    `).join('') : '<div style="text-align:center; color:var(--text-muted); padding:24px;">No publications yet — run a scan.</div>');
   } else {
     setHTML('smb-focus-card', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel above to see its profile.</div>');
-    setHTML('smb-tone-bars', '');
-    setHTML('smb-top-posts-tbody', '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to see top posts.</td></tr>');
-    setHTML('smb-voice-always', '<li style="color:var(--text-muted);">Select a channel</li>');
-    setHTML('smb-voice-never',  '<li style="color:var(--text-muted);">Select a channel</li>');
-    setHTML('smb-rules-action', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to compare best vs flopped posts.</div>');
-    setHTML('smb-heatmap', '');
+    setText('smb-comunidad-followers', '—');
+    setText('smb-comunidad-following', '—');
+    setText('smb-comunidad-posts', '—');
+    setText('smb-cuenta-views', '—');
+    setText('smb-cuenta-reach', '—');
+    setText('smb-cuenta-interactions', '—');
+    setHTML('smb-publicaciones-list', '<div style="text-align:center;color:var(--text-muted);padding:24px;">Select a channel to see publications.</div>');
   }
 
-  // Render new channel tabs structure
-  renderSocialChannelsTabs();
+  // Reset subtabs to COMUNIDAD by default
+  setTimeout(() => {
+    document.querySelectorAll('[id^="smb-subtab-"]').forEach(el => el.style.display = 'none');
+    const comunidadTab = document.getElementById('smb-subtab-comunidad');
+    if (comunidadTab) comunidadTab.style.display = '';
 
-  // Initialize: show first enabled channel by default
-  const firstEnabledChannel = socialBiosData.channels.find(c => c.enabled);
-  if (firstEnabledChannel) {
-    setTimeout(() => selectSocialChannel(firstEnabledChannel.name), 100);
-  }
+    document.querySelectorAll('.smb-subtab').forEach(b => {
+      b.style.borderBottomColor = 'transparent';
+      b.style.color = 'var(--text-muted)';
+    });
+    const firstSubtab = document.querySelector('[data-subtab="comunidad"]');
+    if (firstSubtab) {
+      firstSubtab.style.borderBottomColor = '#9333EA';
+      firstSubtab.style.color = '#9333EA';
+    }
+  }, 0);
 
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
@@ -11844,46 +11840,58 @@ function generateViewHTML(view) {
             <div id="smb-focus-card"></div>
           </div>
 
-          <!-- Two columns: tone + voice rules -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
-            <div class="card" style="padding:20px 24px;">
-              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="sliders"></i> Tone snapshot</h3>
-              <div id="smb-tone-bars"></div>
-            </div>
-            <div class="card" style="padding:20px 24px;">
-              <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="check-circle"></i> Voice rules</h3>
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                <div>
-                  <div style="font-size:11px; font-weight:700; color:#10B981; letter-spacing:0.5px; margin-bottom:6px;">ALWAYS</div>
-                  <ul id="smb-voice-always" class="smb-rules-list"></ul>
-                </div>
-                <div>
-                  <div style="font-size:11px; font-weight:700; color:#EF4444; letter-spacing:0.5px; margin-bottom:6px;">NEVER</div>
-                  <ul id="smb-voice-never" class="smb-rules-list"></ul>
-                </div>
+          <!-- Metricool subtabs -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:24px; border-bottom:2px solid var(--border); padding-bottom:12px;">
+            <button class="smb-subtab active" data-subtab="comunidad" onclick="selectSocialBiosSubtab('comunidad', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="users" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Comunidad
+            </button>
+            <button class="smb-subtab" data-subtab="cuenta" onclick="selectSocialBiosSubtab('cuenta', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="bar-chart-2" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Cuenta
+            </button>
+            <button class="smb-subtab" data-subtab="publicaciones" onclick="selectSocialBiosSubtab('publicaciones', this)" style="padding:8px 16px; background:none; border:none; border-bottom:3px solid transparent; color:var(--text-muted); font-weight:600; cursor:pointer; transition:all 0.2s;">
+              <i data-lucide="trending-up" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Publicaciones
+            </button>
+          </div>
+
+          <!-- COMUNIDAD tab -->
+          <div id="smb-subtab-comunidad" class="card" style="margin-top:16px; padding:40px 24px;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:24px;">
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#9333EA; line-height:1; margin-bottom:8px;" id="smb-comunidad-followers">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Seguidores</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#06B6D4; line-height:1; margin-bottom:8px;" id="smb-comunidad-following">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Siguiendo</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#10B981; line-height:1; margin-bottom:8px;" id="smb-comunidad-posts">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Publicaciones</div>
               </div>
             </div>
           </div>
 
-          <!-- Voice rules in action -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="zap"></i> Voice rules in action — best vs flopped</h3>
-            <div id="smb-rules-action"></div>
+          <!-- CUENTA tab -->
+          <div id="smb-subtab-cuenta" class="card" style="margin-top:16px; padding:40px 24px; display:none;">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:24px;">
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#F59E0B; line-height:1; margin-bottom:8px;" id="smb-cuenta-views">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Visualizaciones</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#EC4899; line-height:1; margin-bottom:8px;" id="smb-cuenta-reach">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Alcance</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:48px; font-weight:800; color:#8B5CF6; line-height:1; margin-bottom:8px;" id="smb-cuenta-interactions">—</div>
+                <div style="font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">Interacciones</div>
+              </div>
+            </div>
           </div>
 
-          <!-- Top posts -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="trending-up"></i> Top-performing posts</h3>
-            <table class="lm-table">
-              <thead><tr><th>Post snippet</th><th>Format</th><th>Date</th><th>Likes</th><th>Comments</th><th>Shares</th><th>Engagement</th></tr></thead>
-              <tbody id="smb-top-posts-tbody"></tbody>
-            </table>
-          </div>
-
-          <!-- Cadence heatmap -->
-          <div class="card" style="margin-top:16px; padding:20px 24px;">
-            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="calendar"></i> Posting cadence (avg engagement by day × hour, UTC)</h3>
-            <div id="smb-heatmap"></div>
+          <!-- PUBLICACIONES tab -->
+          <div id="smb-subtab-publicaciones" class="card" style="margin-top:16px; padding:20px 24px; display:none;">
+            <div id="smb-publicaciones-list" style="display:grid; gap:16px;"></div>
           </div>
         </div>
       </div>
