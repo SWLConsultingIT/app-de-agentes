@@ -460,6 +460,63 @@ async function scanBrandingBio() {
   }
 }
 
+async function fetchLogoForUrl(url) {
+  if (!url) return null;
+  try {
+    const domain = new URL(url).hostname;
+    // Try Clearbit logo API
+    const cbRes = await fetch(`https://logo.clearbit.com/${domain}?size=256`, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    if (cbRes.ok) {
+      const blob = await cbRes.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><image href="${canvas.toDataURL()}" width="256" height="256"/></svg>`;
+            resolve(svg);
+          };
+          img.onerror = () => resolve(null);
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(blob);
+      });
+    }
+    // Fallback: use DuckDuckGo API
+    const ddRes = await fetch(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+    if (ddRes.ok) {
+      const blob = await ddRes.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#FFF';
+            ctx.fillRect(0, 0, 256, 256);
+            ctx.drawImage(img, (256 - img.width) / 2, (256 - img.height) / 2);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><image href="${canvas.toDataURL()}" width="256" height="256"/></svg>`;
+            resolve(svg);
+          };
+          img.onerror = () => resolve(null);
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(blob);
+      });
+    }
+    return null;
+  } catch (e) {
+    console.log('[fetchLogoForUrl] error:', e);
+    return null;
+  }
+}
+
 function applyScrapedBrandData(data) {
   // Debug: surface what WF00 actually returned so we can tell whether the new
   // verticals prompt is live on the n8n side.
@@ -499,6 +556,16 @@ function applyScrapedBrandData(data) {
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
+  // Auto-fetch logo from URL if not provided by WF00
+  if (!data.logoSvg && brandKitData.websiteUrl) {
+    fetchLogoForUrl(brandKitData.websiteUrl).then(logo => {
+      if (logo) {
+        brandKitData.logoSvg = logo;
+        hydrateBrandingBioView();
+        showToast('Logo auto-detected and loaded.');
+      }
+    });
+  }
   if (data.verticals?.length) brandKitData.verticals = data.verticals.map(v => ({
     name:   v.name || v.title || 'Vertical',
     desc:   v.desc || v.description || '',
