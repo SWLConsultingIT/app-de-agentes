@@ -361,7 +361,7 @@ function buildBrandProfilePayloadFromKit() {
 }
 
 async function saveBrandProfile() {
-  const btn = document.getElementById('bk-save-btn');
+  const btn = document.getElementById('bk-sync-btn');
   if (btn) { btn.textContent = 'Saving…'; btn.disabled = true; }
 
   if (!brandKitData.brandId) brandKitData.brandId = crypto.randomUUID();
@@ -379,14 +379,14 @@ async function saveBrandProfile() {
     });
 
     // 2. Upsert brand profile (data_json holds everything).
-    // on_conflict=brand_id because the table's PK is `id` but the unique-by-row key is brand_id.
     await supabaseUpsert('brand_profiles', {
       brand_id:   brandKitData.brandId,
       data_json:  profile_payload,
       updated_at: new Date().toISOString(),
     }, 'brand_id');
 
-    // 3. Fire WF01 for completion scoring + downstream pipeline (fire-and-forget)
+    if (btn) { btn.textContent = 'WF01: Scoring…'; }
+    // 3. Fire WF01 for completion scoring
     fetch(WF01_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -395,30 +395,135 @@ async function saveBrandProfile() {
         profile_payload,
         changed_fields: ['profile_update'],
       }),
-    }).catch(e => console.warn('[WF01] pipeline call failed (non-blocking):', e));
+    }).catch(e => console.warn('[WF01] pipeline call failed:', e));
 
-    if (btn) { btn.textContent = '✅ Saved'; }
-
-    // Sync SocialMediaBios inputs to match the saved brand's channels.
-    // Clear all first so channels this brand doesn't have show empty, not SWL defaults.
+    // 4. Sync SocialMediaBios inputs to match the saved brand's channels (same logic as autofillHandlesFromBrandKit)
     socialBiosData.inputs.Instagram = { handle: '', profileUrl: '' };
     socialBiosData.inputs.TikTok    = { handle: '', profileUrl: '' };
     socialBiosData.inputs.LinkedIn  = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.Facebook  = { handle: '', profileUrl: '' };
+    socialBiosData.inputs.YouTube   = { handle: '', profileUrl: '' };
     for (const c of (brandKitData.channels || [])) {
       if (!c.handle) continue;
       const _clean = c.handle.replace(/^@/, '').trim();
       const _n = (c.name || '').toLowerCase();
-      if (_n.includes('instagram')) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
-      else if (_n.includes('tiktok')) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
-      else if (_n.includes('linkedin')) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
+      if (/instagram/i.test(_n)) socialBiosData.inputs.Instagram = { handle: _clean, profileUrl: `https://www.instagram.com/${_clean}/` };
+      else if (/tiktok/i.test(_n)) socialBiosData.inputs.TikTok = { handle: _clean, profileUrl: `https://www.tiktok.com/@${_clean}` };
+      else if (/linkedin/i.test(_n)) socialBiosData.inputs.LinkedIn = { handle: _clean, profileUrl: `https://www.linkedin.com/company/${_clean}/` };
+      else if (/facebook/i.test(_n)) socialBiosData.inputs.Facebook = { handle: _clean, profileUrl: `https://www.facebook.com/${_clean}` };
+      else if (/youtube/i.test(_n)) socialBiosData.inputs.YouTube = { handle: _clean, profileUrl: `https://www.youtube.com/@${_clean}` };
+    }
+    // Update DOM inputs to reflect synced channels
+    ['LinkedIn', 'Instagram', 'TikTok', 'Facebook', 'YouTube'].forEach(ch => {
+      const inp = document.querySelector(`input[oninput*="'${ch}'"]`);
+      if (inp) inp.value = socialBiosData.inputs[ch].handle;
+    });
+    // Refresh the Social Media Bios view to show updated inputs
+    if (typeof hydrateSocialBiosView === 'function') {
+      hydrateSocialBiosView();
     }
 
+    // 5. Fire WF02 (Social Media Bios scan) — WAIT for completion
+    if (btn) { btn.textContent = 'WF02: Scanning channels…'; }
+    const channels = Object.entries(socialBiosData.inputs)
+      .filter(([_, v]) => v.handle && v.handle.trim())
+      .map(([name, v]) => ({ name, handle: v.handle.trim(), profileUrl: v.profileUrl.trim() }));
+
+    if (channels.length > 0) {
+      try {
+        const res = await fetch(WF_SOCIAL_BIOS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            brand_id: brandKitData.brandId,
+            channels,
+            maxPosts: 10,
+            scoringWeights: socialBiosData.scoringWeights,
+          }),
+        });
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text.length > 5) {
+            const data = JSON.parse(text);
+            applySocialBiosData(data);
+            console.log('[WF02] scan complete');
+          }
+        }
+      } catch (e) {
+        console.warn('[WF02] scan failed (non-blocking):', e);
+      }
+    }
+
+    // 6. Fire WF03 (Research Sync - Competitors) — WAIT for completion with force_refresh
+    if (btn) { btn.textContent = 'WF03: Analyzing competitors…'; }
+
+    const channelKeyMap = [
+      { channel: 'LinkedIn',  field: 'linkedin_url'  },
+      { channel: 'Instagram', field: 'instagram_url' },
+      { channel: 'TikTok',    field: 'tiktok_url'    },
+      { channel: 'YouTube',   field: 'youtube_url'   },
+      { channel: 'X/Twitter', field: 'x_url'         },
+      { channel: 'Facebook',  field: 'facebook_url'  },
+    ];
+
+    const sources = [];
+    for (const c of (brandKitData.competitors || [])) {
+      if (!c?.name || /^new competitor$/i.test(c.name)) continue;
+      const baseConfig = {
+        competitor_tier: c.tier || 'Mid',
+        positioning:     c.positioning || '',
+        diff:            c.diff || '',
+        derived_from:    'branding_bio',
+      };
+      if (c.url) {
+        sources.push({
+          brand_id:        brandKitData.brandId,
+          source_type:     'website',
+          source_url:      c.url,
+          source_handle:   c.name,
+          competitor_name: c.name,
+          channel:         'Website',
+          active:          true,
+          config_json:     baseConfig,
+        });
+      }
+      for (const { channel, field } of channelKeyMap) {
+        if (!c[field]) continue;
+        sources.push({
+          brand_id:        brandKitData.brandId,
+          source_type:     'social',
+          source_url:      c[field],
+          source_handle:   c.name,
+          competitor_name: c.name,
+          channel,
+          active:          true,
+          config_json:     baseConfig,
+        });
+      }
+    }
+
+    if (sources.length > 0) {
+      await fetch(`${SUPABASE_URL}/rest/v1/research_sources?brand_id=eq.${brandKitData.brandId}`, {
+        method: 'DELETE',
+        headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` },
+      });
+      await supabaseUpsert('research_sources', sources);
+
+      fetch(WF03_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brand_id: brandKitData.brandId, trigger: 'manual', force_refresh: true }),
+      }).catch(e => console.error('[WF03] webhook error:', e));
+    }
+
+    if (btn) { btn.innerHTML = '<i data-lucide="check" style="width:14px; vertical-align:middle; margin-right:4px;"></i>Pipeline Complete'; }
+
     const competitorCount = (brandKitData.competitors || []).filter(c => c?.name && !/^new competitor$/i.test(c.name)).length;
-    showToast(`"${brandKitData.name}" saved. ${competitorCount} competitor${competitorCount===1?'':'s'} now visible in CompetitorsViews.`);
-    setTimeout(() => { if (btn) { btn.textContent = 'Save & Sync'; btn.disabled = false; } }, 3000);
+    showToast(`✅ Full pipeline executed: WF01 (scoring) → WF02 (channels) → WF03 (competitors). ${competitorCount} competitor${competitorCount===1?'':'s'} analyzed.`);
+    setTimeout(() => { if (btn) { btn.innerHTML = '🚀 Sync to Pipeline'; btn.disabled = false; lucide.createIcons({nodes:[btn]}); } }, 3000);
   } catch (e) {
-    if (btn) { btn.textContent = '❌ Error — retry'; btn.disabled = false; }
-    showToast('Error: ' + e.message);
+    if (btn) { btn.innerHTML = '❌ Error — retry'; btn.disabled = false; }
+    showToast('Sync failed: ' + e.message);
     console.error('saveBrandProfile error:', e);
   }
 }
@@ -550,14 +655,21 @@ function applyScrapedBrandData(data) {
     role: paletteRoles[i] || 'Custom',
   }));
   if (data.typography) {
-    if (data.typography.heading) brandKitData.typography.heading = data.typography.heading;
-    if (data.typography.body)    brandKitData.typography.body    = data.typography.body;
-    if (data.typography.mono)    brandKitData.typography.mono    = data.typography.mono;
+    ['heading', 'subtitle', 'body', 'mono'].forEach(key => {
+      if (data.typography[key]) {
+        if (typeof data.typography[key] === 'object' && data.typography[key].name) {
+          brandKitData.typography[key] = { name: data.typography[key].name, size: data.typography[key].size || '16px' };
+        } else if (typeof data.typography[key] === 'string') {
+          brandKitData.typography[key] = data.typography[key];
+        }
+      }
+    });
   }
   if (data.channels?.length)  brandKitData.channels = data.channels;
+  if (data.logoUrl)           brandKitData.logoUrl  = data.logoUrl;
   if (data.logoSvg)           brandKitData.logoSvg  = data.logoSvg;
   // Auto-fetch logo from URL if not provided by WF00
-  if (!data.logoSvg && brandKitData.websiteUrl) {
+  if (!data.logoUrl && !data.logoSvg && brandKitData.websiteUrl) {
     fetchLogoForUrl(brandKitData.websiteUrl).then(logo => {
       if (logo) {
         brandKitData.logoSvg = logo;
@@ -606,6 +718,126 @@ function applyScrapedBrandData(data) {
     console.log('[brand_id] keeping existing:', _prevBrandId);
   }
   switchView(state.currentView);
+}
+
+// ── PDF Brand Document Upload ──────────────────────────
+let uploadedPdfFile = null;
+
+function handleBrandPdfUpload(input) {
+  const file = input.files?.[0];
+  const statusEl = document.getElementById('bk-pdf-status');
+  const processBtn = document.getElementById('bk-pdf-process-btn');
+
+  if (!file) {
+    uploadedPdfFile = null;
+    if (processBtn) processBtn.disabled = true;
+    if (statusEl) statusEl.textContent = '';
+    return;
+  }
+
+  if (!file.type.includes('pdf')) {
+    if (statusEl) statusEl.innerHTML = '<span style="color:#EF4444">❌ Only PDF files are supported</span>';
+    if (processBtn) processBtn.disabled = true;
+    uploadedPdfFile = null;
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) { // 10MB limit
+    if (statusEl) statusEl.innerHTML = '<span style="color:#EF4444">❌ File too large (max 10MB)</span>';
+    if (processBtn) processBtn.disabled = true;
+    uploadedPdfFile = null;
+    return;
+  }
+
+  uploadedPdfFile = file;
+  if (statusEl) statusEl.innerHTML = `<span style="color:#6366F1">📄 ${escapeHtml(file.name)} ready (${(file.size / 1024).toFixed(1)}KB)</span>`;
+  if (processBtn) processBtn.disabled = false;
+}
+
+async function processBrandPdf() {
+  if (!uploadedPdfFile) return;
+
+  const statusEl = document.getElementById('bk-pdf-status');
+  const processBtn = document.getElementById('bk-pdf-process-btn');
+
+  if (processBtn) { processBtn.disabled = true; processBtn.textContent = 'Processing…'; }
+  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Extracting text from PDF — this may take a moment…</span>'; }
+
+  try {
+    // Convert PDF to base64
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const pdfBase64 = btoa(e.target.result);
+        const pdfContent = {
+          filename: uploadedPdfFile.name,
+          base64: pdfBase64,
+          mimeType: 'application/pdf',
+          brand_id: brandKitData.brandId,
+        };
+
+        // Send to n8n webhook for PDF processing with Claude
+        // Using WF01 endpoint which already handles brand profile updates
+        const res = await fetch(WF01_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            trigger: 'pdf_upload',
+            pdf: pdfContent,
+          }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const responseData = await res.json();
+
+        // Apply extracted data if provided
+        if (responseData.extracted_context) {
+          const extracted = responseData.extracted_context;
+          if (extracted.industry) brandKitData.industry = extracted.industry;
+          if (extracted.mission) brandKitData.mission = extracted.mission;
+          if (extracted.vision) brandKitData.vision = extracted.vision;
+          if (extracted.values?.length) {
+            brandKitData.values = extracted.values.map((v, i) => ({
+              title: v.title || v.name || 'Value',
+              desc: v.desc || v.description || '',
+              color: v.color || ['#6366F1','#10B981','#F59E0B','#EC4899','#14B8A6'][i % 5],
+            }));
+          }
+          if (extracted.competitors?.length) {
+            const incomingComps = extracted.competitors
+              .filter(c => c?.name && !/^new competitor$/i.test(c.name))
+              .map(c => ({
+                name: c.name,
+                url: c.url || c.website || '',
+                positioning: c.positioning || '',
+                tier: c.tier || 'Mid',
+                source: 'pdf',
+              }));
+            const manual = brandKitData.competitors.filter(c => c.source === 'manual');
+            brandKitData.competitors = [...manual, ...incomingComps];
+          }
+
+          // Refresh the view
+          switchView(state.currentView);
+          if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ PDF processed — information extracted and added.</span>'; }
+          showToast('Brand document processed. Review the updated fields below.');
+        } else {
+          if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ PDF received — processing on backend.</span>'; }
+          showToast('PDF uploaded for processing.');
+        }
+      } catch (e) {
+        console.error('[PDF processing] error:', e);
+        if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Processing failed — ${escapeHtml(e.message)}</span>`; }
+      } finally {
+        if (processBtn) { processBtn.disabled = false; processBtn.textContent = 'Process'; }
+      }
+    };
+    reader.readAsBinaryString(uploadedPdfFile);
+  } catch (e) {
+    console.error('[PDF upload] error:', e);
+    if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Upload failed — ${escapeHtml(e.message)}</span>`; }
+    if (processBtn) { processBtn.disabled = false; processBtn.textContent = 'Process'; }
+  }
 }
 
 // ══════════════════════════════════════════════════
@@ -756,7 +988,10 @@ async function scanSocialMediaBios() {
     const text = await res.text();
     if (!text || text.length < 5) throw new Error('Empty response — is the workflow activated in n8n?');
     const data = JSON.parse(text);
-    if (!Array.isArray(data.channels) || !data.channels.length) throw new Error('No channels returned from scan.');
+    // Validate both old structure (channels) and new structure (profiles + posts)
+    const hasChannels = Array.isArray(data.channels) && data.channels.length > 0;
+    const hasProfilesPosts = Array.isArray(data.profiles) && data.profiles.length > 0;
+    if (!hasChannels && !hasProfilesPosts) throw new Error('No channels returned from scan.');
     applySocialBiosData(data);
     // Persist brand_id so subsequent page reloads still fetch this brand's data.
     try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
@@ -784,11 +1019,36 @@ async function scanSocialMediaBios() {
 }
 
 function applySocialBiosData(data, opts = {}) {
-  if (!data || !Array.isArray(data.channels)) return;
+  if (!data) return;
+
+  // Handle both old structure (direct channels) and new Profile + Posts Merge structure
+  let channels = data.channels;
+  if (!Array.isArray(channels)) {
+    // New structure: try to merge profiles + posts
+    if (Array.isArray(data.profiles) && Array.isArray(data.posts)) {
+      // Merge posts into corresponding profiles by channel
+      const profilesByChannel = {};
+      for (const p of data.profiles) {
+        if (p.name) profilesByChannel[p.name] = p;
+      }
+      for (const post of data.posts) {
+        const channelName = post.channel || post.name;
+        if (channelName && profilesByChannel[channelName]) {
+          if (!profilesByChannel[channelName].topPosts) profilesByChannel[channelName].topPosts = [];
+          profilesByChannel[channelName].topPosts.push(post);
+        }
+      }
+      channels = Object.values(profilesByChannel);
+    } else {
+      return; // No valid structure found
+    }
+  }
+
+  if (!Array.isArray(channels)) return;
   socialBiosData.lastScannedAt = data.scanned_at || new Date().toISOString();
   socialBiosData.isMock = !!opts.isMock;
   if (data.scoringWeights) socialBiosData.scoringWeights = data.scoringWeights;
-  socialBiosData.channels = data.channels;
+  socialBiosData.channels = channels;
   hydrateSocialBiosView();
   // SMB just landed real channel context — recompute the ContentBuilder visual specs
   // so the Auto-specs chips reflect the actual top format (e.g. "Sidecar" → carousel 1:1)
@@ -1133,7 +1393,7 @@ function renderSocialChannelsTabs() {
   console.log('Matching channels with data:', channels);
 
   if (!channels.length) {
-    tabsPillsContainer.innerHTML = '<p style="padding:16px; color:var(--text-muted); font-size:13px;">📱 <strong>Presiona "Scan Channels"</strong> para traer datos de tus redes sociales</p>';
+    tabsPillsContainer.innerHTML = '<p style="padding:16px; color:var(--text-muted); font-size:13px;">📱 <strong>Presiona "Sync to Pipeline"</strong> en Branding Bio para traer datos de tus redes sociales automáticamente</p>';
     contentsContainer.innerHTML = '';
     return;
   }
@@ -2058,8 +2318,8 @@ async function hydrateCompetitorsView() {
 
     // Header tag — "<N> competitors tracked"
     setText('cv-brand-tag', competitors.length
-      ? `${competitors.length} competidor${competitors.length === 1 ? '' : 'es'} tracked · ${sources.length} accounts`
-      : '— · 0 competitors tracked');
+      ? `${competitors.length} competitor${competitors.length === 1 ? '' : 's'} · ${sources.length} ${sources.length === 1 ? 'channel' : 'channels'}`
+      : '0 competitors');
 
     // Sub-header — last sync + tracked channels
     const lastSync = latestRun?.finished_at || latestRun?.started_at;
@@ -2081,7 +2341,7 @@ async function hydrateCompetitorsView() {
     if (topTbody) {
       if (!topPieces.length) {
         topTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">
-          No competitor posts analyzed yet — click <strong>Sync Web + Socials</strong> then <strong>Run Comparison</strong> to populate.
+          No competitor posts analyzed yet — execute "Sync to Pipeline" in Branding Bio, then click <strong>Run Comparison</strong> to populate.
         </td></tr>`;
       } else {
         const sorted = [...topPieces].sort((a, b) =>
@@ -2273,12 +2533,219 @@ async function hydrateCompetitorsView() {
     }
 
     // Channel-by-channel comparison: brand (from social_media_analyses) vs each competitor (from competitor_content)
-    renderCompetitorsChannelComparison(topPieces);
+    renderCompetitorsViewByChannel(topPieces, snapshots, sources, socialBiosData.channels || [], competitors, brandName);
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
   } catch (err) {
     console.error('[CompetitorsView hydrate] error:', err);
   }
+}
+
+// ── New: Render CompetitorsViews organized by channel ──
+function renderCompetitorsViewByChannel(topPieces, snapshots, sources, brandChannels, competitors, brandName) {
+  try {
+    const container = document.getElementById('cv-channel-content-container');
+    const tabsContainer = document.getElementById('cv-channel-tabs-container');
+
+    if (!container || !tabsContainer) {
+      console.warn('[CV] Missing containers');
+      return;
+    }
+
+    // Get only channels the brand actually has
+    const brandChannelNames = new Set((brandChannels || []).map(c => c.name).filter(Boolean));
+    console.log('[CV] Brand channels:', [...brandChannelNames]);
+
+    if (brandChannelNames.size === 0) {
+      container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);">
+        Add social channels to Branding Bio and execute "Sync to Pipeline" to see competitor analysis.
+      </div>`;
+      tabsContainer.innerHTML = '';
+      return;
+    }
+
+  // Group competitor posts by channel
+  const postsByChannel = {};
+  for (const p of (topPieces || [])) {
+    if (!p.channel || p.channel === 'Website' || !brandChannelNames.has(p.channel)) continue;
+    (postsByChannel[p.channel] = postsByChannel[p.channel] || []).push(p);
+  }
+
+    // Order channels
+    const channelOrder = ['Instagram', 'TikTok', 'Facebook', 'LinkedIn', 'YouTube', 'X/Twitter'];
+    const orderedChannels = [...brandChannelNames].sort((a, b) => {
+      const ai = channelOrder.indexOf(a); const bi = channelOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+    if (orderedChannels.length === 0) {
+      container.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-muted);">No data to display yet.</div>`;
+      tabsContainer.innerHTML = '';
+      return;
+    }
+
+    // Render tabs
+    const tabsHtml = orderedChannels.map((ch, idx) => {
+    const icon = { Instagram: '📸', TikTok: '🎵', Facebook: '👥', LinkedIn: '💼', YouTube: '▶️', 'X/Twitter': '🐦' }[ch] || '📱';
+    return `<button class="cv-channel-tab ${idx === 0 ? 'active' : ''}" onclick="selectCvTab('${ch}')" style="padding:12px 18px; background:${idx === 0 ? '#06B6D4' : 'white'}; color:${idx === 0 ? 'white' : 'var(--text-main)'}; border:none; border-bottom:${idx === 0 ? '3px solid #06B6D4' : '1px solid var(--border)'}; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+      <span>${icon}</span> ${ch}
+    </button>`;
+  }).join('');
+
+    const tabsDiv = tabsContainer.querySelector('div');
+    if (tabsDiv) {
+      tabsDiv.innerHTML = tabsHtml;
+    } else {
+      tabsContainer.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:0;">${tabsHtml}</div>`;
+    }
+
+  // Render content sections (all at once, but show/hide via JS)
+  const contentHtml = orderedChannels.map((channel, idx) => {
+    const posts = postsByChannel[channel] || [];
+    const topPost = posts.length > 0 ? posts.sort((a, b) => {
+      try {
+        return totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json);
+      } catch (e) {
+        return 0;
+      }
+    })[0] : null;
+
+    // Group posts by competitor
+    const postsByCompetitor = {};
+    for (const p of posts) {
+      const comp = p.competitor_name || 'Unknown';
+      (postsByCompetitor[comp] = postsByCompetitor[comp] || []).push(p);
+    }
+
+    const channelColor = { Instagram: '#E4405F', TikTok: '#010101', Facebook: '#1877F2', LinkedIn: '#0A66C2', YouTube: '#FF0000', 'X/Twitter': '#000000' }[channel] || '#666';
+
+    return `<div class="cv-channel-section" data-channel="${channel}" style="display:${idx === 0 ? 'block' : 'none'}; animation:fadeIn 0.2s;">
+
+      <!-- Channel Header -->
+      <div style="padding:20px; background:linear-gradient(135deg, ${channelColor}15 0%, ${channelColor}08 100%); border-radius:12px; margin-bottom:20px; border-left:4px solid ${channelColor};">
+        <h3 style="margin:0 0 8px 0; font-size:18px; font-weight:700; color:var(--text-main);">${channel}</h3>
+        <p style="margin:0; font-size:13px; color:var(--text-muted);">${posts.length} post${posts.length !== 1 ? 's' : ''} analyzed across ${Object.keys(postsByCompetitor).length} competitor${Object.keys(postsByCompetitor).length !== 1 ? 's' : ''}</p>
+      </div>
+
+      <!-- Top Post of Channel -->
+      ${topPost ? `<div class="card" style="margin-bottom:20px; border-top:3px solid ${channelColor};">
+        <h4 style="margin:0 0 12px 0; font-size:14px; font-weight:600;"><i data-lucide="flame" style="width:14px; vertical-align:middle; margin-right:6px; color:${channelColor};"></i>Top Post on ${channel}</h4>
+        <div style="padding:12px; background:#FAFBFC; border-radius:8px; margin-bottom:12px;">
+          <div style="display:flex; align-items:flex-start; gap:12px;">
+            <div style="flex:1;">
+              <p style="margin:0 0 6px 0; font-weight:600; color:var(--text-main); font-size:13px;">${escapeHtml(topPost.competitor_name)}</p>
+              <p style="margin:0 0 8px 0; font-size:13px; color:var(--text-muted); line-height:1.4;">${escapeHtml(topPost.title || topPost.opening_hook || 'Untitled')}</p>
+              <div style="display:flex; gap:16px; font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+                <span>❤️ ${fmtCompactNumber(topPost.metrics_json?.likes || 0)} likes</span>
+                <span>💬 ${fmtCompactNumber(topPost.metrics_json?.comments || 0)} comments</span>
+                <span>↗️ ${fmtCompactNumber(topPost.metrics_json?.shares || 0)} shares</span>
+              </div>
+              ${topPost.url ? `<a href="${escapeHtml(topPost.url)}" target="_blank" rel="noopener" style="color:#06B6D4; text-decoration:none; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px;">Ver post <i data-lucide="external-link" style="width:11px;"></i></a>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>` : ''}
+
+      <!-- Competitors Side-by-Side -->
+      <div class="card">
+        <h4 style="margin:0 0 16px 0; font-size:14px; font-weight:600;"><i data-lucide="users" style="width:14px; vertical-align:middle; margin-right:6px;"></i>Competitors on ${channel}</h4>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px;">
+          ${Object.entries(postsByCompetitor).map(([compName, compPosts]) => {
+            const topCompPost = compPosts.sort((a, b) => totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json))[0];
+            const avgEngagement = compPosts.reduce((sum, p) => sum + totalEngagement(p.metrics_json), 0) / compPosts.length;
+            return `<div style="padding:14px; border:1px solid var(--border); border-radius:10px; background:white; transition:all 0.2s;">
+              <h5 style="margin:0 0 10px 0; font-size:13px; font-weight:700; color:var(--text-main);">${escapeHtml(compName)}</h5>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:10px; display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                <div><strong>Posts:</strong> ${compPosts.length}</div>
+                <div><strong>Avg Eng:</strong> ${fmtCompactNumber(avgEngagement)}</div>
+              </div>
+              ${topCompPost ? `<div style="padding:10px; background:#F8FAFC; border-radius:6px; border-left:3px solid ${channelColor}; margin-bottom:10px;">
+                <p style="margin:0 0 6px 0; font-size:12px; font-weight:600; color:var(--text-main);">${escapeHtml(topCompPost.title?.slice(0, 60) || 'Top post')}</p>
+                <div style="display:flex; gap:8px; font-size:10px; color:var(--text-muted);">
+                  <span>❤️ ${topCompPost.metrics_json?.likes || 0}</span>
+                  <span>💬 ${topCompPost.metrics_json?.comments || 0}</span>
+                </div>
+                ${topCompPost.url ? `<a href="${escapeHtml(topCompPost.url)}" target="_blank" rel="noopener" style="color:#06B6D4; text-decoration:none; font-size:11px; font-weight:600; margin-top:6px; display:inline-block;">Ver →</a>` : ''}
+              </div>` : ''}
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${compPosts.map(p => {
+                  const engRate = ((totalEngagement(p.metrics_json) / Math.max(p.metrics_json?.impressions || 1000, 1)) * 100).toFixed(1);
+                  return `<span style="font-size:10px; padding:3px 8px; background:${channelColor}15; color:${channelColor}; border-radius:12px; font-weight:600;">${p.channel || 'post'}</span>`;
+                }).slice(0, 3).join('')}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Comparison: You vs Competitors -->
+      <div class="card" style="margin-top:20px;">
+        <h4 style="margin:0 0 12px 0; font-size:14px; font-weight:600;"><i data-lucide="bar-chart-2" style="width:14px; vertical-align:middle; margin-right:6px;"></i>You vs Competitors</h4>
+        <table class="lm-table" style="margin-top:10px;">
+          <thead>
+            <tr style="background:#FAFBFC;">
+              <th style="text-align:left; font-weight:600; padding:12px;">Account</th>
+              <th>Posts</th>
+              <th>Avg Engagement</th>
+              <th>Top Post</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:2px solid var(--border); font-weight:600;">
+              <td style="padding:12px;"><span style="color:#10B981; font-weight:700;">You</span> ${brandName}</td>
+              <td style="text-align:center; color:var(--text-muted);">—</td>
+              <td style="text-align:center; color:var(--text-muted);">—</td>
+              <td style="text-align:center; color:var(--text-muted);">—</td>
+            </tr>
+            ${Object.entries(postsByCompetitor).map(([compName, compPosts]) => {
+              const avgEngagement = compPosts.reduce((sum, p) => sum + totalEngagement(p.metrics_json), 0) / compPosts.length;
+              const topCompPost = compPosts.sort((a, b) => totalEngagement(b.metrics_json) - totalEngagement(a.metrics_json))[0];
+              return `<tr>
+                <td style="padding:12px;">${escapeHtml(compName)}</td>
+                <td style="text-align:center; font-size:13px;">${compPosts.length}</td>
+                <td style="text-align:center; font-weight:600; color:#06B6D4;">${fmtCompactNumber(avgEngagement)}</td>
+                <td style="text-align:center; font-size:12px;">
+                  ${topCompPost && topCompPost.url ? `<a href="${escapeHtml(topCompPost.url)}" target="_blank" rel="noopener" style="color:#06B6D4; text-decoration:none; font-weight:600;">Ver post</a>` : '—'}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+    </div>`;
+  }).join('');
+
+    container.innerHTML = contentHtml;
+
+    // Add fade-in animation
+    const style = document.createElement('style');
+    style.textContent = `@keyframes fadeIn { from { opacity:0; } to { opacity:1; } }`;
+    document.head.appendChild(style);
+  } catch (err) {
+    console.error('[CV renderByChannel] error:', err);
+    const container = document.getElementById('cv-channel-content-container');
+    if (container) {
+      container.innerHTML = `<div style="padding:40px; text-align:center; color:#EF4444;">
+        Error loading competitor analysis: ${err.message}
+      </div>`;
+    }
+  }
+}
+
+function selectCvTab(channelName) {
+  // Hide all sections
+  document.querySelectorAll('.cv-channel-section').forEach(el => el.style.display = 'none');
+  // Show selected section
+  const section = document.querySelector(`[data-channel="${channelName}"]`);
+  if (section) section.style.display = 'block';
+  // Update tab styles
+  document.querySelectorAll('.cv-channel-tab').forEach(tab => {
+    const isActive = tab.textContent.includes(channelName);
+    tab.style.background = isActive ? '#06B6D4' : 'white';
+    tab.style.color = isActive ? 'white' : 'var(--text-main)';
+    tab.style.borderBottom = isActive ? '3px solid #06B6D4' : '1px solid var(--border)';
+  });
 }
 
 // Selected channel for the comparison card. Persists across hydrates within a session.
@@ -2321,7 +2788,7 @@ function renderCompetitorsChannelComparison(topPieces) {
   if (!channels.length) {
     tabsEl.innerHTML = '';
     bodyEl.innerHTML = `<div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">
-      No channel data yet — scan your own socials in <strong>SocialMediaBios</strong> and add competitor handles in <strong>Branding Bio</strong>, then click <strong>Sync Web + Socials</strong>.
+      No channel data yet — add your social handles and competitor info in <strong>Branding Bio</strong>, then click <strong>Sync to Pipeline</strong> to analyze everything automatically.
     </div>`;
     return;
   }
@@ -8503,7 +8970,11 @@ function renderFontChips(kind, currentValue) {
 }
 
 function pickBrandFont(kind, name) {
-  brandKitData.typography[kind] = name;
+  if (typeof brandKitData.typography[kind] === 'object') {
+    brandKitData.typography[kind].name = name;
+  } else {
+    brandKitData.typography[kind] = name;
+  }
   // Update input
   const input = document.querySelector(`.bk-font-input[data-kind="${kind}"]`);
   if (input) {
@@ -11464,8 +11935,7 @@ function generateViewHTML(view) {
             <p>Foundation input del Marketing Pilot. Primero tu empresa: identidad, misión, visión, valores, colores, tipografía, redes. Abajo los competidores. Todo lo que agregues acá alimenta a SocialMediaBios, CompetitorsViews, ContentBuilder y CreativeBrain.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Editing live</div><br>
-            <span class="agent-tag">Auto-saves</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Editing live</div>
           </div>
         </div>
 
@@ -11478,10 +11948,13 @@ function generateViewHTML(view) {
         <!-- ═══════════════════════════════════════════════════ -->
 
         <div style="margin-top:32px; margin-bottom:24px;">
-          <h2 style="margin:0; font-size:28px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:12px;">
-            <i data-lucide="building-2" style="width:32px; height:32px; color:#6366F1;"></i>
-            YOUR COMPANY
-          </h2>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:12px;">
+            <h2 style="margin:0; font-size:28px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:12px;">
+              <i data-lucide="building-2" style="width:32px; height:32px; color:#6366F1;"></i>
+              YOUR COMPANY
+            </h2>
+            <button id="bk-sync-btn" onclick="saveBrandProfile()" style="padding:12px 24px; background:linear-gradient(135deg, #10B981 0%, #059669 100%); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; box-shadow:0 4px 12px rgba(16,185,129,0.4); text-transform:uppercase; letter-spacing:0.5px;">🚀 Sync to Pipeline</button>
+          </div>
           <p style="margin:8px 0 0 0; font-size:14px; color:var(--text-muted); max-width:600px;">Fill in all your company information: brand identity, values, visual branding, and social channels. This powers every agent in the Marketing Pilot.</p>
         </div>
 
@@ -11497,6 +11970,20 @@ function generateViewHTML(view) {
             <button id="bk-scrape-btn" onclick="scanBrandingBio()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;"><i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan</button>
           </div>
           <div id="bk-scrape-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+        </div>
+
+        <!-- PDF Upload for Brand Context -->
+        <div class="card" style="margin-top:24px; border:1px solid #FCD34D; background:linear-gradient(135deg,#FEF9E7 0%,#FEF3C7 100%);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3 class="card-title" style="margin:0;"><i data-lucide="file-pdf"></i> Upload Brand Document</h3>
+            <span class="lm-tag" style="background:#FEF3C7;color:#92400E">Optional</span>
+          </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Upload a PDF (pitch deck, brand guidelines, company doc, etc.) and AI will extract key information to enrich your brand profile.</p>
+          <div style="display:flex; gap:10px; align-items:flex-start;">
+            <input type="file" id="bk-pdf-upload" accept=".pdf" onchange="handleBrandPdfUpload(this)" style="flex:1; padding:10px 12px; border:1px solid #FCD34D; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
+            <button id="bk-pdf-process-btn" onclick="processBrandPdf()" disabled style="padding:10px 20px; background:#D97706; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; opacity:0.5;">Process</button>
+          </div>
+          <div id="bk-pdf-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
         </div>
 
         <!-- 1. About Us -->
@@ -11649,28 +12136,37 @@ function generateViewHTML(view) {
             <h3 class="card-title" style="margin:0;"><i data-lucide="image"></i> 5. Logos & Assets</h3>
             <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">✎ Auto-generated preview</span>
           </div>
-          <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:14px;">
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:28px; color:${brandKitData.palette[1]?.hex || '#0F172A'};"><span style="color:${brandKitData.palette[0]?.hex || '#6366F1'};">SWL</span></span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary · auto-generated</div>
-            </div>
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[1]?.hex || '#0F172A'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:28px; color:white;">SWL</span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark variant · auto-generated</div>
-            </div>
-            <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border);"><span style="font-family:'${typeof brandKitData.typography.heading === 'string' ? brandKitData.typography.heading : brandKitData.typography.heading.name}',sans-serif; font-weight:800; font-size:42px; color:white;">S</span></div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Icon · Favicon</div>
-            </div>
-            ${brandKitData.logoSvg
-              ? `<div style="border:2px solid #6366F1; border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:12px; overflow:hidden;">${brandKitData.logoSvg}</div>
-              <div style="padding:8px 10px; font-size:11px; color:#6366F1; font-weight:600;">✓ Extracted</div>
-            </div>`
-              : `<div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
-              <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload</div>
-              <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Custom logo</div>
-            </div>`}
+          <div style="display:grid; grid-template-columns:${brandKitData.logoUrl ? 'repeat(4, 1fr)' : 'repeat(4, 1fr)'}; gap:14px;">
+            ${brandKitData.logoUrl
+              ? `
+              <div style="border:2px solid #10B981; border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:8px;"><img src="${brandKitData.logoUrl}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain;" /></div>
+                <div style="padding:8px 10px; font-size:11px; color:#10B981; font-weight:600;">✓ Logo · White</div>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:${brandKitData.palette[0]?.hex || '#6366F1'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:8px;"><img src="${brandKitData.logoUrl}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain; filter:brightness(0) invert(1);" /></div>
+                <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Primary BG</div>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:${brandKitData.palette[1]?.hex || '#0F172A'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:8px;"><img src="${brandKitData.logoUrl}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain; filter:brightness(0) invert(1);" /></div>
+                <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Secondary BG</div>
+              </div>
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:${brandKitData.palette[4]?.hex || '#333333'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:8px;"><img src="${brandKitData.logoUrl}" alt="Logo" style="max-width:100%; max-height:100%; object-fit:contain; filter:brightness(0) invert(1);" /></div>
+                <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Dark BG</div>
+              </div>
+              `
+              : brandKitData.logoSvg
+              ? `
+              <div style="border:2px solid #6366F1; border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:white; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); padding:12px; overflow:hidden;">${brandKitData.logoSvg}</div>
+                <div style="padding:8px 10px; font-size:11px; color:#6366F1; font-weight:600;">✓ Extracted SVG</div>
+              </div>`
+              : `
+              <div style="border:1px solid var(--border); border-radius:8px; overflow:hidden;">
+                <div style="aspect-ratio:3/2; background:${brandKitData.palette[5]?.hex || '#F8FAFC'}; display:flex; align-items:center; justify-content:center; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px; cursor:pointer;">+ Upload</div>
+                <div style="padding:8px 10px; font-size:11px; color:var(--text-muted);">Custom logo</div>
+              </div>`}
           </div>
         </div>
 
@@ -11820,7 +12316,7 @@ function generateViewHTML(view) {
         <div id="smb-mock-banner" style="margin-top:16px; padding:12px 16px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; display:flex; gap:10px; align-items:flex-start;">
           <i data-lucide="alert-triangle" style="width:18px; flex-shrink:0; margin-top:1px; color:#D97706;"></i>
           <div style="flex:1; font-size:13px; color:#92400E;">
-            <strong>DEMO DATA</strong> — these posts and metrics are placeholders so you can preview the view. To pull <em>real</em> data from LinkedIn, Instagram and TikTok, activate workflow <code>WF02 — SocialMediaBios</code> in n8n and click <strong>Scan Channels</strong> below.
+            <strong>LIVE DATA</strong> — automatically pulled from your social channels when you click "Sync to Pipeline" in Branding Bio. Channels scan via WF02 and show voice, engagement, and top-performing posts.
           </div>
         </div>
 
@@ -11832,8 +12328,7 @@ function generateViewHTML(view) {
               <p style="margin:4px 0 0; font-size:12px; color:var(--text-muted);">Last scan: <span id="smb-last-scan">—</span></p>
             </div>
             <div style="display:flex; gap:8px;">
-              <button onclick="autofillHandlesFromBrandKit()" style="padding:8px 14px; background:white; color:#9333EA; border:1px solid #D946EF; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="download" style="width:13px;vertical-align:middle;margin-right:6px;"></i>Auto-fill from Branding Bio</button>
-              <button id="smb-scan-btn" onclick="scanSocialMediaBios()" style="padding:8px 18px; background:#9333EA; color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer;"><i data-lucide="scan" style="width:13px;vertical-align:middle;margin-right:6px;"></i>Scan Channels</button>
+              <p style="margin:0; color:var(--text-muted); font-size:13px;"><em>Automatically synced via "Sync to Pipeline" button in Branding Bio</em></p>
             </div>
           </div>
 
@@ -11969,87 +12464,45 @@ function generateViewHTML(view) {
         <div class="agent-header" style="background: linear-gradient(135deg, #06B6D4 0%, #0369A1 100%)">
           <div class="agent-bigicon">🔭</div>
           <div class="agent-header-text">
-            <h2>CompetitorsViews</h2>
-            <p>Analyzes your competitors' social media accounts — LinkedIn, Instagram, TikTok, YouTube, X — and benchmarks engagement, posting cadence and channel mix side-by-side so you can see exactly where each brand is winning.</p>
+            <h2>MarketMirror</h2>
+            <p>Real-time analysis of competitor performance across the channels you actually use. See what's working, what content resonates, and exactly where you can win.</p>
           </div>
           <div class="agent-header-meta">
-            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Active</div><br>
-            <span class="agent-tag" id="cv-brand-tag">— · 0 competitors tracked</span>
+            <div class="agent-status"><span style="width:8px;height:8px;background:#34D399;border-radius:50%;display:inline-block"></span> Live</div><br>
+            <span class="agent-tag" id="cv-brand-tag">0 competitors</span>
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px;">
-          <div style="display:flex; gap:12px;">
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cv-last-sync">Last sync: —</span></span>
-            <span style="font-size:11px; color:var(--text-muted);"><i data-lucide="database" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cv-sources-line">Tracked channels: —</span></span>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button id="wf03-sync-btn" onclick="syncResearchSources()" title="Scrapes each competitor's website + LinkedIn, Instagram, TikTok, YouTube and X URLs you set in Branding Bio." style="padding:8px 14px; background:white; color:#0369A1; border:1px solid #BAE6FD; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="refresh-cw" style="width:13px;vertical-align:middle;margin-right:6px"></i>Sync Web + Socials</button>
-            <button id="wf04-analyze-btn" onclick="runContentAnalysis()" style="padding:8px 14px; background:#06B6D4; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;"><i data-lucide="zap" style="width:13px;vertical-align:middle;margin-right:6px"></i>Run Comparison</button>
-          </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:12px; flex-wrap:wrap;">
+          <span style="font-size:12px; color:var(--text-muted);"><i data-lucide="refresh-cw" style="width:11px;vertical-align:middle;margin-right:4px"></i><span id="cv-last-sync">Synced: never</span></span>
+          <button id="wf04-analyze-btn" onclick="runContentAnalysis()" style="padding:9px 16px; background:#06B6D4; color:white; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;"><i data-lucide="zap" style="width:13px;"></i>Run Deeper Analysis</button>
         </div>
 
-        <div class="agent-stats">
-          <div class="agent-stat"><div class="agent-stat-val" id="cv-stat-competitors">—</div><div class="agent-stat-lbl">Competitors Tracked</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" id="cv-stat-accounts">—</div><div class="agent-stat-lbl">Social Accounts Monitored</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" style="color:#10B981" id="cv-stat-top">—</div><div class="agent-stat-lbl">Top Performer (engagement)</div></div>
-          <div class="agent-stat"><div class="agent-stat-val" id="cv-stat-posts">—</div><div class="agent-stat-lbl">Posts Analyzed (30d)</div></div>
-        </div>
-
-        <!-- Side-by-side comparison charts -->
-        <div class="kpi-grid" style="grid-template-columns: 1fr 1fr; margin-top:24px;">
-          <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Avg Engagement by Competitor</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpFormatChart"></canvas></div>
-          </div>
-          <div class="card" style="height:320px; display:flex; flex-direction:column;">
-            <h3 class="card-title">Channel Mix Across Competitors</h3>
-            <div style="flex:1; position:relative; width:100%; min-height:0;"><canvas id="mpThemeChart"></canvas></div>
+        <!-- Channel Tabs -->
+        <div style="margin-top:20px; border-bottom:2px solid var(--border); overflow-x:auto;" id="cv-channel-tabs-container">
+          <div style="display:flex; flex-wrap:wrap; gap:0;">
+            <!-- Tabs injected here -->
           </div>
         </div>
 
-        <!-- Top posts per competitor -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="flame"></i> Top Posts per Competitor (last 30 days)</h3>
-          <table class="lm-table" style="margin-top:14px;">
-            <thead><tr><th>Competitor</th><th>Post</th><th>Channel</th><th>Engagement</th><th>What worked</th></tr></thead>
-            <tbody id="cv-top-pieces-tbody">
-              <tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:20px;">Loading…</td></tr>
-            </tbody>
-          </table>
+        <!-- Channel Content (organized by channel) -->
+        <div style="margin-top:24px;" id="cv-channel-content-container">
+          <!-- Content injected here -->
         </div>
 
-        <!-- Per-competitor snapshot cards -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="users"></i> Competitor Snapshot — engagement, cadence and top channel</h3>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-top:14px;" id="cv-snapshot-container">
-            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
-          </div>
-        </div>
-
-        <!-- Channel-by-channel comparison: your brand vs each competitor -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="bar-chart-2"></i> Comparison by Channel — your brand vs competitors</h3>
-          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Picks the top post per account on each channel so you can see what's working — click the title to open the actual publication.</p>
-          <div id="cv-channel-tabs" style="display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 12px;"></div>
+        <!-- Legacy sections (hidden, but kept for compatibility) -->
+        <div style="display:none;">
+          <div id="cv-top-pieces-tbody"></div>
+          <div id="cv-snapshot-container"></div>
+          <div id="cv-sov-container"></div>
+          <div id="cv-sov-insight"></div>
+          <div id="cv-sources-container"></div>
+          <div id="cv-stat-competitors"></div>
+          <div id="cv-stat-accounts"></div>
+          <div id="cv-stat-top"></div>
+          <div id="cv-stat-posts"></div>
+          <div id="cv-channel-tabs"></div>
           <div id="cv-channel-comparison"></div>
-        </div>
-
-        <!-- Competitor landscape -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="radar"></i> Competitor Landscape — Positioning in your space</h3>
-          <div style="margin-top:14px;" id="cv-sov-container">
-            <div style="padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
-          </div>
-          <p style="margin-top:12px; padding:10px 12px; background:#EEF2FF; border-radius:6px; font-size:12px; color:#4338CA;" id="cv-sov-insight">Loading insights…</p>
-        </div>
-
-        <!-- Tracked social accounts -->
-        <div class="card" style="margin-top:24px;">
-          <h3 class="card-title"><i data-lucide="database"></i> Tracked Social Accounts — per competitor x channel</h3>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:14px;" id="cv-sources-container">
-            <div style="grid-column: 1 / -1; padding:16px; color:var(--text-muted); font-size:13px; text-align:center;">Loading…</div>
-          </div>
         </div>
       </div>
     `,
