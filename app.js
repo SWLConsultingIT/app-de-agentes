@@ -761,73 +761,78 @@ async function processBrandPdf() {
   const processBtn = document.getElementById('bk-pdf-process-btn');
 
   if (processBtn) { processBtn.disabled = true; processBtn.textContent = 'Processing…'; }
-  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Extracting text from PDF — this may take a moment…</span>'; }
+  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Analyzing PDF with Claude…</span>'; }
 
   try {
-    // Convert PDF to base64
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
         const pdfBase64 = btoa(e.target.result);
-        const pdfContent = {
-          filename: uploadedPdfFile.name,
-          base64: pdfBase64,
-          mimeType: 'application/pdf',
-          brand_id: brandKitData.brandId,
-        };
 
-        // Send to n8n webhook for PDF processing with Claude
-        // Using WF01 endpoint which already handles brand profile updates
-        const res = await fetch(WF01_URL, {
+        // Send to WF00.5 for PDF analysis
+        const res = await fetch(WF005_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            trigger: 'pdf_upload',
-            pdf: pdfContent,
+            pdf: {
+              filename: uploadedPdfFile.name,
+              base64: pdfBase64,
+            },
+            brand_id: brandKitData.brandId,
           }),
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const responseData = await res.json();
+        const data = await res.json();
 
-        // Apply extracted data if provided
-        if (responseData.extracted_context) {
-          const extracted = responseData.extracted_context;
-          if (extracted.industry) brandKitData.industry = extracted.industry;
-          if (extracted.mission) brandKitData.mission = extracted.mission;
-          if (extracted.vision) brandKitData.vision = extracted.vision;
-          if (extracted.values?.length) {
-            brandKitData.values = extracted.values.map((v, i) => ({
-              title: v.title || v.name || 'Value',
-              desc: v.desc || v.description || '',
-              color: v.color || ['#6366F1','#10B981','#F59E0B','#EC4899','#14B8A6'][i % 5],
-            }));
-          }
-          if (extracted.competitors?.length) {
-            const incomingComps = extracted.competitors
-              .filter(c => c?.name && !/^new competitor$/i.test(c.name))
-              .map(c => ({
-                name: c.name,
-                url: c.url || c.website || '',
-                positioning: c.positioning || '',
-                tier: c.tier || 'Mid',
-                source: 'pdf',
-              }));
-            const manual = brandKitData.competitors.filter(c => c.source === 'manual');
-            brandKitData.competitors = [...manual, ...incomingComps];
-          }
-
-          // Refresh the view
-          switchView(state.currentView);
-          if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ PDF processed — information extracted and added.</span>'; }
-          showToast('Brand document processed. Review the updated fields below.');
-        } else {
-          if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ PDF received — processing on backend.</span>'; }
-          showToast('PDF uploaded for processing.');
+        // Apply extracted values
+        if (data.values?.length) {
+          brandKitData.values = data.values.map((v, i) => ({
+            title: v.title || 'Value',
+            desc: v.desc || '',
+            color: v.color || ['#6366F1','#10B981','#F59E0B','#EC4899','#14B8A6'][i % 5],
+          }));
         }
+
+        if (data.vision) brandKitData.vision = data.vision;
+        if (data.mission) brandKitData.mission = data.mission;
+
+        // Apply personas
+        if (data.personas?.length) {
+          brandKitData.personas = data.personas.map((p, i) => ({
+            code: p.code || `P${i + 1}`,
+            role: p.role || 'Audience',
+            label: p.label || '',
+            size: p.size || '',
+            pains: p.pains || '',
+            triggers: p.triggers || '',
+          }));
+        }
+
+        // Apply competitors (from PDF, mark as source='pdf' to distinguish from manual)
+        if (data.competitors?.length) {
+          const incomingComps = data.competitors
+            .filter(c => c?.name && !/^new competitor$/i.test(c.name))
+            .map(c => ({
+              name: c.name,
+              url: c.url || '',
+              positioning: c.positioning || '',
+              tier: c.tier || 'Mid',
+              diff: c.diff || '',
+              source: 'pdf',
+            }));
+          // Keep manual entries, add PDF competitors
+          const manual = brandKitData.competitors.filter(c => c.source === 'manual');
+          brandKitData.competitors = [...manual, ...incomingComps];
+        }
+
+        // Refresh view
+        switchView(state.currentView);
+        if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ PDF processed — values, vision, personas, competitors extracted.</span>'; }
+        showToast('Brand document analyzed. Fields updated below — review and save when ready.');
       } catch (e) {
         console.error('[PDF processing] error:', e);
-        if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Processing failed — ${escapeHtml(e.message)}</span>`; }
+        if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Failed — ${escapeHtml(e.message)}</span>`; }
       } finally {
         if (processBtn) { processBtn.disabled = false; processBtn.textContent = 'Process'; }
       }
@@ -835,10 +840,15 @@ async function processBrandPdf() {
     reader.readAsBinaryString(uploadedPdfFile);
   } catch (e) {
     console.error('[PDF upload] error:', e);
-    if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Upload failed — ${escapeHtml(e.message)}</span>`; }
+    if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Upload failed</span>`; }
     if (processBtn) { processBtn.disabled = false; processBtn.textContent = 'Process'; }
   }
 }
+
+// ══════════════════════════════════════════════════
+// WF00.5 — PDF Scrapper
+// ══════════════════════════════════════════════════
+const WF005_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/pdf-scrapper';
 
 // ══════════════════════════════════════════════════
 // WF_SOCIAL_BIOS — SocialMediaBios (owned channels)
