@@ -529,40 +529,107 @@ async function saveBrandProfile() {
 }
 
 // ── WF00 Website Scrapper ──────────────────────────────
-async function scanBrandingBio() {
+async function scanCompleteProfile() {
   const urlInput = document.getElementById('bk-scrape-url');
-  const btn = document.getElementById('bk-scrape-btn');
-  const statusEl = document.getElementById('bk-scrape-status');
+  const btn = document.getElementById('bk-scan-complete-btn');
+  const statusEl = document.getElementById('bk-scan-status');
 
   const url = urlInput?.value?.trim();
-  if (!url) { showToast('Enter a website URL first.'); return; }
+  if (!url) { showToast('Enter a website URL.'); return; }
 
-  if (btn) { btn.textContent = 'Scanning…'; btn.disabled = true; }
-  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Scanning website — this may take 15–30 seconds…</span>'; }
+  if (btn) { btn.textContent = '⟳ Scanning…'; btn.disabled = true; }
+  if (statusEl) { statusEl.innerHTML = '<span style="color:#6366F1">⟳ Scanning website…</span>'; }
 
   try {
-    const res = await fetch(WF00_URL, {
+    // Scan website (WF00)
+    const websiteRes = await fetch(WF00_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    if (!text || !text.trim()) {
-      throw new Error('Empty response body from WF00 — webhook may have deduped or workflow returned no data. Try again.');
+    if (!websiteRes.ok) throw new Error(`Website scan failed`);
+
+    const websiteText = await websiteRes.text();
+    if (!websiteText?.trim()) throw new Error('Empty response');
+
+    let websiteData = JSON.parse(websiteText);
+    applyScrapedBrandData(websiteData);
+
+    // If PDF exists, process it too
+    if (uploadedPdfFile) {
+      if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Website scanned<br/><span style="color:#6366F1">⟳ Analyzing PDF…</span>';
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const pdfBase64 = btoa(e.target.result);
+          const pdfRes = await fetch(WF005_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pdf: { filename: uploadedPdfFile.name, base64: pdfBase64 },
+              brand_id: brandKitData.brandId,
+            }),
+          });
+          if (!pdfRes.ok) throw new Error('PDF analysis failed');
+          const pdfData = await pdfRes.json();
+
+          // Merge PDF data
+          if (pdfData.values?.length) {
+            brandKitData.values = pdfData.values.map((v, i) => ({
+              title: v.title || 'Value',
+              desc: v.desc || '',
+              color: v.color || ['#6366F1','#10B981','#F59E0B','#EC4899','#14B8A6'][i % 5],
+            }));
+          }
+          if (pdfData.vision) brandKitData.vision = pdfData.vision;
+          if (pdfData.mission) brandKitData.mission = pdfData.mission;
+          if (pdfData.personas?.length) {
+            brandKitData.personas = pdfData.personas.map((p, i) => ({
+              code: p.code || `P${i + 1}`,
+              role: p.role || 'Audience',
+              label: p.label || '',
+              size: p.size || '',
+              pains: p.pains || '',
+              triggers: p.triggers || '',
+            }));
+          }
+          if (pdfData.competitors?.length) {
+            const incomingComps = pdfData.competitors
+              .filter(c => c?.name && !/^new competitor$/i.test(c.name))
+              .map(c => ({ name: c.name, url: c.url || '', positioning: c.positioning || '', tier: c.tier || 'Mid', source: 'pdf' }));
+            const manual = brandKitData.competitors.filter(c => c.source === 'manual');
+            brandKitData.competitors = [...manual, ...incomingComps];
+          }
+
+          switchView(state.currentView);
+          if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Website scanned + PDF analyzed. Ready to save!</span>';
+          showToast('Scan complete! Website + PDF analyzed.');
+        } catch (e) {
+          console.error('[PDF error]:', e);
+          if (statusEl) statusEl.innerHTML += `<br/><span style="color:#EF4444">PDF: ${e.message}</span>`;
+        } finally {
+          if (btn) { btn.textContent = 'Scan Complete Profile'; btn.disabled = false; }
+        }
+      };
+      reader.readAsBinaryString(uploadedPdfFile);
+    } else {
+      // No PDF, just website
+      switchView(state.currentView);
+      if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Website scanned. Ready to save!</span>';
+      showToast('Website scanned!');
+      if (btn) { btn.textContent = 'Scan Complete Profile'; btn.disabled = false; }
     }
-    let data;
-    try { data = JSON.parse(text); }
-    catch (parseErr) { throw new Error(`WF00 returned non-JSON (${text.length} chars): ${text.slice(0, 200)}`); }
-    applyScrapedBrandData(data);
-    if (statusEl) { statusEl.innerHTML = '<span style="color:#10B981">✅ Website scraped — fields updated below. Review and adjust.</span>'; }
-    showToast('Website scraped. Review and save when ready.');
   } catch (e) {
-    if (statusEl) { statusEl.innerHTML = `<span style="color:#EF4444">❌ Scan failed — ${escapeHtml(e.message)}</span>`; }
-    console.error('[WF00] scan error:', e);
-  } finally {
-    if (btn) { btn.textContent = 'Scan Website'; btn.disabled = false; }
+    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">❌ ${e.message}</span>`;
+    console.error('[Scan error]:', e);
+    if (btn) { btn.textContent = 'Scan Complete Profile'; btn.disabled = false; }
   }
+}
+
+async function scanBrandingBio() {
+  // Backward compatibility
+  await scanCompleteProfile();
 }
 
 async function fetchLogoForUrl(url) {
@@ -11968,32 +12035,36 @@ function generateViewHTML(view) {
           <p style="margin:8px 0 0 0; font-size:14px; color:var(--text-muted); max-width:600px;">Fill in all your company information: brand identity, values, visual branding, and social channels. This powers every agent in the Marketing Pilot.</p>
         </div>
 
-        <!-- Website Scrapper -->
+        <!-- Complete Profile Scan (URL + PDF) -->
         <div class="card" style="margin-top:24px; border:1px solid #C7D2FE; background:linear-gradient(135deg,#EEF2FF 0%,#F5F3FF 100%);">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="globe"></i> Scan Your Website</h3>
-            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">AI auto-fill</span>
+            <h3 class="card-title" style="margin:0;"><i data-lucide="zap"></i> Complete Profile Scan</h3>
+            <span class="lm-tag" style="background:#EEF2FF;color:#4338CA">AI-powered</span>
           </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Enter your website URL and AI will automatically extract your company name, industry, mission, vision, values, colors, typography, and social channels.</p>
-          <div style="display:flex; gap:10px; align-items:center;">
-            <input type="text" id="bk-scrape-url" value="${brandKitData.websiteUrl}" oninput="updateBrandField('websiteUrl', this.value)" placeholder="https://www.yourcompany.com" style="flex:1; padding:10px 12px; border:1px solid #C7D2FE; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
-            <button id="bk-scrape-btn" onclick="scanBrandingBio()" style="padding:10px 20px; background:#6366F1; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0;"><i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan</button>
-          </div>
-          <div id="bk-scrape-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
-        </div>
+          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Scan your website URL and optionally upload a brand document. AI will extract all company information in one go.</p>
 
-        <!-- PDF Upload for Brand Context -->
-        <div class="card" style="margin-top:24px; border:1px solid #FCD34D; background:linear-gradient(135deg,#FEF9E7 0%,#FEF3C7 100%);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h3 class="card-title" style="margin:0;"><i data-lucide="file-pdf"></i> Upload Brand Document</h3>
-            <span class="lm-tag" style="background:#FEF3C7;color:#92400E">Optional</span>
+          <!-- URL Input -->
+          <div style="margin-bottom:14px;">
+            <label class="bk-label">Website URL</label>
+            <input type="text" id="bk-scrape-url" value="${brandKitData.websiteUrl}" oninput="updateBrandField('websiteUrl', this.value)" placeholder="https://www.yourcompany.com" style="width:100%; padding:10px 12px; border:1px solid #C7D2FE; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
           </div>
-          <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px 0;">Upload a PDF (pitch deck, brand guidelines, company doc, etc.) and AI will extract key information to enrich your brand profile.</p>
-          <div style="display:flex; gap:10px; align-items:flex-start;">
-            <input type="file" id="bk-pdf-upload" accept=".pdf" onchange="handleBrandPdfUpload(this)" style="flex:1; padding:10px 12px; border:1px solid #FCD34D; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
-            <button id="bk-pdf-process-btn" onclick="processBrandPdf()" disabled style="padding:10px 20px; background:#D97706; color:white; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; white-space:nowrap; flex-shrink:0; opacity:0.5;">Process</button>
+
+          <!-- PDF Input -->
+          <div style="margin-bottom:14px;">
+            <label class="bk-label">Brand Document (Optional)</label>
+            <input type="file" id="bk-pdf-upload" accept=".pdf" onchange="handleBrandPdfUpload(this)" style="width:100%; padding:10px 12px; border:1px dashed #C7D2FE; border-radius:6px; font-size:14px; outline:none; font-family:var(--font-main); background:white;" />
+            <div id="bk-pdf-filename" style="font-size:11px; color:var(--text-muted); margin-top:6px;"></div>
           </div>
-          <div id="bk-pdf-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+
+          <!-- Single Scan Button -->
+          <div style="display:flex; gap:10px;">
+            <button id="bk-scan-complete-btn" onclick="scanCompleteProfile()" style="flex:1; padding:12px 20px; background:linear-gradient(135deg, #6366F1 0%, #4338CA 100%); color:white; border:none; border-radius:8px; font-size:14px; font-weight:700; cursor:pointer; white-space:nowrap;">
+              <i data-lucide="scan" style="width:14px;vertical-align:middle;margin-right:6px"></i>Scan Complete Profile
+            </button>
+          </div>
+
+          <!-- Status Messages -->
+          <div id="bk-scan-status" style="margin-top:12px; font-size:12px; min-height:40px;"></div>
         </div>
 
         <!-- 1. About Us -->
