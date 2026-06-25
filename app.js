@@ -14936,6 +14936,118 @@ async function analyzePdfWithGemini(pdfBase64, filename) {
   return JSON.parse(jsonStr);
 }
 
+// ── Social OAuth Modal ──
+function showSocialAuthModal() {
+  const modal = document.createElement('div');
+  modal.id = 'social-auth-modal';
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  `;
+
+  content.innerHTML = `
+    <div style="text-align: center; margin-bottom: 24px;">
+      <h2 style="font-size: 24px; font-weight: 700; color: #0A0A0A; margin: 0 0 8px 0;">Conecta tus redes sociales</h2>
+      <p style="color: #888880; font-size: 14px; margin: 0;">Autoriza el acceso para obtener estadísticas y trackear tu presencia</p>
+    </div>
+
+    <div style="display: grid; gap: 12px; margin-bottom: 24px;">
+      <button onclick="startMetaOAuth('instagram')" style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        background: #E4405F;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">
+        <span style="font-size: 20px;">📷</span> Conectar Instagram
+      </button>
+
+      <button onclick="startMetaOAuth('facebook')" style="
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        padding: 14px 16px;
+        background: #1877F2;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">
+        <span style="font-size: 20px;">f</span> Conectar Facebook
+      </button>
+
+      <button onclick="closeSocialAuthModal()" style="
+        width: 100%;
+        padding: 14px 16px;
+        background: #E8E6E0;
+        color: #0A0A0A;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
+      ">
+        Cerrar
+      </button>
+    </div>
+
+    <p style="font-size: 12px; color: #888880; text-align: center; margin: 0;">
+      Tus credenciales están seguras. Solo usamos datos públicos de tus redes.
+    </p>
+  `;
+
+  modal.appendChild(content);
+  document.body.appendChild(modal);
+}
+
+function closeSocialAuthModal() {
+  const modal = document.getElementById('social-auth-modal');
+  if (modal) modal.remove();
+}
+
+function startMetaOAuth(platform) {
+  const appId = '1323180832719303';
+  const redirectUri = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000/auth/instagram/callback'
+    : 'https://app-de-agentes.vercel.app/auth/instagram/callback';
+
+  const scope = platform === 'instagram'
+    ? 'instagram_basic,instagram_graph_user_profile,pages_read_engagement,pages_manage_metadata'
+    : 'pages_manage_posts,pages_read_engagement,pages_manage_metadata';
+
+  const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${platform}`;
+
+  window.location.href = authUrl;
+}
+
 // ── Close all dropdown panels when clicking outside ──
 document.addEventListener('click', () => closeAllPanels());
 
