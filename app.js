@@ -14898,7 +14898,7 @@ async function analyzePdfWithGemini(pdfBase64, filename) {
     body: JSON.stringify({
       system_instruction: {
         parts: [{
-          text: 'You are a brand analysis expert. Extract ONLY information that explicitly exists in the PDF. Return ONLY valid JSON.'
+          text: 'You are a brand analysis expert. Extract ONLY information that explicitly exists in the PDF. Return ONLY valid JSON with no markdown or extra text.'
         }]
       },
       contents: [{
@@ -14920,10 +14920,20 @@ async function analyzePdfWithGemini(pdfBase64, filename) {
 
   const result = await response.json();
   const text = result.content?.parts?.[0]?.text || '';
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('No JSON found in Gemini response');
 
-  return JSON.parse(jsonMatch[0]);
+  console.log('[Gemini response]', text.slice(0, 500));
+
+  // Try to extract JSON (may be wrapped in markdown)
+  let jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+  if (!jsonMatch) jsonMatch = text.match(/\{[\s\S]*\}/);
+
+  if (!jsonMatch) {
+    console.error('[Gemini] No JSON found. Full response:', text);
+    throw new Error('No JSON found in Gemini response');
+  }
+
+  const jsonStr = jsonMatch[1] || jsonMatch[0];
+  return JSON.parse(jsonStr);
 }
 
 // ── Close all dropdown panels when clicking outside ──
