@@ -15040,8 +15040,8 @@ function startMetaOAuth(platform) {
     : 'https://app-de-agentes.vercel.app/auth/instagram/callback';
 
   const scope = platform === 'instagram'
-    ? 'instagram_basic,instagram_graph_user_profile,pages_read_engagement,pages_manage_metadata'
-    : 'pages_manage_posts,pages_read_engagement,pages_manage_metadata';
+    ? 'instagram_basic,pages_read_engagement'
+    : 'pages_manage_posts,pages_read_engagement';
 
   const authUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scope)}&state=${platform}`;
 
