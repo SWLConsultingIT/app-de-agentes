@@ -836,21 +836,8 @@ async function processBrandPdf() {
       try {
         const pdfBase64 = btoa(e.target.result);
 
-        // Send to WF00.5 for PDF analysis
-        const res = await fetch(WF005_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pdf: {
-              filename: uploadedPdfFile.name,
-              base64: pdfBase64,
-            },
-            brand_id: brandKitData.brandId,
-          }),
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        // Analyze PDF with Gemini directly
+        const data = await analyzePdfWithGemini(pdfBase64, uploadedPdfFile.name);
 
         // Apply extracted values
         if (data.values?.length) {
