@@ -563,16 +563,7 @@ async function scanCompleteProfile() {
       reader.onload = async (e) => {
         try {
           const pdfBase64 = btoa(e.target.result);
-          const pdfRes = await fetch(WF005_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pdf: { filename: uploadedPdfFile.name, base64: pdfBase64 },
-              brand_id: brandKitData.brandId,
-            }),
-          });
-          if (!pdfRes.ok) throw new Error('PDF analysis failed');
-          const pdfData = await pdfRes.json();
+          const pdfData = await analyzePdfWithGemini(pdfBase64, uploadedPdfFile.name);
 
           // Merge PDF data
           if (pdfData.values?.length) {
