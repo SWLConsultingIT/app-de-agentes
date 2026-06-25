@@ -12371,6 +12371,25 @@ function generateViewHTML(view) {
           </div>
         </div>
 
+        <!-- OAuth Connect Button -->
+        <div style="margin-top:16px; padding:16px; background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="flex:1;">
+            <div style="font-weight:600; color:white; margin-bottom:4px;">🔐 Conecta tus redes sociales</div>
+            <div style="font-size:13px; color:#E8EAFF;">Autoriza el acceso seguro a tus Instagram, Facebook, TikTok y más para obtener estadísticas en tiempo real.</div>
+          </div>
+          <button onclick="showSocialAuthModal()" style="
+            padding:10px 20px;
+            background:white;
+            color:#667EEA;
+            border:none;
+            border-radius:8px;
+            font-weight:600;
+            cursor:pointer;
+            white-space:nowrap;
+            font-size:14px;
+          ">Conectar ahora</button>
+        </div>
+
         <!-- Mock-data warning banner (hidden after first real scan) -->
         <div id="smb-mock-banner" style="margin-top:16px; padding:12px 16px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; display:flex; gap:10px; align-items:flex-start;">
           <i data-lucide="alert-triangle" style="width:18px; flex-shrink:0; margin-top:1px; color:#D97706;"></i>
