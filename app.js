@@ -1,4 +1,4 @@
-// App State & Data Mock
+// App State & Data
 const state = {
   currentView: 'dashboard'
 };
