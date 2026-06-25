@@ -14909,6 +14909,45 @@ function buildHelpPanel() {
 }
 
 
+// ── Analyze PDF with Gemini API ──
+async function analyzePdfWithGemini(pdfBase64, filename) {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent', {
+    method: 'POST',
+    headers: {
+      'x-goog-api-key': 'AIzaSyAxzPBo9l3JcreA2twy6Yb5sAFeu9krm-M',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      system_instruction: {
+        parts: [{
+          text: 'You are a brand analysis expert. Extract ONLY information that explicitly exists in the PDF. Return ONLY valid JSON.'
+        }]
+      },
+      contents: [{
+        role: "user",
+        parts: [
+          {
+            inline_data: {
+              mime_type: "application/pdf",
+              data: pdfBase64
+            }
+          },
+          { text: "Analyze this brand document and extract all information." }
+        ]
+      }]
+    })
+  });
+
+  if (!response.ok) throw new Error(`Gemini API error: ${response.status}`);
+
+  const result = await response.json();
+  const text = result.content?.parts?.[0]?.text || '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error('No JSON found in Gemini response');
+
+  return JSON.parse(jsonMatch[0]);
+}
+
 // ── Close all dropdown panels when clicking outside ──
 document.addEventListener('click', () => closeAllPanels());
 
