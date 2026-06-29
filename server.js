@@ -1,143 +1,60 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import axios from 'axios';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
 
-dotenv.config();
+const PORT = 3000;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const server = http.createServer((req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Mc-Auth');
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.static(__dirname));
-app.use(express.json());
-app.use(cors());
-
-const METRICOOL_TOKEN = process.env.METRICOOL_TOKEN;
-const METRICOOL_API_BASE = 'https://api.metricool.com/v3';
-
-// Serve index.html for SPA routing
-app.get('/', (req, res) => {
-  res.sendFile(join(__dirname, 'index.html'));
-});
-
-// Endpoint to publish content with Metricool
-app.post('/api/metricool/publish', async (req, res) => {
-  try {
-    if (!METRICOOL_TOKEN) {
-      return res.status(400).json({
-        ok: false,
-        error: 'METRICOOL_TOKEN not configured in .env'
-      });
-    }
-
-    const { posts } = req.body;
-
-    if (!Array.isArray(posts) || posts.length === 0) {
-      return res.status(400).json({
-        ok: false,
-        error: 'Invalid posts payload'
-      });
-    }
-
-    console.log(`[Metricool] Publishing ${posts.length} post(s)...`);
-
-    // Call Metricool API to schedule/publish posts
-    // Metricool API endpoint: POST /publication/bulk
-    const metricoolPayload = {
-      publications: posts.map(post => ({
-        title: post.title || '',
-        text: post.content || '',
-        image: post.image_url || null,
-        platforms: post.channels || ['linkedin', 'twitter'],
-        scheduleDate: post.scheduled_time ? new Date(post.scheduled_time).toISOString() : null,
-        customFields: {
-          source: 'ContentBuilder',
-          brand: post.metadata?.brand || 'SWL Consulting'
-        }
-      }))
-    };
-
-    const response = await axios.post(
-      `${METRICOOL_API_BASE}/publication/bulk`,
-      metricoolPayload,
-      {
-        headers: {
-          'Authorization': `Bearer ${METRICOOL_TOKEN}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    console.log(`[Metricool] Response:`, response.data);
-
-    res.json({
-      ok: true,
-      published_count: posts.length,
-      metricool_response: response.data
-    });
-  } catch (error) {
-    console.error('[Metricool] API Error:', error.response?.data || error.message);
-    res.status(500).json({
-      ok: false,
-      error: error.response?.data?.message || error.message || 'Metricool API error'
-    });
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
   }
-});
 
-// Endpoint to get publishing drafts
-app.get('/api/publishing-drafts/:brandId', (req, res) => {
-  // Mock data - in production this would fetch from Supabase
-  const brandId = req.params.brandId;
-  res.json({
-    ok: true,
-    drafts: [
-      // Mock drafts would be returned here
-    ]
-  });
-});
+  // Serve index.html with token injected
+  if (req.url === '/' || req.url === '/index.html') {
+    let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    html = html.replace('{{METRICOOL_TOKEN}}', process.env.METRICOOL_TOKEN || '');
 
-// Endpoint to check Metricool connection
-app.get('/api/metricool/status', async (req, res) => {
-  try {
-    if (!METRICOOL_TOKEN) {
-      return res.json({ ok: false, connected: false, message: 'No API token configured' });
-    }
-
-    // Try a simple API call to verify token
-    const response = await axios.get(
-      `${METRICOOL_API_BASE}/accounts`,
-      {
-        headers: { 'Authorization': `Bearer ${METRICOOL_TOKEN}` },
-        timeout: 5000
-      }
-    );
-
-    res.json({
-      ok: true,
-      connected: true,
-      accounts: response.data
-    });
-  } catch (error) {
-    console.error('[Metricool] Connection check failed:', error.message);
-    res.json({
-      ok: false,
-      connected: false,
-      error: error.message
-    });
+    res.writeHead(200, { 'Content-Type': 'text/html' });
+    res.end(html);
+    return;
   }
+
+  // Serve static files
+  const filePath = path.join(__dirname, req.url);
+  const ext = path.extname(filePath);
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const content = fs.readFileSync(filePath);
+    const contentType = {
+      '.js': 'application/javascript',
+      '.css': 'text/css',
+      '.json': 'application/json',
+      '.svg': 'image/svg+xml',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+    }[ext] || 'application/octet-stream';
+
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+    return;
+  }
+
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('404 Not Found');
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', metricool_configured: !!METRICOOL_TOKEN });
-});
-
-app.listen(PORT, () => {
-  console.log(`GrowthAI server running on http://localhost:${PORT}`);
-  console.log(`Metricool configured: ${!!METRICOOL_TOKEN}`);
+server.listen(PORT, () => {
+  console.log(`\n🚀 GrowthAI Server running at http://localhost:${PORT}`);
+  console.log(`   Metricool token: ${process.env.METRICOOL_TOKEN ? '✓ Loaded from .env' : '⚠ NOT FOUND'}\n`);
 });
