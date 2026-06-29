@@ -896,6 +896,63 @@ async function processBrandPdf() {
 const WF005_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/pdf-scrapper';
 
 // ══════════════════════════════════════════════════
+// METRICOOL API — Get user's own social media analytics
+async function loadMetricoolData() {
+  try {
+    const token = window.METRICOOL_TOKEN || localStorage.getItem('metricool_token');
+    if (!token) {
+      console.warn('[Metricool] No token available');
+      showToast('Metricool token no encontrado. Verifica la configuración .env');
+      return null;
+    }
+
+    console.log('[Metricool] Fetching brands with token...');
+
+    const response = await fetch('https://app.metricool.com/api/admin/brands', {
+      method: 'GET',
+      headers: {
+        'X-Mc-Auth': token,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.error('[Metricool] API error:', response.status, response.statusText);
+      showToast(`Error Metricool: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('[Metricool] Brands loaded:', data);
+    return data;
+  } catch (e) {
+    console.error('[Metricool] fetch error:', e);
+    showToast('Error Metricool: ' + e.message);
+    return null;
+  }
+}
+
+// Load Metricool data and display in SocialMediaBios
+async function loadMetricoolAndDisplay() {
+  const btn = event.target;
+  btn.textContent = '⏳ Cargando...';
+  btn.disabled = true;
+
+  const data = await loadMetricoolData();
+
+  if (data) {
+    console.log('[Metricool] Success! Channels:', data);
+    showToast('✓ Canales conectados desde Metricool');
+    // Aquí se rendería la vista actualizada
+    // Por ahora, refrescamos la página
+    renderView('social-media-bios');
+  } else {
+    btn.textContent = 'Conectar ahora';
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════
 // WF_SOCIAL_BIOS — SocialMediaBios (owned channels)
 // ══════════════════════════════════════════════════
 const WF_SOCIAL_BIOS_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/socialmedia-bios';
@@ -1666,6 +1723,7 @@ async function hydrateSocialBiosView() {
         <div class="smb-kpi-mini"><div class="lbl">Posts/week</div><div class="val">${focus.postingCadence ?? '—'}</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Avg ER</div><div class="val">${focus.avgEngagementRate ?? '—'}%</div></div>
         <div class="smb-kpi-mini"><div class="lbl">Primary format</div><div class="val" style="text-transform:capitalize;">${focus.primaryFormat || '—'}</div></div>
+        <div class="smb-kpi-mini"><div class="lbl">Copy style</div><div class="val" style="text-transform:capitalize;">${focus.copyStructure || '—'}</div></div>
       </div>
     `);
 
@@ -12371,13 +12429,13 @@ function generateViewHTML(view) {
           </div>
         </div>
 
-        <!-- OAuth Connect Button -->
+        <!-- Metricool Connect Button -->
         <div style="margin-top:16px; padding:16px; background: linear-gradient(135deg, #667EEA 0%, #764BA2 100%); border-radius:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
           <div style="flex:1;">
             <div style="font-weight:600; color:white; margin-bottom:4px;">🔐 Conecta tus redes sociales</div>
             <div style="font-size:13px; color:#E8EAFF;">Autoriza el acceso seguro a tus Instagram, Facebook, TikTok y más para obtener estadísticas en tiempo real.</div>
           </div>
-          <button onclick="showSocialAuthModal()" style="
+          <button onclick="loadMetricoolAndDisplay()" style="
             padding:10px 20px;
             background:white;
             color:#667EEA;

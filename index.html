@@ -14,6 +14,11 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <!-- Metricool API Token (injected by server from .env) -->
+  <script>
+    window.METRICOOL_TOKEN = '{{METRICOOL_TOKEN}}'; // Server replaces this with actual token
+  </script>
 </head>
 <body>
 
@@ -137,7 +142,7 @@
               <span class="agent-badge" style="background:#FAE8FF;color:#86198F">AI</span>
             </button>
             <button class="nav-item sub-item" data-view="competitors-views">
-              <span class="dot" style="background:#06B6D4"></span> CompetitorsViews
+              <span class="dot" style="background:#06B6D4"></span> MarketMirror
               <span class="agent-badge">AI</span>
             </button>
             <button class="nav-item sub-item" data-view="hook-miner">
