@@ -15,9 +15,17 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-  <!-- Metricool API Token (injected by server from .env) -->
+  <!-- Metricool API Token (multiple sources: URL param, localStorage, or server .env) -->
   <script>
-    window.METRICOOL_TOKEN = '{{METRICOOL_TOKEN}}'; // Server replaces this with actual token
+    const urlToken = new URLSearchParams(location.search).get('token');
+    const localToken = localStorage.getItem('metricool_token');
+    const serverToken = '{{METRICOOL_TOKEN}}';
+
+    window.METRICOOL_TOKEN = urlToken || localToken || (serverToken !== '{{METRICOOL_TOKEN}}' ? serverToken : null);
+
+    if (window.METRICOOL_TOKEN) {
+      console.log('[Init] Metricool token loaded: ' + window.METRICOOL_TOKEN.substring(0, 10) + '...');
+    }
   </script>
 </head>
 <body>
