@@ -896,8 +896,8 @@ async function processBrandPdf() {
 const WF005_URL = 'https://n8n.srv949269.hstgr.cloud/webhook/pdf-scrapper';
 
 // ══════════════════════════════════════════════════
-// METRICOOL API — Get user's own social media analytics
-async function loadMetricoolData() {
+// METRICOOL API — Full data sync (brands, channels, posts, analytics)
+async function syncMetricoolData() {
   try {
     const token = window.METRICOOL_TOKEN || localStorage.getItem('metricool_token');
     if (!token) {
@@ -906,49 +906,111 @@ async function loadMetricoolData() {
       return null;
     }
 
-    console.log('[Metricool] Fetching brands with token...');
+    console.log('[Metricool] Starting full sync...');
 
-    const response = await fetch('https://app.metricool.com/api/admin/brands', {
+    // 1. Get brands
+    const brandsResponse = await fetch('https://app.metricool.com/api/admin/brands', {
       method: 'GET',
-      headers: {
-        'X-Mc-Auth': token,
-        'Content-Type': 'application/json'
-      }
+      headers: { 'X-Mc-Auth': token, 'Content-Type': 'application/json' }
     });
 
-    if (!response.ok) {
-      console.error('[Metricool] API error:', response.status, response.statusText);
-      showToast(`Error Metricool: ${response.status}`);
-      return null;
+    if (!brandsResponse.ok) throw new Error(`Brands API: ${brandsResponse.status}`);
+    const brands = await brandsResponse.json();
+    console.log('[Metricool] Brands:', brands);
+
+    // 2. For each brand, get channels and posts
+    const allChannels = [];
+    const allPosts = [];
+
+    for (const brand of brands) {
+      // Get channels for this brand
+      const channelsResponse = await fetch(`https://app.metricool.com/api/admin/channels?brandId=${brand.id}`, {
+        method: 'GET',
+        headers: { 'X-Mc-Auth': token, 'Content-Type': 'application/json' }
+      });
+
+      if (channelsResponse.ok) {
+        const channels = await channelsResponse.json();
+        allChannels.push(...channels);
+        console.log(`[Metricool] Brand "${brand.name}" channels:`, channels);
+
+        // Get posts for each channel
+        for (const channel of channels) {
+          const postsResponse = await fetch(`https://app.metricool.com/api/admin/posts?channelId=${channel.id}`, {
+            method: 'GET',
+            headers: { 'X-Mc-Auth': token, 'Content-Type': 'application/json' }
+          });
+
+          if (postsResponse.ok) {
+            const posts = await postsResponse.json();
+            allPosts.push(...posts);
+            console.log(`[Metricool] Channel "${channel.name}" posts:`, posts);
+          }
+        }
+      }
     }
 
-    const data = await response.json();
-    console.log('[Metricool] Brands loaded:', data);
-    return data;
+    return { brands, channels: allChannels, posts: allPosts };
   } catch (e) {
-    console.error('[Metricool] fetch error:', e);
+    console.error('[Metricool] sync error:', e);
     showToast('Error Metricool: ' + e.message);
     return null;
   }
 }
 
-// Load Metricool data and display in SocialMediaBios
+// Load Metricool data and populate BrandingBio + SocialMediaBios
 async function loadMetricoolAndDisplay() {
   const btn = event.target;
   btn.textContent = '⏳ Cargando...';
   btn.disabled = true;
 
-  const data = await loadMetricoolData();
+  const metricoolData = await syncMetricoolData();
 
-  if (data) {
-    console.log('[Metricool] Success! Channels:', data);
-    showToast('✓ Canales conectados desde Metricool');
-    // Aquí se rendería la vista actualizada
-    // Por ahora, refrescamos la página
-    renderView('social-media-bios');
+  if (metricoolData && metricoolData.channels.length > 0) {
+    console.log('[Metricool] Full sync successful! Populating UI...');
+
+    // Map Metricool channels to brandKitData.channels format
+    metricoolData.channels.forEach(ch => {
+      const existingIdx = brandKitData.channels.findIndex(c => c.name === ch.name);
+
+      if (existingIdx === -1) {
+        // Add new channel
+        brandKitData.channels.push({
+          name: ch.name,
+          icon: ch.icon || 'globe',
+          color: ch.color || '#6366F1',
+          handle: ch.handle || ch.username || '',
+          audience: ch.audience || `${ch.followers || 0} seguidores`,
+          metricoolId: ch.id,
+          channelType: ch.type
+        });
+      } else {
+        // Update existing channel
+        brandKitData.channels[existingIdx].handle = ch.handle || ch.username || '';
+        brandKitData.channels[existingIdx].metricoolId = ch.id;
+      }
+    });
+
+    // Store posts in leadsData for SocialMediaBios to use
+    if (leadsData[0]) {
+      leadsData[0].metricoolPosts = metricoolData.posts;
+      leadsData[0].metricoolChannels = metricoolData.channels;
+    }
+
+    console.log('[Metricool] Updated brandKitData.channels:', brandKitData.channels);
+
+    showToast('✓ Metricool sincronizado - ' + metricoolData.channels.length + ' canales');
+
+    // Refresh both views
+    setTimeout(() => {
+      renderView('branding-kit');
+      lucide.createIcons();
+      setTimeout(() => renderView('social-media-bios'), 500);
+    }, 300);
   } else {
     btn.textContent = 'Conectar ahora';
     btn.disabled = false;
+    showToast('⚠ No se encontraron canales en Metricool');
   }
 }
 
