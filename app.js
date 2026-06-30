@@ -927,6 +927,597 @@ function getNetworkColor(network) {
 
 // ══════════════════════════════════════════════════
 // METRICOOL API — Full data sync (profiles, channels, posts, analytics)
+function normalizeMetricoolNetwork(value) {
+  const n = String(value || '').toLowerCase();
+  if (n.includes('instagram')) return 'Instagram';
+  if (n.includes('tiktok')) return 'TikTok';
+  if (n.includes('linkedin')) return 'LinkedIn';
+  if (n.includes('facebook')) return 'Facebook';
+  if (n.includes('youtube')) return 'YouTube';
+  if (n.includes('twitter') || n === 'x') return 'Twitter';
+  return value ? String(value) : 'Social';
+}
+
+function isKnownSocialChannel(name) {
+  return ['Instagram', 'TikTok', 'LinkedIn', 'Facebook', 'YouTube', 'Twitter'].includes(name);
+}
+
+const METRICOOL_TARGET_LABEL = 'swl.consulting';
+const METRICOOL_USER_ID = '4289908';
+const METRICOOL_FALLBACK_BLOG_ID = '5526619';
+const METRICOOL_TIMEZONE = 'America/Buenos_Aires';
+const METRICOOL_TIMELINE_METRICS = ['followers', 'postsInteractions', 'postsCount', 'impressions'];
+
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatMetricoolDate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function getMetricoolPeriod() {
+  const end = new Date();
+  end.setDate(end.getDate() - 1);
+  const start = new Date(end);
+  start.setDate(start.getDate() - 29);
+  const fromDay = formatMetricoolDate(start);
+  const toDay = formatMetricoolDate(end);
+  return {
+    fromPosts: `${fromDay}T00:00:00`,
+    toPosts: `${toDay}T23:59:59`,
+    fromTimeline: `${fromDay}T00:00:00-03:00`,
+    toTimeline: `${toDay}T23:59:59-03:00`,
+  };
+}
+
+async function fetchMetricoolProxy(path, params) {
+  const qs = new URLSearchParams(params);
+  const res = await fetch(`${path}?${qs.toString()}`);
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.json();
+}
+
+function mergeMetricoolChannels(channels) {
+  const byName = new Map();
+  (channels || []).forEach(ch => {
+    if (!ch || !isKnownSocialChannel(ch.name)) return;
+    const prev = byName.get(ch.name);
+    if (!prev) {
+      byName.set(ch.name, ch);
+      return;
+    }
+    const posts = [...(prev.posts || []), ...(ch.posts || [])];
+    byName.set(ch.name, {
+      ...prev,
+      ...ch,
+      followers: Math.max(Number(prev.followers || 0), Number(ch.followers || 0)),
+      following: Math.max(Number(prev.following || 0), Number(ch.following || 0)),
+      totalPosts: Math.max(Number(prev.totalPosts || 0), Number(ch.totalPosts || 0), posts.length),
+      totalViews: Math.max(Number(prev.totalViews || 0), Number(ch.totalViews || 0)),
+      reach: Math.max(Number(prev.reach || 0), Number(ch.reach || 0)),
+      totalInteractions: Math.max(Number(prev.totalInteractions || 0), Number(ch.totalInteractions || 0)),
+      posts,
+      topPosts: posts.slice().sort((a, b) => (b.engagementRate || 0) - (a.engagementRate || 0)).slice(0, 6),
+      bottomPosts: posts.slice().sort((a, b) => (a.engagementRate || 0) - (b.engagementRate || 0)).slice(0, 3),
+    });
+  });
+  return [...byName.values()];
+}
+
+function isDefaultMetricoolTone(tone) {
+  if (!tone) return true;
+  const keys = ['formal_vs_casual', 'technical_vs_accessible', 'serious_vs_playful', 'humble_vs_bold', 'short_vs_expansive'];
+  return keys.every(k => Number(tone[k] ?? 50) === 50);
+}
+
+function socialPostMergeKey(post) {
+  const url = String(post?.url || post?.link || post?.permalink || '').trim().toLowerCase().replace(/[?#].*$/, '').replace(/\/$/, '');
+  if (url) return `url:${url}`;
+  const id = String(post?.id || post?.postId || '').trim().toLowerCase();
+  if (id) return `id:${id}`;
+  const snippet = String(post?.snippet || post?.text || '').trim().toLowerCase().replace(/\s+/g, ' ').slice(0, 120);
+  return snippet ? `text:${snippet}` : '';
+}
+
+function mergeSocialPost(metricoolPost = {}, analysisPost = {}) {
+  const metricoolMetrics = metricoolPost.metrics || {};
+  const analysisMetrics = analysisPost.metrics || {};
+  const metricoolLikesLookLikeInteractions =
+    Number(metricoolMetrics.likes || 0) > 0 &&
+    Number(metricoolMetrics.likes || 0) === Number(metricoolMetrics.interactions || 0) &&
+    Number(analysisMetrics.likes || 0) > 0;
+
+  return {
+    ...analysisPost,
+    ...metricoolPost,
+    id: metricoolPost.id || analysisPost.id,
+    text: metricoolPost.text || analysisPost.text || '',
+    snippet: metricoolPost.snippet || analysisPost.snippet || '',
+    url: metricoolPost.url || analysisPost.url || '',
+    imageUrl: metricoolPost.imageUrl || analysisPost.imageUrl || analysisPost.displayUrl || analysisPost.thumbnailUrl || '',
+    publishedAt: metricoolPost.publishedAt || analysisPost.publishedAt || null,
+    format: analysisPost.format || metricoolPost.format || 'post',
+    whyItWorked: analysisPost.whyItWorked || metricoolPost.whyItWorked || '',
+    metrics: {
+      ...analysisMetrics,
+      ...metricoolMetrics,
+      likes: metricoolLikesLookLikeInteractions
+        ? Number(analysisMetrics.likes || 0)
+        : Number(metricoolMetrics.likes ?? analysisMetrics.likes ?? 0),
+      comments: Number(metricoolMetrics.comments ?? analysisMetrics.comments ?? 0),
+      shares: Number(metricoolMetrics.shares ?? analysisMetrics.shares ?? 0),
+      interactions: Number(metricoolMetrics.interactions ?? analysisMetrics.interactions ?? (
+        Number(analysisMetrics.likes || 0) + Number(analysisMetrics.comments || 0) + Number(analysisMetrics.shares || 0)
+      )),
+      impressions: Number(metricoolMetrics.impressions ?? analysisMetrics.impressions ?? 0),
+      views: Number(metricoolMetrics.views ?? analysisMetrics.views ?? metricoolMetrics.impressions ?? analysisMetrics.impressions ?? 0),
+    },
+    engagementRate: Number(metricoolPost.engagementRate ?? analysisPost.engagementRate ?? 0),
+    score: Number(analysisPost.score ?? metricoolPost.score ?? 0),
+  };
+}
+
+function mergeSocialPosts(metricoolPosts = [], analysisPosts = []) {
+  const byKey = new Map();
+  const looseAnalysis = [];
+
+  (analysisPosts || []).forEach(post => {
+    const key = socialPostMergeKey(post);
+    if (key) byKey.set(key, { analysis: post });
+    else looseAnalysis.push(post);
+  });
+
+  const merged = [];
+  (metricoolPosts || []).forEach(post => {
+    const key = socialPostMergeKey(post);
+    const existing = key ? byKey.get(key) : null;
+    merged.push(mergeSocialPost(post, existing?.analysis || {}));
+    if (key) byKey.delete(key);
+  });
+
+  byKey.forEach(({ analysis }) => merged.push(mergeSocialPost({}, analysis)));
+  looseAnalysis.forEach(post => merged.push(mergeSocialPost({}, post)));
+
+  return merged.sort((a, b) => {
+    const ad = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+    const bd = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+    return bd - ad;
+  });
+}
+
+function mergeMetricoolWithAnalysis(metricoolChannel, analysisChannel) {
+  if (!analysisChannel) return metricoolChannel;
+  const analysisPosts = analysisChannel.posts || analysisChannel.topPosts || [];
+  const mergedPosts = mergeSocialPosts(metricoolChannel.posts || [], analysisPosts);
+  const merged = {
+    ...analysisChannel,
+    ...metricoolChannel,
+    followers: metricoolChannel.followers || analysisChannel.followers || 0,
+    following: metricoolChannel.following || analysisChannel.following || 0,
+    totalPosts: metricoolChannel.totalPosts || analysisChannel.totalPosts || mergedPosts.length || 0,
+    totalViews: metricoolChannel.totalViews || analysisChannel.totalViews || 0,
+    reach: metricoolChannel.reach || analysisChannel.reach || metricoolChannel.totalViews || 0,
+    totalInteractions: metricoolChannel.totalInteractions || analysisChannel.totalInteractions || 0,
+    postingCadence: metricoolChannel.postingCadence || analysisChannel.postingCadence || 0,
+    primaryFormat: analysisChannel.primaryFormat || analysisChannel.topFormat || metricoolChannel.primaryFormat,
+    copyStructure: analysisChannel.copyStructure || metricoolChannel.copyStructure,
+    tone: isDefaultMetricoolTone(metricoolChannel.tone) ? (analysisChannel.tone || metricoolChannel.tone) : metricoolChannel.tone,
+    toneSummary: metricoolChannel.toneSummary && !/^Metrics imported from Metricool/i.test(metricoolChannel.toneSummary)
+      ? metricoolChannel.toneSummary
+      : (analysisChannel.toneSummary || metricoolChannel.toneSummary),
+    voiceRules: analysisChannel.voiceRules || metricoolChannel.voiceRules,
+    visualStyle: analysisChannel.visualStyle || metricoolChannel.visualStyle,
+    posts: mergedPosts,
+  };
+  merged.topPosts = mergedPosts.length
+    ? mergedPosts.slice().sort((a, b) => (b.engagementRate || b.score || 0) - (a.engagementRate || a.score || 0)).slice(0, 6)
+    : (analysisChannel.topPosts || mergedPosts.slice(0, 6));
+  merged.bottomPosts = mergedPosts.length
+    ? mergedPosts.slice().sort((a, b) => (a.engagementRate || a.score || 0) - (b.engagementRate || b.score || 0)).slice(0, 3)
+    : (analysisChannel.bottomPosts || []);
+  return merged;
+}
+
+function cleanMetricoolHandle(handle) {
+  return String(handle || '').replace(/^@/, '').trim();
+}
+
+function buildProfileUrlForChannel(name, handle, fallback = '') {
+  const clean = cleanMetricoolHandle(handle);
+  if (fallback) return fallback;
+  if (!clean) return '';
+  if (name === 'Instagram') return `https://www.instagram.com/${clean}/`;
+  if (name === 'TikTok') return `https://www.tiktok.com/@${clean}`;
+  if (name === 'LinkedIn') return `https://www.linkedin.com/company/${clean}/`;
+  if (name === 'Facebook') return `https://www.facebook.com/${clean}`;
+  if (name === 'YouTube') return `https://www.youtube.com/@${clean}`;
+  if (name === 'Twitter') return `https://x.com/${clean}`;
+  return '';
+}
+
+function normalizeMetricoolPost(post, channelName) {
+  const postChannelName = normalizeMetricoolNetwork(post?.network || post?.networkConnection || post?.channel || channelName);
+  const metrics = post?.metrics || post?.stats || post || {};
+  const pickMetric = (...keys) => keys.reduce((found, key) => found ?? metrics[key] ?? metrics[key?.toUpperCase?.()], null);
+  const likes = Number(pickMetric('likes', 'likeCount', 'favorites', 'LIKES')) || 0;
+  const comments = Number(pickMetric('comments', 'commentCount', 'COMMENTS')) || 0;
+  const shares = Number(pickMetric('shares', 'shareCount', 'retweets', 'SHARES')) || 0;
+  const impressions = Number(pickMetric('impressions', 'views', 'reach', 'IMPRESSIONS')) || 0;
+  const interactions = Number(pickMetric('interactions', 'engagements', 'INTERACTIONS') ?? (likes + comments + shares)) || 0;
+  const engagementRate = Number(post?.engagementRate ?? post?.er ?? pickMetric('engagement', 'ENGAGEMENT') ?? (
+    impressions ? ((interactions / Math.max(impressions, 1)) * 100).toFixed(2) : 0
+  )) || 0;
+  const publicationDate = post?.publishedAt || post?.date || post?.createdAt || post?.publicationDate?.dateTime || post?.publicationDate || null;
+  const imageUrl = findMetricoolImageUrl(post);
+
+  return {
+    id: post?.id || post?.postId || `${postChannelName}-${post?.date || post?.publishedAt || Math.random().toString(36).slice(2)}`,
+    channel: postChannelName,
+    snippet: post?.snippet || post?.text || post?.caption || post?.title || 'Publication',
+    text: post?.text || post?.caption || '',
+    format: post?.format || post?.type || 'post',
+    publishedAt: publicationDate,
+    url: post?.url || post?.permalink || post?.link || '',
+    imageUrl,
+    metrics: { likes: likes || interactions, comments, shares, interactions, impressions, views: impressions },
+    engagementRate,
+    score: Number(post?.score ?? engagementRate) || 0,
+    whyItWorked: post?.whyItWorked || '',
+  };
+}
+
+function findMetricoolImageUrl(value) {
+  const isImageUrl = v => typeof v === 'string' && /^https?:\/\//i.test(v) && /\.(png|jpe?g|webp|gif)(\?|$)/i.test(v);
+  const imageKeys = /image|picture|thumbnail|thumb|media|cover/i;
+  const walk = (node, depth = 0) => {
+    if (!node || depth > 4) return '';
+    if (isImageUrl(node)) return node;
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = walk(item, depth + 1);
+        if (found) return found;
+      }
+      return '';
+    }
+    if (typeof node === 'object') {
+      for (const [key, child] of Object.entries(node)) {
+        if (imageKeys.test(key) && isImageUrl(child)) return child;
+        if (typeof child === 'object' || imageKeys.test(key)) {
+          const found = walk(child, depth + 1);
+          if (found) return found;
+        }
+      }
+    }
+    return '';
+  };
+  return walk(value);
+}
+
+function collectMetricoolPosts(value, channelName = 'Instagram') {
+  const posts = [];
+  const seen = new Set();
+  const maybePost = obj => {
+    if (!obj || typeof obj !== 'object') return;
+    const text = obj.text || obj.caption || obj.description || obj.content || obj.message || obj.title;
+    const date = obj.publishedAt || obj.publicationDate || obj.date || obj.createdAt || obj.time;
+    const hasMetrics = ['impressions', 'views', 'interactions', 'likes', 'comments', 'shares', 'clicks'].some(k => obj[k] != null || obj.metrics?.[k] != null);
+    if (!text && !date && !hasMetrics) return;
+    const normalized = normalizeMetricoolPost(obj, channelName);
+    const key = normalized.id || `${normalized.publishedAt || ''}:${normalized.snippet || ''}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    posts.push(normalized);
+  };
+  const walk = (node, depth = 0) => {
+    if (!node || depth > 5) return;
+    if (Array.isArray(node)) {
+      node.forEach(item => {
+        maybePost(item);
+        walk(item, depth + 1);
+      });
+      return;
+    }
+    if (typeof node === 'object') {
+      maybePost(node);
+      Object.entries(node).forEach(([key, child]) => {
+        if (/post|publication|content/i.test(key) || typeof child === 'object') walk(child, depth + 1);
+      });
+    }
+  };
+  walk(value);
+  return posts;
+}
+
+function metricoolNumber(value) {
+  if (value == null || value === '') return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  const parsed = Number(String(value).replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function collectTimelineValues(payload) {
+  const values = [];
+  const pushValue = obj => {
+    if (obj == null) return;
+    if (typeof obj === 'number') {
+      values.push(obj);
+      return;
+    }
+    if (typeof obj !== 'object') return;
+    const keys = ['value', 'count', 'total', 'amount', 'y'];
+    for (const key of keys) {
+      if (obj[key] != null) {
+        values.push(metricoolNumber(obj[key]));
+        return;
+      }
+    }
+  };
+  const walk = (node, depth = 0) => {
+    if (!node || depth > 5) return;
+    if (Array.isArray(node)) {
+      if (node.length === 2 && typeof node[0] === 'number' && typeof node[1] === 'number' && node[0] > 1000000000) {
+        values.push(node[1]);
+        return;
+      }
+      node.forEach(item => {
+        pushValue(item);
+        if (!(item && typeof item === 'object' && item.value != null)) walk(item, depth + 1);
+      });
+      return;
+    }
+    if (typeof node === 'object') {
+      Object.entries(node).forEach(([key, value]) => {
+        if (/date|time|timestamp/i.test(key)) return;
+        if (typeof value === 'number') values.push(value);
+        else if (typeof value === 'object') walk(value, depth + 1);
+      });
+    }
+  };
+  walk(payload);
+  return values.filter(v => Number.isFinite(v));
+}
+
+function collectTimelinePoints(payload) {
+  const points = [];
+  const walk = (node, depth = 0) => {
+    if (!node || depth > 5) return;
+    if (Array.isArray(node)) {
+      node.forEach(item => walk(item, depth + 1));
+      return;
+    }
+    if (typeof node === 'object') {
+      if (node.value != null && (node.dateTime || node.date || node.time)) {
+        points.push({
+          date: node.dateTime || node.date || node.time,
+          value: metricoolNumber(node.value),
+        });
+      }
+      Object.values(node).forEach(child => {
+        if (typeof child === 'object') walk(child, depth + 1);
+      });
+    }
+  };
+  walk(payload);
+  return points.sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function summarizeMetricoolTimelines(timelinesByNetwork) {
+  const out = {};
+  Object.entries(timelinesByNetwork || {}).forEach(([network, metrics]) => {
+    out[network] = {};
+    Object.entries(metrics || {}).forEach(([metric, payload]) => {
+      const points = collectTimelinePoints(payload);
+      const values = points.length ? points.map(p => p.value) : collectTimelineValues(payload);
+      if (!values.length) return;
+      out[network][metric] = metric === 'followers'
+        ? values[values.length - 1]
+        : values.reduce((sum, v) => sum + v, 0);
+    });
+  });
+  return out;
+}
+
+function getMetricoolActiveNetworks(profile) {
+  const networks = [];
+  const checks = [
+    ['instagram', profile?.instagram],
+    ['linkedin', profile?.linkedinCompany || profile?.linkedInCompanyName || profile?.linkedInUserProfileURL],
+    ['facebook', profile?.facebook || profile?.facebookPageId],
+    ['tiktok', profile?.tiktok || profile?.tiktokUserProfileUrl],
+    ['youtube', profile?.youtube || profile?.youtubeChannelName],
+    ['twitter', profile?.twitter],
+  ];
+  checks.forEach(([network, value]) => { if (value) networks.push(network); });
+  return [...new Set(networks)];
+}
+
+async function fetchMetricoolAnalytics({ blogId, userId, profile }) {
+  const period = getMetricoolPeriod();
+  const networks = getMetricoolActiveNetworks(profile);
+  const postsParams = {
+    from: period.fromPosts,
+    to: period.toPosts,
+    timezone: METRICOOL_TIMEZONE,
+    userId,
+    blogId,
+  };
+
+  const analytics = { posts: null, timelines: {}, period, networks };
+  try {
+    analytics.posts = await fetchMetricoolProxy('/api/metricool/analytics/posts', postsParams);
+    console.log('[Metricool] Analytics posts obtained:', analytics.posts);
+  } catch (e) {
+    console.warn('[Metricool] Analytics posts error:', e.message);
+  }
+
+  await Promise.all(networks.flatMap(network =>
+    METRICOOL_TIMELINE_METRICS.map(async metric => {
+      try {
+        const payload = await fetchMetricoolProxy('/api/metricool/analytics/timelines', {
+          from: period.fromTimeline,
+          to: period.toTimeline,
+          metric,
+          network,
+          timezone: METRICOOL_TIMEZONE,
+          subject: 'account',
+          userId,
+          blogId,
+        });
+        if (!analytics.timelines[network]) analytics.timelines[network] = {};
+        analytics.timelines[network][metric] = payload;
+      } catch (e) {
+        console.warn(`[Metricool] Timeline ${network}/${metric} error:`, e.message);
+      }
+    })
+  ));
+
+  analytics.timelineSummary = summarizeMetricoolTimelines(analytics.timelines);
+  console.log('[Metricool] Timeline summary:', analytics.timelineSummary);
+  return analytics;
+}
+
+function extractMetricoolSummaryMetrics(summary) {
+  if (!summary || typeof summary !== 'object') return {};
+  const metrics = {};
+  const assignFirst = (target, keys, obj) => {
+    keys.forEach(key => {
+      if (metrics[target] != null) return;
+      const value = obj?.[key];
+      if (value != null && value !== '') metrics[target] = Number(String(value).replace(/\./g, '').replace(',', '.')) || value;
+    });
+  };
+  const walk = (obj, depth = 0) => {
+    if (!obj || typeof obj !== 'object' || depth > 4) return;
+    assignFirst('followers', ['followers', 'followersCount', 'seguidores'], obj);
+    assignFirst('impressions', ['impressions', 'impresiones', 'views'], obj);
+    assignFirst('interactions', ['interactions', 'interacciones', 'engagements'], obj);
+    assignFirst('postsCount', ['postsCount', 'numPosts', 'numberOfPosts', 'publications', 'publicaciones'], obj);
+    Object.values(obj).forEach(child => walk(child, depth + 1));
+  };
+  walk(summary);
+  return metrics;
+}
+
+function normalizeMetricoolChannel(channel) {
+  const rawNetwork = channel.network || channel.platform || channel.type || channel.name;
+  const name = normalizeMetricoolNetwork(rawNetwork);
+  const handle = cleanMetricoolHandle(channel.handle || channel.username || channel.profileName || '');
+  const posts = Array.isArray(channel.posts) ? channel.posts.map(p => normalizeMetricoolPost(p, name)) : [];
+  const totalViews = Number(channel.totalViews ?? channel.impressions ?? channel.views ?? 0) || 0;
+  const reach = Number(channel.reach ?? channel.impressions ?? totalViews) || 0;
+  const totalInteractions = Number(channel.totalInteractions ?? channel.interactions ?? channel.engagements ?? 0) || 0;
+  const totalPosts = Number(channel.totalPosts ?? channel.postsCount ?? posts.length) || 0;
+  const avgEngagementRate = Number(channel.avgEngagementRate ?? (
+    totalViews ? ((totalInteractions / Math.max(totalViews, 1)) * 100).toFixed(2) : 0
+  )) || 0;
+
+  return {
+    name,
+    icon: getNetworkIcon(name),
+    color: getNetworkColor(name),
+    handle: handle ? `@${handle}` : '',
+    profileUrl: buildProfileUrlForChannel(name, handle, channel.profileUrl || ''),
+    enabled: true,
+    followers: Number(channel.followers ?? 0) || 0,
+    following: Number(channel.following ?? 0) || 0,
+    totalPosts,
+    totalViews,
+    reach,
+    totalInteractions,
+    postingCadence: channel.postingCadence ?? 0,
+    avgEngagementRate,
+    primaryFormat: channel.primaryFormat || (name === 'LinkedIn' ? 'post' : 'video'),
+    copyStructure: channel.copyStructure || 'metricool',
+    tone: channel.tone || { formal_vs_casual: 50, technical_vs_accessible: 50, serious_vs_playful: 50, humble_vs_bold: 50, short_vs_expansive: 50 },
+    toneSummary: channel.toneSummary || `Metrics imported from Metricool for ${name}.`,
+    voiceRules: channel.voiceRules || { always: ['Use the latest Metricool performance context'], never: ['Ignore channel-specific performance data'] },
+    topPosts: posts.slice().sort((a, b) => (b.engagementRate || 0) - (a.engagementRate || 0)).slice(0, 6),
+    bottomPosts: posts.slice().sort((a, b) => (a.engagementRate || 0) - (b.engagementRate || 0)).slice(0, 3),
+    posts,
+    metricoolId: channel.id,
+    source: 'metricool',
+  };
+}
+
+function pickMetricoolHandle(data, fallback = '') {
+  if (!data || typeof data !== 'object') return fallback;
+  return data.username || data.userName || data.handle || data.screenName || data.name || data.label || fallback;
+}
+
+function pickMetricoolUrl(data, fallback = '') {
+  if (!data || typeof data !== 'object') return fallback;
+  return data.url || data.profileUrl || data.permalink || data.link || fallback;
+}
+
+function extractMetricoolChannelsFromProfile(profile, brandSummary, analytics = {}) {
+  const channels = [];
+  const summaryMetrics = extractMetricoolSummaryMetrics(brandSummary);
+  const analyticsPosts = collectMetricoolPosts(analytics.posts, 'Instagram');
+  const summaryPosts = analyticsPosts.length ? analyticsPosts : collectMetricoolPosts(brandSummary, 'Instagram');
+  const timelineSummary = analytics.timelineSummary || {};
+  const known = ['instagram', 'tiktok', 'linkedin', 'facebook', 'youtube', 'twitter'];
+  const addChannel = (network, data = {}) => {
+    const name = normalizeMetricoolNetwork(network);
+    if (!isKnownSocialChannel(name)) return;
+    const handle = pickMetricoolHandle(data, profile.label || profile.name || '');
+    const networkKey = network.toLowerCase();
+    const networkMetrics = timelineSummary[networkKey] || {};
+    const profilePosts = summaryPosts.filter(p => p.channel === name);
+    channels.push(normalizeMetricoolChannel({
+      id: data.id || data.profileId || profile.id,
+      network: name,
+      handle,
+      profileUrl: pickMetricoolUrl(data, ''),
+      followers: data.followers || data.followerCount || networkMetrics.followers || summaryMetrics.followers || 0,
+      following: data.following || data.followingCount || 0,
+      impressions: data.impressions || data.views || networkMetrics.impressions || summaryMetrics.impressions || 0,
+      reach: data.reach || networkMetrics.impressions || summaryMetrics.reach || summaryMetrics.impressions || 0,
+      interactions: data.interactions || data.engagements || networkMetrics.postsInteractions || summaryMetrics.interactions || 0,
+      postsCount: data.postsCount || data.totalPosts || networkMetrics.postsCount || summaryMetrics.postsCount || profilePosts.length,
+      posts: profilePosts,
+      metricoolTimelineSeries: analytics.timelines?.[networkKey] || {},
+    }));
+  };
+
+  const scan = (obj, depth = 0, parentKey = '') => {
+    if (!obj || typeof obj !== 'object' || depth > 3) return;
+    Object.entries(obj).forEach(([key, value]) => {
+      const lowerKey = key.toLowerCase();
+      const keyNetwork = known.find(n => lowerKey.includes(n));
+      if (keyNetwork && value) {
+        addChannel(keyNetwork, typeof value === 'object' ? value : {});
+      }
+      if (value && typeof value === 'object') {
+        const declaredNetwork = value.network || value.platform || value.type || value.socialNetwork || parentKey;
+        const normalized = normalizeMetricoolNetwork(declaredNetwork);
+        if (isKnownSocialChannel(normalized)) addChannel(normalized, value);
+        scan(value, depth + 1, key);
+      }
+    });
+  };
+
+  scan(profile);
+  return mergeMetricoolChannels(channels);
+}
+
+async function persistMetricoolSocialBios(channels) {
+  if (!brandKitData.brandId || !Array.isArray(channels) || !channels.length) return;
+  const rows = mergeMetricoolChannels(channels).map(ch => ({
+    brand_id: brandKitData.brandId,
+    channel: ch.name,
+    handle: ch.handle || '',
+    url: ch.profileUrl || '',
+    analysis_json: ch,
+    updated_at: new Date().toISOString(),
+  }));
+  try {
+    await supabaseUpsert('social_media_analyses', rows, 'brand_id,channel');
+  } catch (e) {
+    console.warn('[Metricool] Could not persist SocialMediaBios rows:', e);
+  }
+}
+
 async function syncMetricoolData() {
   try {
     const token = window.METRICOOL_TOKEN || localStorage.getItem('metricool_token');
@@ -941,7 +1532,7 @@ async function syncMetricoolData() {
     console.log('[Metricool] Starting full sync with token:', token.substring(0, 10) + '...');
 
     // 1. Get simple profiles (all channels/accounts)
-    const profilesUrl = 'https://app.metricool.com/api/admin/simpleProfiles?userId=4289908';
+    const profilesUrl = `https://app.metricool.com/api/admin/simpleProfiles?userId=${METRICOOL_USER_ID}`;
     console.log('[Metricool] Fetching profiles from:', profilesUrl);
 
     const profilesResponse = await fetch(profilesUrl, {
@@ -962,20 +1553,28 @@ async function syncMetricoolData() {
 
     const profiles = await profilesResponse.json();
     console.log('[Metricool] Profiles:', profiles);
+    const targetProfile = Array.isArray(profiles)
+      ? profiles.find(p => String(p.label || '').toLowerCase() === METRICOOL_TARGET_LABEL)
+      : null;
+    if (!targetProfile) {
+      console.warn('[Metricool] Target profile not found:', METRICOOL_TARGET_LABEL);
+      return { profiles, channels: [], posts: [], brandSummary: null };
+    }
+    const targetBlogId = targetProfile.id || METRICOOL_FALLBACK_BLOG_ID;
+    console.log('[Metricool] Using target profile:', targetProfile.label, 'blogId:', targetBlogId);
+    const metricoolAnalytics = await fetchMetricoolAnalytics({
+      blogId: targetBlogId,
+      userId: METRICOOL_USER_ID,
+      profile: targetProfile,
+    });
 
     // 2. Get analytics/posts data from brandSummary endpoint (optional - may fail due to CORS)
     let brandSummary = null;
     try {
-      const brandSummaryUrl = 'https://app.metricool.com/evolution/brandSummary?blogId=5526619&userId=4289908';
+      const brandSummaryUrl = `/api/metricool/brand-summary?blogId=${encodeURIComponent(targetBlogId)}&userId=${encodeURIComponent(METRICOOL_USER_ID)}`;
       console.log('[Metricool] Attempting to fetch brand summary from:', brandSummaryUrl);
 
-      const summaryResponse = await fetch(brandSummaryUrl, {
-        method: 'GET',
-        headers: {
-          'X-Mc-Auth': token,
-          'Content-Type': 'application/json'
-        }
-      });
+      const summaryResponse = await fetch(brandSummaryUrl);
 
       if (summaryResponse.ok) {
         brandSummary = await summaryResponse.json();
@@ -999,38 +1598,24 @@ async function syncMetricoolData() {
     console.log('[Metricool] Profiles response structure:', typeof profiles, Array.isArray(profiles) ? profiles.length + ' items' : Object.keys(profiles));
 
     // Map profiles to channels format and include analytics data
-    if (Array.isArray(profiles)) {
-      profiles.forEach(profile => {
+    if (targetProfile) {
+      [targetProfile].forEach(profile => {
         console.log('[Metricool] Profile:', profile);
 
-        // Extract posts from brandSummary if available
-        const profilePosts = brandSummary && brandSummary.posts ? brandSummary.posts : [];
-
-        const channel = {
-          id: profile.profileId || profile.id,
-          name: profile.profileName || profile.name || profile.network,
-          platform: profile.network,
-          handle: profile.username || profile.handle || '',
-          profileUrl: profile.profileUrl || '',
-          followers: profile.followers || brandSummary?.followers || 0,
-          impressions: brandSummary?.impressions || 0,
-          interactions: brandSummary?.interactions || 0,
-          postsCount: brandSummary?.posts?.length || 0,
-          network: profile.network,
-          icon: getNetworkIcon(profile.network),
-          color: getNetworkColor(profile.network),
-          posts: profilePosts
-        };
-
-        allChannels.push(channel);
-        if (profilePosts && profilePosts.length > 0) {
-          allPosts.push(...profilePosts);
+        const profileChannels = extractMetricoolChannelsFromProfile(profile, brandSummary, metricoolAnalytics);
+        if (!profileChannels.length) {
+          console.warn('[Metricool] No social channels found inside profile:', profile?.label || profile?.name || profile?.id, Object.keys(profile || {}));
         }
+        allChannels.push(...profileChannels);
+        profileChannels.forEach(channel => {
+          if (channel.posts && channel.posts.length > 0) allPosts.push(...channel.posts);
+        });
       });
     }
 
-    console.log('[Metricool] Sync complete - Channels:', allChannels.length, 'Posts:', allPosts.length);
-    return { profiles, channels: allChannels, posts: allPosts, brandSummary };
+    const mergedChannels = mergeMetricoolChannels(allChannels);
+    console.log('[Metricool] Sync complete - Channels:', mergedChannels.length, 'Posts:', allPosts.length);
+    return { profiles, channels: mergedChannels, posts: allPosts, brandSummary };
   } catch (e) {
     console.error('[Metricool] sync error:', e);
     showToast('❌ Error Metricool: ' + e.message);
@@ -1039,10 +1624,12 @@ async function syncMetricoolData() {
 }
 
 // Load Metricool data and populate BrandingBio + SocialMediaBios
-async function loadMetricoolAndDisplay() {
-  const btn = event.target;
-  btn.textContent = '⏳ Cargando desde Metricool...';
-  btn.disabled = true;
+async function loadMetricoolAndDisplay(btnOverride = null) {
+  const btn = btnOverride || event?.target || document.getElementById('metricool-connect-btn');
+  if (btn) {
+    btn.textContent = 'Cargando desde Metricool...';
+    btn.disabled = true;
+  }
 
   console.log('[UI] Starting Metricool sync from button click');
 
@@ -1056,39 +1643,56 @@ async function loadMetricoolAndDisplay() {
     // Map Metricool channels to brandKitData.channels format
     metricoolData.channels.forEach(ch => {
       const existingIdx = brandKitData.channels.findIndex(c => c.name === ch.name);
+      const cleanHandle = cleanMetricoolHandle(ch.handle);
 
       if (existingIdx === -1) {
         // Add new channel
         brandKitData.channels.push({
-          name: ch.name || ch.platform,
+          name: ch.name,
           icon: ch.icon || 'globe',
           color: ch.color || '#6366F1',
-          handle: ch.handle || ch.username || '',
+          handle: cleanHandle,
           audience: ch.audience || `${ch.followers || 0} seguidores`,
-          metricoolId: ch.id,
-          channelType: ch.type
+          metricoolId: ch.metricoolId,
+          channelType: ch.source
         });
       } else {
         // Update existing channel
-        brandKitData.channels[existingIdx].handle = ch.handle || ch.username || '';
-        brandKitData.channels[existingIdx].metricoolId = ch.id;
+        brandKitData.channels[existingIdx].handle = cleanHandle;
+        brandKitData.channels[existingIdx].metricoolId = ch.metricoolId;
+        brandKitData.channels[existingIdx].audience = `${ch.followers || 0} seguidores`;
+      }
+
+      if (socialBiosData.inputs[ch.name]) {
+        socialBiosData.inputs[ch.name] = {
+          handle: cleanHandle,
+          profileUrl: ch.profileUrl || buildProfileUrlForChannel(ch.name, cleanHandle)
+        };
       }
     });
 
     // Update socialBiosData with Metricool data
     if (metricoolData && metricoolData.channels && metricoolData.channels.length > 0) {
-      metricoolData.channels.forEach(channel => {
+      const storedAnalysis = await fetchSocialBios(brandKitData.brandId);
+      const analysisChannels = storedAnalysis?.channels || [];
+      const mergedMetricoolChannels = metricoolData.channels.map(channel => {
+        const existing = socialBiosData.channels.find(c => c.name === channel.name);
+        const stored = analysisChannels.find(c => c.name === channel.name);
+        return mergeMetricoolWithAnalysis(channel, existing || stored);
+      });
+
+      mergedMetricoolChannels.forEach(channel => {
         const existing = socialBiosData.channels.find(c => c.name === channel.name);
         if (existing) {
-          existing.followers = channel.followers || 0;
-          existing.impressions = channel.impressions || 0;
-          existing.interactions = channel.interactions || 0;
-          existing.posts = channel.posts || [];
-          existing.postsCount = channel.postsCount || 0;
+          Object.assign(existing, channel);
+        } else {
+          socialBiosData.channels.push(channel);
         }
       });
       socialBiosData.lastScannedAt = new Date().toISOString();
       socialBiosData.isMock = false;
+      socialBiosData.metricoolHydratedAt = Date.now();
+      await persistMetricoolSocialBios(mergedMetricoolChannels);
 
       console.log('[UI] Updated socialBiosData.channels with Metricool data');
     }
@@ -1110,8 +1714,10 @@ async function loadMetricoolAndDisplay() {
     }, 300);
   } else {
     console.warn('[UI] No channels found in Metricool data');
-    btn.textContent = 'Conectar ahora';
-    btn.disabled = false;
+    if (btn) {
+      btn.textContent = 'Actualizar analisis';
+      btn.disabled = false;
+    }
     showToast('⚠️ No se encontraron canales. Revisa:\n1. Token de Metricool válido\n2. Canales configurados en tu cuenta');
   }
 }
@@ -1228,8 +1834,8 @@ function buildMockHeatmap(channel) {
   return matrix;
 }
 
-async function scanSocialMediaBios() {
-  const btn = document.getElementById('smb-scan-btn');
+async function scanSocialMediaBios(opts = {}) {
+  const btn = opts.button || document.getElementById('smb-scan-btn');
   const statusEl = document.getElementById('smb-scan-status');
   const channels = Object.entries(socialBiosData.inputs)
     .filter(([_, v]) => v.handle && v.handle.trim())
@@ -1237,7 +1843,7 @@ async function scanSocialMediaBios() {
 
   if (!channels.length) {
     showToast('Add at least one handle (LinkedIn / Instagram / TikTok) first.');
-    return;
+    return false;
   }
 
   // Ensure we always scan under a stable brand_id so results are scoped to this company.
@@ -1246,7 +1852,7 @@ async function scanSocialMediaBios() {
     try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
   }
 
-  if (btn) { btn.textContent = 'Scanning…'; btn.disabled = true; }
+  if (btn) { btn.textContent = opts.buttonText || 'Scanning…'; btn.disabled = true; }
   if (statusEl) statusEl.innerHTML = '<span style="color:#9333EA">⟳ Scraping channels via Apify — this may take 30–90 seconds…</span>';
 
   try {
@@ -1256,7 +1862,8 @@ async function scanSocialMediaBios() {
       body: JSON.stringify({
         brand_id: brandKitData.brandId,
         channels,
-        maxPosts: 10,
+        maxPosts: opts.maxPosts || 10,
+        force_refresh: !!opts.forceRefresh,
         scoringWeights: socialBiosData.scoringWeights,
       }),
     });
@@ -1273,6 +1880,7 @@ async function scanSocialMediaBios() {
     try { localStorage.setItem(BRAND_ID_STORAGE_KEY, brandKitData.brandId); } catch (_) {}
     if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">✅ Channels scanned — voice rules updated below.</span>';
     showToast('SocialMediaBios scan complete.');
+    return true;
   } catch (e) {
     console.error('[WF_SOCIAL_BIOS] scan error:', e);
     // If we already have real data on screen, NEVER overwrite it with mock — that would
@@ -1289,8 +1897,49 @@ async function scanSocialMediaBios() {
       if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">${errorMsg} Mostrando datos de demo.</span>`;
       applySocialBiosData(loadMockSocialBios(), { isMock: true });
     }
+    return false;
   } finally {
-    if (btn) { btn.textContent = 'Scan Channels'; btn.disabled = false; }
+    if (btn) { btn.textContent = opts.doneText || 'Scan Channels'; btn.disabled = false; }
+  }
+}
+
+async function runSuperSocialAnalysis(btnOverride = null) {
+  const btn = btnOverride || event?.target || document.getElementById('metricool-connect-btn');
+  const statusEl = document.getElementById('smb-scan-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Actualizando...'; }
+  if (statusEl) statusEl.innerHTML = '<span style="color:#9333EA">Actualizando performance desde Metricool y enriqueciendo tono con Apify + AI...</span>';
+
+  let metricoolOk = false;
+  let wf02Ok = false;
+  try {
+    await loadMetricoolAndDisplay(btn);
+    metricoolOk = true;
+
+    wf02Ok = await scanSocialMediaBios({
+      button: btn,
+      forceRefresh: true,
+      maxPosts: 30,
+      buttonText: 'Apify + AI...',
+      doneText: 'Actualizando...'
+    });
+
+    if (wf02Ok) {
+      await loadMetricoolAndDisplay(btn);
+      if (statusEl) statusEl.innerHTML = '<span style="color:#10B981">Analisis combinado listo: Apify/Claude + Metricool.</span>';
+      showToast('Analisis completo: tono + performance combinados.');
+    } else {
+      if (statusEl) statusEl.innerHTML = '<span style="color:#F59E0B">Metricool actualizado. Apify + AI no completo; revisa el workflow WF02.</span>';
+      showToast('Metricool actualizado. Falta corregir WF02 para tone/voice.', 'error');
+    }
+  } catch (e) {
+    console.error('[SocialMediaBios] super analysis error:', e);
+    const msg = metricoolOk
+      ? 'Metricool actualizado. Apify + AI fallo; revisa WF02.'
+      : 'No se pudo actualizar Metricool. Revisa token/proxy local.';
+    if (statusEl) statusEl.innerHTML = `<span style="color:#EF4444">${msg}</span>`;
+    showToast(msg, 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Actualizar analisis'; }
   }
 }
 
@@ -1570,7 +2219,7 @@ function renderSocialBiosComparison(channels) {
         ${best.whyItWorked ? `<div class="smb-best-card-why">↳ ${best.whyItWorked}</div>` : ''}
         <div class="smb-best-card-meta">
           <span style="text-transform:capitalize;">${best.format}</span>
-          <span>· ${best.metrics?.likes ?? 0} likes</span>
+          <span>· ${best.metrics?.interactions ?? best.metrics?.likes ?? 0} interacciones</span>
           <span>· ${best.metrics?.comments ?? 0} comments</span>
           <span>· ${best.metrics?.shares ?? 0} shares</span>
           ${best.url ? `<a href="${best.url}" target="_blank" rel="noopener" style="margin-left:auto;color:${c.color};font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">Ver post<i data-lucide="external-link" style="width:11px;"></i></a>` : ''}
@@ -1669,7 +2318,7 @@ function renderSocialChannelsTabs() {
   console.log('Matching channels with data:', channels);
 
   if (!channels.length) {
-    tabsPillsContainer.innerHTML = '<p style="padding:16px; color:var(--text-muted); font-size:13px;">📱 <strong>Presiona "Sync to Pipeline"</strong> en Branding Bio para traer datos de tus redes sociales automáticamente</p>';
+    tabsPillsContainer.innerHTML = '<p style="padding:16px; color:var(--text-muted); font-size:13px;"><strong>Presiona "Actualizar analisis"</strong> para traer datos de Metricool y enriquecer tono con Apify + AI.</p>';
     contentsContainer.innerHTML = '';
     return;
   }
@@ -1788,13 +2437,98 @@ function renderSocialChannelsTabs() {
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
+function renderMetricoolPublicationCard(focus, p) {
+  const postUrl = p.url || '';
+  const imageHtml = p.imageUrl
+    ? `<a href="${postUrl || p.imageUrl}" target="_blank" rel="noopener" class="smb-publication-image"><img src="${p.imageUrl}" alt=""></a>`
+    : `<a href="${postUrl || '#'}" target="_blank" rel="noopener" class="smb-publication-image empty"><i data-lucide="image" style="width:20px;"></i><span>Sin imagen</span></a>`;
+  return `
+    <div class="smb-publication-card">
+      ${imageHtml}
+      <div class="smb-publication-body">
+        <div class="smb-publication-text">
+          ${postUrl ? `<a href="${postUrl}" target="_blank" rel="noopener">${p.snippet}</a>` : p.snippet}
+        </div>
+        <div class="smb-publication-meta">
+          <span style="text-transform:capitalize;">${p.format || 'post'}</span>
+          <span>${p.publishedAt ? new Date(p.publishedAt).toLocaleDateString('es-ES') : '—'}</span>
+          ${postUrl ? `<a href="${postUrl}" target="_blank" rel="noopener" style="color:${focus.color};font-weight:700;text-decoration:none;display:inline-flex;align-items:center;gap:3px;">Abrir publicación<i data-lucide="external-link" style="width:11px;"></i></a>` : ''}
+        </div>
+        <div class="smb-publication-metrics">
+          <div><strong>${p.metrics?.impressions ?? 0}</strong><span>Impresiones</span></div>
+          <div><strong>${p.metrics?.interactions ?? p.metrics?.likes ?? 0}</strong><span>Interacciones</span></div>
+          <div><strong>${p.metrics?.comments ?? 0}</strong><span>Comentarios</span></div>
+          <div><strong>${p.metrics?.shares ?? 0}</strong><span>Shares</span></div>
+          <div><strong>${p.engagementRate ?? 0}%</strong><span>ER</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSocialBiosMetricoolCharts(channel) {
+  const root = document.getElementById('smb-metricool-charts');
+  if (!root) return;
+  const series = channel?.metricoolTimelineSeries || {};
+  const chartDefs = [
+    { metric: 'followers', label: 'Seguidores', type: 'line', color: channel.color || '#9333EA' },
+    { metric: 'postsInteractions', label: 'Interacciones', type: 'bar', color: '#10B981' },
+    { metric: 'postsCount', label: 'Publicaciones', type: 'bar', color: '#6366F1' },
+    { metric: 'impressions', label: 'Impresiones', type: 'line', color: '#F59E0B' },
+  ].map(def => ({ ...def, points: collectTimelinePoints(series[def.metric]) })).filter(def => def.points.length);
+
+  if (!chartDefs.length || typeof Chart === 'undefined') {
+    root.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:24px;">No hay series de analytics para graficar en este período.</div>';
+    return;
+  }
+
+  root.innerHTML = chartDefs.map(def => `
+    <div class="smb-metric-chart">
+      <div class="smb-metric-chart-title">${def.label}</div>
+      <canvas id="smb-chart-${channel.name}-${def.metric}" height="130"></canvas>
+    </div>
+  `).join('');
+
+  chartDefs.forEach(def => {
+    const id = `smb-chart-${channel.name}-${def.metric}`;
+    if (chartInstances[id]) chartInstances[id].destroy();
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    chartInstances[id] = new Chart(ctx, {
+      type: def.type,
+      data: {
+        labels: def.points.map(p => new Date(p.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })),
+        datasets: [{
+          label: def.label,
+          data: def.points.map(p => p.value),
+          borderColor: def.color,
+          backgroundColor: def.type === 'bar' ? def.color : `${def.color}22`,
+          borderWidth: 2,
+          tension: 0.35,
+          fill: def.type !== 'bar',
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } },
+          y: { beginAtZero: def.metric !== 'followers', grid: { color: '#EEF2F7' } },
+        },
+      },
+    });
+  });
+}
+
 async function hydrateSocialBiosView() {
   // Bail out silently if the view isn't mounted — switchView will re-call this on next mount.
   if (!document.getElementById('smb-root')) return;
 
   // Always refetch from Supabase on each hydrate — the n8n workflow can write new analyses
   // between mounts, and a stale in-memory cache would otherwise hide them.
-  const stored = await fetchSocialBios(brandKitData.brandId);
+  const skipStoredFetch = socialBiosData.metricoolHydratedAt && (Date.now() - socialBiosData.metricoolHydratedAt < 5 * 60 * 1000);
+  const stored = skipStoredFetch ? null : await fetchSocialBios(brandKitData.brandId);
   if (stored && stored.channels.length) {
     socialBiosData.lastScannedAt = stored.scanned_at;
     socialBiosData.channels = stored.channels;
@@ -1874,7 +2608,7 @@ async function hydrateSocialBiosView() {
     return;
   }
 
-  // ── Per-channel focus card (Metricool style) ──
+  // Per-channel focus card
   if (focus) {
     // Focus card header
     setHTML('smb-focus-card', `
@@ -1908,6 +2642,13 @@ async function hydrateSocialBiosView() {
       ...(focus.bottomPosts || [])
     ];
     const sortedByEngagement = [...allPosts].sort((a, b) => (b.engagementRate ?? 0) - (a.engagementRate ?? 0));
+    setTimeout(() => {
+      setHTML('smb-publicaciones-list', sortedByEngagement.length
+        ? sortedByEngagement.map(p => renderMetricoolPublicationCard(focus, p)).join('')
+        : '<div style="text-align:center; color:var(--text-muted); padding:24px;">No publications yet — run a scan.</div>');
+      renderSocialBiosMetricoolCharts(focus);
+      if (typeof lucide !== 'undefined') lucide.createIcons();
+    }, 0);
 
     setHTML('smb-publicaciones-list', sortedByEngagement.length ? sortedByEngagement.map(p => `
       <div style="padding:16px; border:1px solid var(--border); border-radius:10px; background:var(--bg-secondary);">
@@ -12599,7 +13340,7 @@ function generateViewHTML(view) {
             <div style="font-weight:600; color:white; margin-bottom:4px;">🔐 Conecta tus redes sociales</div>
             <div style="font-size:13px; color:#E8EAFF;">Autoriza el acceso seguro a tus Instagram, Facebook, TikTok y más para obtener estadísticas en tiempo real.</div>
           </div>
-          <button onclick="loadMetricoolAndDisplay()" style="
+          <button id="metricool-connect-btn" onclick="runSuperSocialAnalysis(this)" style="
             padding:10px 20px;
             background:white;
             color:#667EEA;
@@ -12609,14 +13350,14 @@ function generateViewHTML(view) {
             cursor:pointer;
             white-space:nowrap;
             font-size:14px;
-          ">Conectar ahora</button>
+          ">Actualizar analisis</button>
         </div>
 
         <!-- Mock-data warning banner (hidden after first real scan) -->
         <div id="smb-mock-banner" style="margin-top:16px; padding:12px 16px; background:#FFFBEB; border:1px solid #FCD34D; border-radius:10px; display:flex; gap:10px; align-items:flex-start;">
           <i data-lucide="alert-triangle" style="width:18px; flex-shrink:0; margin-top:1px; color:#D97706;"></i>
           <div style="flex:1; font-size:13px; color:#92400E;">
-            <strong>LIVE DATA</strong> — automatically pulled from your social channels when you click "Sync to Pipeline" in Branding Bio. Channels scan via WF02 and show voice, engagement, and top-performing posts.
+            <strong>LIVE DATA</strong> — usa el boton "Actualizar analisis" para combinar Metricool, Apify y AI en un solo update.
           </div>
         </div>
 
@@ -12627,8 +13368,8 @@ function generateViewHTML(view) {
               <h3 class="card-title" style="margin:0;"><i data-lucide="link-2"></i> Owned Channels</h3>
               <p style="margin:4px 0 0; font-size:12px; color:var(--text-muted);">Last scan: <span id="smb-last-scan">—</span></p>
             </div>
-            <div style="display:flex; gap:8px;">
-              <p style="margin:0; color:var(--text-muted); font-size:13px;"><em>Automatically synced via "Sync to Pipeline" button in Branding Bio</em></p>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <p style="margin:0; color:var(--text-muted); font-size:13px;"><em>Un solo update combina Metricool para performance y Apify + AI para tono/reglas.</em></p>
             </div>
           </div>
 
@@ -12754,6 +13495,11 @@ function generateViewHTML(view) {
           <!-- PUBLICACIONES tab -->
           <div id="smb-subtab-publicaciones" class="card" style="margin-top:16px; padding:20px 24px; display:none;">
             <div id="smb-publicaciones-list" style="display:grid; gap:16px;"></div>
+          </div>
+
+          <div class="card" style="margin-top:16px; padding:20px 24px;">
+            <h3 class="card-title" style="margin:0 0 14px;"><i data-lucide="line-chart"></i> Analytics del período</h3>
+            <div id="smb-metricool-charts" class="smb-metric-charts"></div>
           </div>
         </div>
       </div>
