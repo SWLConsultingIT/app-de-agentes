@@ -1079,23 +1079,23 @@ async function loadMetricoolAndDisplay() {
     if (leadsData[0]) {
       leadsData[0].metricoolPosts = metricoolData.posts || [];
       leadsData[0].metricoolChannels = metricoolData.channels || [];
+      leadsData[0].metricoolData = metricoolData;
     }
 
-    console.log('[UI] Updated brandKitData.channels:', brandKitData.channels);
+    console.log('[UI] Updated leadsData with Metricool channels:', metricoolData.channels);
 
     showToast('✅ Metricool sincronizado - ' + metricoolData.channels.length + ' canales');
 
     btn.textContent = '✅ Sincronizado';
     btn.disabled = false;
 
-    // Navigate to BrandingBio to show the synced channels
-    console.log('[UI] Navigating to BrandingBio to display synced channels...');
+    // Re-render SocialMediaBios with the synced data (stay on current view)
+    console.log('[UI] Re-rendering SocialMediaBios with Metricool data...');
     setTimeout(() => {
-      if (state && switchView) {
-        state.currentView = 'branding-kit';
-        switchView('branding-kit');
+      if (state && state.currentView === 'social-media-bios' && switchView) {
+        switchView('social-media-bios');
         lucide.createIcons();
-        console.log('[UI] BrandingBio re-rendered with Metricool channels');
+        console.log('[UI] SocialMediaBios re-rendered with Metricool channels');
       }
     }, 500);
   } else {
