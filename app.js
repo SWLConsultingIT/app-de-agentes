@@ -1051,7 +1051,14 @@ async function loadMetricoolAndDisplay() {
     btn.textContent = '✅ Sincronizado';
     btn.disabled = false;
 
-    console.log('[UI] Data ready, you can now navigate to BrandingBio or SocialMediaBios to see the synced channels.');
+    // Re-render current view if it's branding-kit or social-media-bios
+    console.log('[UI] Re-rendering view...');
+    if (state && state.currentView && (state.currentView === 'branding-kit' || state.currentView === 'social-media-bios')) {
+      setTimeout(() => {
+        switchView(state.currentView);
+        lucide.createIcons();
+      }, 500);
+    }
   } else {
     console.warn('[UI] No channels found in Metricool data');
     btn.textContent = 'Conectar ahora';
