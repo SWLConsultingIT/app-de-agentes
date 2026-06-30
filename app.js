@@ -1075,29 +1075,39 @@ async function loadMetricoolAndDisplay() {
       }
     });
 
-    // Store posts in leadsData for SocialMediaBios to use
-    if (leadsData[0]) {
-      leadsData[0].metricoolPosts = metricoolData.posts || [];
-      leadsData[0].metricoolChannels = metricoolData.channels || [];
-      leadsData[0].metricoolData = metricoolData;
-    }
+    // Update socialBiosData with Metricool data
+    if (metricoolData && metricoolData.channels && metricoolData.channels.length > 0) {
+      metricoolData.channels.forEach(channel => {
+        const existing = socialBiosData.channels.find(c => c.name === channel.name);
+        if (existing) {
+          existing.followers = channel.followers || 0;
+          existing.impressions = channel.impressions || 0;
+          existing.interactions = channel.interactions || 0;
+          existing.posts = channel.posts || [];
+          existing.postsCount = channel.postsCount || 0;
+        }
+      });
+      socialBiosData.lastScannedAt = new Date().toISOString();
+      socialBiosData.isMock = false;
 
-    console.log('[UI] Updated leadsData with Metricool channels:', metricoolData.channels);
+      console.log('[UI] Updated socialBiosData.channels with Metricool data');
+    }
 
     showToast('✅ Metricool sincronizado - ' + metricoolData.channels.length + ' canales');
 
     btn.textContent = '✅ Sincronizado';
     btn.disabled = false;
 
-    // Re-render SocialMediaBios with the synced data (stay on current view)
-    console.log('[UI] Re-rendering SocialMediaBios with Metricool data...');
+    // Re-hydrate the SocialMediaBios view with new data
+    console.log('[UI] Re-hydrating SocialMediaBios with Metricool data...');
     setTimeout(() => {
-      if (state && state.currentView === 'social-media-bios' && switchView) {
-        switchView('social-media-bios');
-        lucide.createIcons();
-        console.log('[UI] SocialMediaBios re-rendered with Metricool channels');
+      if (typeof hydrateSocialBiosView === 'function') {
+        hydrateSocialBiosView().then(() => {
+          lucide.createIcons();
+          console.log('[UI] SocialMediaBios hydrated with Metricool channels');
+        });
       }
-    }, 500);
+    }, 300);
   } else {
     console.warn('[UI] No channels found in Metricool data');
     btn.textContent = 'Conectar ahora';
