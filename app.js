@@ -963,24 +963,28 @@ async function syncMetricoolData() {
     const profiles = await profilesResponse.json();
     console.log('[Metricool] Profiles:', profiles);
 
-    // 2. Get analytics/posts data from brandSummary endpoint
-    const brandSummaryUrl = 'https://app.metricool.com/evolution/brandSummary?blogId=5526619&userId=4289908';
-    console.log('[Metricool] Fetching brand summary from:', brandSummaryUrl);
-
-    const summaryResponse = await fetch(brandSummaryUrl, {
-      method: 'GET',
-      headers: {
-        'X-Mc-Auth': token,
-        'Content-Type': 'application/json'
-      }
-    });
-
+    // 2. Get analytics/posts data from brandSummary endpoint (optional - may fail due to CORS)
     let brandSummary = null;
-    if (summaryResponse.ok) {
-      brandSummary = await summaryResponse.json();
-      console.log('[Metricool] Brand summary:', brandSummary);
-    } else {
-      console.warn('[Metricool] Brand summary API status:', summaryResponse.status);
+    try {
+      const brandSummaryUrl = 'https://app.metricool.com/evolution/brandSummary?blogId=5526619&userId=4289908';
+      console.log('[Metricool] Attempting to fetch brand summary from:', brandSummaryUrl);
+
+      const summaryResponse = await fetch(brandSummaryUrl, {
+        method: 'GET',
+        headers: {
+          'X-Mc-Auth': token,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (summaryResponse.ok) {
+        brandSummary = await summaryResponse.json();
+        console.log('[Metricool] Brand summary obtained:', brandSummary);
+      } else {
+        console.warn('[Metricool] Brand summary API status:', summaryResponse.status, '— continuing with profiles only');
+      }
+    } catch (e) {
+      console.warn('[Metricool] Brand summary CORS error (expected):', e.message, '— continuing with profiles only');
     }
 
     // 3. Process profiles and combine with analytics
