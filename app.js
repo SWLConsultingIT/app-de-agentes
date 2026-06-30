@@ -1048,15 +1048,18 @@ async function loadMetricoolAndDisplay() {
 
     showToast('✅ Metricool sincronizado - ' + metricoolData.channels.length + ' canales');
 
-    // Save to localStorage and reload
-    localStorage.setItem('brandKitData', JSON.stringify(brandKitData));
-
     btn.textContent = '✅ Sincronizado';
     btn.disabled = false;
 
-    setTimeout(() => {
-      location.reload();
-    }, 1000);
+    // Refresh the view without reloading
+    console.log('[UI] Refreshing views...');
+    const container = document.getElementById('view-container');
+    if (container) {
+      container.innerHTML = '';
+      setTimeout(() => {
+        lucide.createIcons();
+      }, 100);
+    }
   } else {
     console.warn('[UI] No channels found in Metricool data');
     btn.textContent = 'Conectar ahora';
