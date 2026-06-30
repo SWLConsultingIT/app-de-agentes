@@ -963,7 +963,27 @@ async function syncMetricoolData() {
     const profiles = await profilesResponse.json();
     console.log('[Metricool] Profiles:', profiles);
 
-    // 2. Process profiles
+    // 2. Get analytics/posts data from brandSummary endpoint
+    const brandSummaryUrl = 'https://app.metricool.com/evolution/brandSummary?blogId=5526619&userId=4289908';
+    console.log('[Metricool] Fetching brand summary from:', brandSummaryUrl);
+
+    const summaryResponse = await fetch(brandSummaryUrl, {
+      method: 'GET',
+      headers: {
+        'X-Mc-Auth': token,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    let brandSummary = null;
+    if (summaryResponse.ok) {
+      brandSummary = await summaryResponse.json();
+      console.log('[Metricool] Brand summary:', brandSummary);
+    } else {
+      console.warn('[Metricool] Brand summary API status:', summaryResponse.status);
+    }
+
+    // 3. Process profiles and combine with analytics
     const allChannels = [];
     const allPosts = [];
 
@@ -974,26 +994,39 @@ async function syncMetricoolData() {
 
     console.log('[Metricool] Profiles response structure:', typeof profiles, Array.isArray(profiles) ? profiles.length + ' items' : Object.keys(profiles));
 
-    // Map profiles to channels format
+    // Map profiles to channels format and include analytics data
     if (Array.isArray(profiles)) {
       profiles.forEach(profile => {
         console.log('[Metricool] Profile:', profile);
-        allChannels.push({
+
+        // Extract posts from brandSummary if available
+        const profilePosts = brandSummary && brandSummary.posts ? brandSummary.posts : [];
+
+        const channel = {
           id: profile.profileId || profile.id,
           name: profile.profileName || profile.name || profile.network,
           platform: profile.network,
           handle: profile.username || profile.handle || '',
           profileUrl: profile.profileUrl || '',
-          followers: profile.followers || 0,
+          followers: profile.followers || brandSummary?.followers || 0,
+          impressions: brandSummary?.impressions || 0,
+          interactions: brandSummary?.interactions || 0,
+          postsCount: brandSummary?.posts?.length || 0,
           network: profile.network,
           icon: getNetworkIcon(profile.network),
-          color: getNetworkColor(profile.network)
-        });
+          color: getNetworkColor(profile.network),
+          posts: profilePosts
+        };
+
+        allChannels.push(channel);
+        if (profilePosts && profilePosts.length > 0) {
+          allPosts.push(...profilePosts);
+        }
       });
     }
 
-    console.log('[Metricool] Sync complete - Channels:', allChannels.length);
-    return { profiles, channels: allChannels, posts: allPosts };
+    console.log('[Metricool] Sync complete - Channels:', allChannels.length, 'Posts:', allPosts.length);
+    return { profiles, channels: allChannels, posts: allPosts, brandSummary };
   } catch (e) {
     console.error('[Metricool] sync error:', e);
     showToast('❌ Error Metricool: ' + e.message);
